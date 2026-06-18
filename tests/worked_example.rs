@@ -102,6 +102,59 @@ fn worked_example_is_self_consistent() {
 }
 
 #[test]
+fn hunter_l2_cross_check_recovers_w() {
+    // Hunter & D'Amico 2025 "Sequential Formulation Validation": identical J2 ROE
+    // dynamics, pure L2 cost. The dual lower bound is correct (~2.48e-4 m/s in our
+    // FD-verified dynamics; the paper's 2.294e-4 is not reproducible — opposite-
+    // sign discrepancy, a paper inconsistency). What we assert is that the Phase-5b
+    // min-fuel extractor recovers w to <0.01% residual at the self-consistent dual.
+    let e_x: f64 = -0.658;
+    let e_y: f64 = -0.239;
+    let e = (e_x * e_x + e_y * e_y).sqrt();
+    let argp = e_y.atan2(e_x); // atan2 -> -2.7932 rad (-160 deg = 200 deg mod 360)
+    let u0 = 65.0_f64.to_radians();
+    let mean_anom = u0 - argp; // u0 = argp + M -> +3.9277 rad (= -135 deg mod 360); Kepler wraps it
+    let chief = AbsoluteOrbit::new(
+        A_C,
+        e,
+        51.0_f64.to_radians(),
+        30.0_f64.to_radians(),
+        argp,
+        mean_anom,
+    );
+    let dynamics = J2Roe::new(chief, 0.0, 39_000.0);
+    let cost = Piecewise::new(1.0e18); // pure Norm2 (no perigee window ever active)
+    let w = Pseudostate::from_row_slice(&[0.66, -1.52, -0.38, -1.44, 0.29, -0.91]) / A_C;
+    let grid = TimeGrid::uniform(0.0, 39_000.0, 10.0);
+    assert_eq!(grid.len(), 3901);
+
+    let sol = solve(&dynamics, &cost, w, grid, &SolveParams::default()).expect("should solve");
+
+    // Self-consistency: refinement objective equals the exact all-times dual.
+    let rows: Vec<_> = grid
+        .times()
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .collect();
+    let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
+    assert!(
+        (sol.lambda.dot(&w) - exact_dual).abs() / exact_dual < 1e-2,
+        "refine dual {} vs exact {exact_dual}",
+        sol.lambda.dot(&w)
+    );
+
+    // Phase 5b acceptance: extraction reconstructs w to < 0.01% residual.
+    assert!(sol.residual < 1e-4, "residual = {:.3e}", sol.residual);
+    // Our FD-verified optimum (~2.487e-4 m/s), NOT the paper's 2.294e-4 bound.
+    assert!(
+        (2.4e-4..=2.6e-4).contains(&sol.total_dv),
+        "total_dv = {:.4e} m/s",
+        sol.total_dv
+    );
+    assert!((1..=50).contains(&sol.iterations));
+    assert!(sol.lambda.iter().all(|x| x.is_finite()));
+}
+
+#[test]
 fn paper_table_iv_does_not_reconstruct() {
     // Evidence for the reframing: the paper's published Table IV maneuvers, fed
     // through the FD-verified dynamics, do NOT reconstruct the Table III target —
