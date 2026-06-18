@@ -111,10 +111,8 @@ pub struct Solution {
 
 /// Conic rows encoding `g_{U(1,t)}(Gamma^T(t) lambda) <= 1` for one candidate time.
 ///
-/// The concrete representation is finalized in Phase 3 (solver layer); this
-/// placeholder exists so the [`crate::SublevelSet`] trait and its impls compile
-/// in Phase 0. Linear rows encode `a^T lambda <= b`; SOC rows encode
-/// `||G lambda||_2 <= h`.
+/// Linear rows encode `a^T lambda <= b`; SOC rows encode `||G lambda||_2 <= h`.
+/// [`crate::refine_socp`] assembles these into clarabel cones.
 #[derive(Debug, Clone, Default)]
 pub struct ConicRows {
     /// Linear rows `(a, b)` with `a^T lambda <= b`.

@@ -27,7 +27,9 @@ pub fn extract_qp(
             "extract_qp: no maneuver directions".into(),
         ));
     }
-    if budget < 0.0 {
+    // Reject negative and NaN budgets (NaN slips past `< 0.0` since all NaN
+    // comparisons are false); +inf is harmless (a non-binding budget).
+    if budget < 0.0 || budget.is_nan() {
         return Err(PlannerError::InvalidInput(format!(
             "extract_qp: budget must be non-negative, got {budget}"
         )));
@@ -194,5 +196,39 @@ mod tests {
         let a = extract_qp(&w, &ys, &q, 10.0).unwrap();
         assert_relative_eq!(a[0] + a[1], 2.0, epsilon = 1e-5);
         assert!(weighted_obj(&w, &ys, &q, &a) < 1e-8);
+    }
+
+    #[test]
+    fn negative_and_nan_budget_are_invalid_input() {
+        // Both guard branches: budget < 0 and budget = NaN -> InvalidInput.
+        let q = SMatrix::<f64, N, N>::identity();
+        let w = w6([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        for bad in [-1.0, f64::NAN] {
+            assert!(matches!(
+                extract_qp(&w, &[e(0)], &q, bad).unwrap_err(),
+                crate::types::PlannerError::InvalidInput(_)
+            ));
+        }
+    }
+
+    #[test]
+    fn zero_w_gives_zero_alpha() {
+        // w = 0 -> minimize ||Y alpha||^2 s.t. alpha >= 0 -> alpha = 0, residual 0.
+        // The optimum is the alpha>=0 vertex of a flat (q=0) quadratic, so
+        // clarabel drives the *objective* to ~0 (the well-posed quantity) while
+        // alpha lands within solver tolerance of 0 (~3e-5). Assert the residual
+        // tightly and alpha loosely.
+        let q = SMatrix::<f64, N, N>::identity();
+        let w = SVector::<f64, N>::zeros();
+        let ys = [e(0), e(1)];
+        let a = extract_qp(&w, &ys, &q, 10.0).unwrap();
+        assert!(
+            weighted_obj(&w, &ys, &q, &a) < 1e-6,
+            "residual not ~0: {a:?}"
+        );
+        assert!(
+            a[0].abs() < 1e-3 && a[1].abs() < 1e-3,
+            "alpha not ~0: {a:?}"
+        );
     }
 }

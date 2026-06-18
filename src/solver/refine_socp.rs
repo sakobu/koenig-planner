@@ -205,4 +205,26 @@ mod tests {
         assert_relative_eq!(scaled.objective, 2.5 * base.objective, epsilon = 1e-6);
         assert_relative_eq!(scaled.lambda[0], base.lambda[0], epsilon = 1e-6);
     }
+
+    #[test]
+    fn zero_w_gives_zero_objective() {
+        // w = 0 -> q = 0: a feasibility-only SOCP, optimum c* = w.lambda = 0.
+        let rows = vec![Norm2.cone_constraints(&gamma_top_identity())];
+        let w = w6([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        let sol = refine_socp(&w, &rows).unwrap();
+        assert!(sol.objective.abs() < 1e-9);
+        assert!(max_contact(&rows, &sol.lambda) <= 1.0 + 1e-6);
+    }
+
+    #[test]
+    fn unbounded_socp_maps_to_solver_failed() {
+        // Norm2 on gamma_bottom_identity constrains only lambda_4..6; w points
+        // along lambda_1 (unconstrained) -> objective unbounded -> clarabel
+        // returns a non-Solved status, which must surface as SolverFailed
+        // *through the wrapper* (proves the solve()->check_status wiring).
+        let rows = vec![Norm2.cone_constraints(&gamma_bottom_identity())];
+        let w = w6([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        let err = refine_socp(&w, &rows).unwrap_err();
+        assert!(matches!(err, crate::types::PlannerError::SolverFailed(_)));
+    }
 }
