@@ -22,9 +22,6 @@ pub(crate) fn silent_settings() -> DefaultSettings<f64> {
 /// Map a clarabel terminal status to a planner result. `Solved` and
 /// `AlmostSolved` (reduced accuracy) are accepted; every other status is a
 /// failure whose message names the underlying clarabel status.
-// TEMPORARY (Task 1 only): unused in non-test code until `refine_socp` (Task 2)
-// calls it; remove this `allow` in Task 2.
-#[allow(dead_code)]
 pub(crate) fn check_status(status: SolverStatus) -> Result<(), PlannerError> {
     match status {
         SolverStatus::Solved | SolverStatus::AlmostSolved => Ok(()),
