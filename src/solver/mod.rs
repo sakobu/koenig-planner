@@ -9,9 +9,6 @@ use clarabel::solver::{DefaultSettings, DefaultSettingsBuilder, SolverStatus};
 
 /// Default clarabel settings with logging suppressed (keeps the test/CI output
 /// clean and the per-iteration SOCP solves quiet during Phase 4 refinement).
-// TEMPORARY (Task 1 only): unused in non-test code until `refine_socp` (Task 2)
-// calls it; remove this `allow` in Task 2.
-#[allow(dead_code)]
 pub(crate) fn silent_settings() -> DefaultSettings<f64> {
     DefaultSettingsBuilder::default()
         .verbose(false)
