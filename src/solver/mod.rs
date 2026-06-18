@@ -4,6 +4,9 @@
 pub mod extract_qp;
 pub mod refine_socp;
 
+pub use extract_qp::extract_qp;
+pub use refine_socp::{refine_socp, RefineSolution};
+
 use crate::types::PlannerError;
 use clarabel::solver::{DefaultSettings, DefaultSettingsBuilder, SolverStatus};
 
