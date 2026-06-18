@@ -80,16 +80,24 @@ fn worked_example_is_self_consistent() {
         exact_dual * 1e3
     );
 
-    // The extracted plan is a sane, near-optimal solution (not garbage). The
-    // residual is small but nonzero (the active-set extraction is not perfectly
-    // robust on this degenerate e=0.7 contact — a known solver-quality limitation,
-    // not a dynamics error).
+    // Phase 5b: the direct min-fuel SOCP now recovers w to ~0 residual with a
+    // small maneuver set (the fixed-support QP previously left ~0.4% over ~9
+    // maneuvers). Bands set from the characterized run (Step 1).
     assert!(
-        sol.total_dv > 0.0 && sol.total_dv < 0.090,
-        "total_dv = {}",
+        sol.total_dv > 0.078 && sol.total_dv < 0.083,
+        "total_dv = {} (expected ~80.9 mm/s)",
         sol.total_dv
     );
-    assert!(sol.residual < 5e-2, "residual = {:.3e}", sol.residual);
+    assert!(
+        sol.residual < 1e-3,
+        "residual = {:.3e} (Phase 5b target: << 0.1%)",
+        sol.residual
+    );
+    assert!(
+        sol.maneuvers.len() <= 12,
+        "expected a small maneuver set, got {}",
+        sol.maneuvers.len()
+    );
     assert!(sol.lambda.iter().all(|x| x.is_finite()));
 }
 
