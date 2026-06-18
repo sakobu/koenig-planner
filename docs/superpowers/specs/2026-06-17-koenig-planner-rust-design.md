@@ -1,9 +1,9 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–1 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`); Phases 2–7 pending. See §6 for per-phase status.
+- **Status:** In implementation. **Phases 0–2 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`); Phases 3–7 pending. **Resume at Phase 3 (solver wrappers).** See §6 for per-phase status.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
-- **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`.
+- **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
 
 ## 1. Goal & scope
@@ -421,10 +421,28 @@ eccentricity subscripts (`Φ₃₃: e_{x1}e_{y2}`, `Φ₄₄: e_{y1}e_{x2}`); `B
 negative. Bug caught + fixed: at `M=π`, `wrap_to_pi(π)=−π` ⇒ `ν=−π` (apoapsis) — Kepler test
 compares `|ν|`.
 
-### Phase 2 — Cost models (Table II, eq. 47–49)
+### Phase 2 — Cost models (Table II, eq. 47–49) ✅ Done & verified (PR #1, squash `51ac590`)
 `Norm2`, `FaceMax` (with `Vᵛᵉʳᵗᵉˣ/Vᶠᵃᶜᵉ`), `Piecewise` selector.
 **Tests:** `λᵀs(λ)=g(λ)`; positive homogeneity; known directions; `T₁/T₂` window logic.
 **Exit:** cost tests pass.
+**Done:** files `cost/{norm2,facemax,piecewise}.rs` + `cost/mod.rs` wiring test; **18 cost tests green**
+(9 FaceMax + 6 Norm2 + 2 Piecewise + 1 wiring; full suite 44, CI green). The `SublevelSet`/`CostModel`
+traits are **fully implemented — no `unimplemented!` left in the cost layer**. Key choices:
+(1) **`cone_constraints` implemented now, not deferred** — `Norm2` → one SOC row `(Γᵀ, 1)`; `FaceMax`
+→ four linear rows `(Γvₖ, 1)`; the origin column of `W=[0|V_vertex]` is vacuous as a cone row and is
+omitted. Phase 3's `refine_socp` consumes these rows directly. (2) **`Piecewise::new(period)` takes the
+orbit period as an argument** — the paper leaves Keplerian-vs-perturbed open; the worked example passes
+`2π/n` (≈10.93 hr, paper rounds to 10.92). (3) **`Piecewise` dropped `Default`** (now carries fields) →
+`cost/mod.rs` wiring test constructs via `Piecewise::new`. (4) **Citation fix:** positive homogeneity is
+**eq. 8 / Property 3**, not eq. 23 (eq. 23 = the support identity only). `V_face` appears only as a
+test-module transcription cross-check (`f(vₖ)=1/9` for every vertex); the algorithm uses `V_vertex`/`W`
+exclusively. Verified three independent ways: gate-tested in a throwaway worktree before the plan was
+finalized; an adversarial agent re-applied the plan's code and re-ran the full CI gate (0 blockers) and
+reproduced every reference number; and the in-repo gate ran per task + CI on the PR. Reference numbers
+from an independent pure-Python oracle; the cost matrices (eq. 47–49, Table II, eq. 23) re-verified
+character-by-character against `docs/Planner.pdf`. Two gate gotchas caught + fixed: `clippy::approx_constant`
+on the `1/√2` literal (L2 test uses the `(3,4,12)→13` vector); the exact eq. 49 window boundary
+(`|t−center|=3600 s`) is a floating-point knife-edge (the boundary test probes ±1 s either side).
 
 ### Phase 3 — Solver wrappers
 `refine_socp`: assemble eq. 40 over a candidate-time set into clarabel conic form
