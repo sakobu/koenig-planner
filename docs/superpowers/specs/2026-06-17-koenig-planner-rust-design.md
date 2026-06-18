@@ -1,7 +1,7 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–3 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers in **PR #3**, branch `phase3-solver-wrappers`, +17 tests → 61, local gate green); Phases 4–7 pending. **Resume at Phase 4 (three algorithms + orchestration).** See §6 for per-phase status.
+- **Status:** In implementation. **Phases 0–3 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers in **PR #3**, branch `phase3-solver-wrappers`, +21 tests → 65, CI green); Phases 4–7 pending. **Resume at Phase 4 (three algorithms + orchestration).** See §6 for per-phase status.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
 - **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`, `…-phase3-solver-wrappers.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
@@ -451,8 +451,9 @@ on the `1/√2` literal (L2 test uses the `(3,4,12)→13` vector); the exact eq.
 **Tests:** small hand-checkable problems with closed-form optima.
 **Exit:** solver tests pass.
 **Done:** files `src/solver/{mod,refine_socp,extract_qp}.rs` + re-exports in `lib.rs`; integration
-test `tests/solver.rs`. **+17 tests → 61 total, CI gate green** (`fmt` + `clippy --all-features -D warnings`
-+ `build` + `test`). Both wrappers are stateless/pure — they consume pre-assembled data, so the
+test `tests/solver.rs`. **+21 tests → 65 total, CI gate green** (`fmt` + `clippy --all-features -D warnings`
++ `build` + `test`; the original +17 plus 4 added by a post-merge self-audit: `w=0`, unbounded-SOCP →
+`SolverFailed` through the wrapper, and negative/NaN-budget rejection). Both wrappers are stateless/pure — they consume pre-assembled data, so the
 `Dynamics`/`CostModel` traits are not referenced here. **clarabel 0.11.1 API pinned** (from the installed
 crate source): solves `min ½xᵀPx+qᵀx s.t. Ax+s=b, s∈K`; `DefaultSolver::new(&P,&q,&A,&b,&cones,settings)
 → Result`; read `solution.{x,status,obj_val}`; **`solver.solve()` requires `use clarabel::solver::IPSolver`
