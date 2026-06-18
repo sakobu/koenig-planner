@@ -9,6 +9,7 @@ pub trait Dynamics {
     fn gamma(&self, t: f64) -> SMatrix<f64, N, M>;
 }
 
+pub mod b_matrix;
 pub mod constants;
 pub mod j2_roe;
 pub mod kepler;
