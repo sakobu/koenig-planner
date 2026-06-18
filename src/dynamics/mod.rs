@@ -10,4 +10,5 @@ pub trait Dynamics {
 }
 
 pub mod j2_roe;
+pub mod kepler;
 pub use j2_roe::J2Roe;
