@@ -556,9 +556,71 @@ paper's inconsistent figures is explicitly out of scope.
 > case worse). The refinement dual is correct; tightening the primal recovery
 > (e.g. a direct min-fuel SOCP) is follow-up solver work.
 
-### Phase 5b — (optional follow-up) robust extraction + Monte Carlo dynamics check
-Deferred: a more robust Algorithm-3 primal recovery for degenerate contacts; a
-`RefineOutcome.active_set_trace` + a real-`J2Roe` drop-then-readd refine test.
+### Phase 5b — Robust Algorithm-3 extraction on degenerate contacts (fresh-session handoff)
+
+**Status going in:** Phases 0–5 are merged to `main` (Phase 5 = squash `f1edb9f`, PR #7).
+The dynamics are **FD-verified and locked** — do NOT re-litigate them. `tests/fd_stm.rs`
+(independent mean-element FD of the whole STM) and `tests/fd_b_matrix.rs` (independent
+Cartesian-`r,v` FD of `B`) pass at the Koenig chief, the e=0.3 fixture, AND the Hunter
+chief (ω≈200°, i=51°). The `Φ₂₁` dt² typo is fixed (`src/dynamics/stm.rs:45`). If you
+touch the dynamics, those two tests are the gate. **The paper's Table IV / 82.4 mm/s
+figures are NOT reproducible** (they are inconsistent with the corrected dynamics — see
+the Phase 5 entry above and `tests/worked_example.rs::paper_table_iv_does_not_reconstruct`);
+do not chase them.
+
+**The actual problem to fix.** Algorithm 3 (control-input extraction,
+`src/algorithm/extract.rs::extract`, which calls `src/solver/extract_qp.rs::extract_qp`)
+is not robust on the **degenerate flat contact** of these e=0.7 orbits. Concretely:
+- The **dual is correct** — `refine`'s objective equals the exact all-times SOCP solved
+  over every grid time (asserted in `tests/worked_example.rs::worked_example_is_self_consistent`;
+  worked example ≈ 80.85 mm/s, Hunter L2 ≈ 2.484e-4).
+- But the **primal recovery leaves residual**: the worked example lands at ~0.4% residual
+  with 9 maneuvers (paper: 3); the Hunter L2 case is far worse (~37–47% residual).
+- **Root cause:** at the optimal `λ` the contact `g(t)=‖Γᵀ(t)λ‖` is nearly flat near its
+  peak (hundreds of grid times within 1e-3 of `max_g`), so the active set `T^opt` is large
+  and the per-time support directions `sⱼ = s_{U(1,tⱼ)}(Γᵀλ)` are nearly collinear. The
+  current extraction QP — `min ‖w − Σ αⱼ yⱼ‖²` s.t. `αⱼ ≥ 0, Σαⱼ ≤ λᵀw`, `yⱼ = Γ(tⱼ)sⱼ`
+  — is restricted to those fixed support directions, which don't span `w`, so it can't
+  drive the residual to ~0 even though `w` is reachable (free-impulse least-squares hits
+  `w` to ~1e-15) and the budget is sufficient.
+
+**Repro (fast):** `cargo run --example mdot` prints the 9-maneuver / 0.4%-residual plan and
+the exact dual. The Hunter case is reconstructible from §7's second example (chief
+a=25000km, e_x=−0.658, e_y=−0.239, i=51°, Ω=30°, u₀=65° with u₀=ω+M so M=u₀−atan2(e_y,e_x);
+window 39000s, 10s grid; pure L2 cost via `Piecewise::new(1e18)`; w = the Table-3 ω row, or
+equivalently `x_f − Φ(0,t_f)·x_0`, divided by a_c). NOTE Hunter uses the *standard* δλ
+(eq.68, no η) vs our η-modified eq.51 — but it changes the optimum <0.01%, so it is not the
+issue.
+
+**Candidate fixes (pick one, TDD against a degenerate synthetic + the worked example):**
+1. **Direct min-fuel SOCP primal** (recommended): instead of the support-direction QP, solve
+   `min Σⱼ‖vⱼ‖₂` s.t. `Σⱼ Γ(tⱼ)vⱼ = w` over a rich candidate set (e.g. `T^opt` plus the
+   distinct contact peaks), recovering full 3-DOF `vⱼ` rather than magnitudes along fixed
+   `sⱼ`. By strong duality this hits the dual value with ~0 residual. Add to `src/solver/`.
+2. **De-duplicate / cluster the active set** before extraction so near-collinear support
+   directions don't dominate, then keep the magnitude QP.
+3. **Warm-start / tolerance**: the eps_cost=0.01 band lets `λ` sit slightly off the true
+   optimum on this ill-conditioned dual; a tighter inner tolerance for the final iterate may
+   sharpen `T^opt`.
+
+**Acceptance:** the worked example reaches `w` to <0.1% residual with a small maneuver set,
+and the Hunter L2 case to <0.01% — validating the full pipeline end-to-end on its own
+(FD-verified) terms. Keep the dual self-consistency assertion; the headline numbers will be
+our optimum (~80.9 mm/s / ~2.48e-4), not the paper's.
+
+**Also deferred (small, do alongside):** add `RefineOutcome.active_set_trace: Vec<usize>`
+(`#[allow(dead_code)]`, like `max_g_trace`) and a real-`J2Roe` refine test that observes a
+drop-then-readd over ≥3 iterations (Phase-4 review deferral; the well-conditioned synthetic
+in `tests/algorithm.rs` converges too fast to exercise the loop body).
+
+**Key plumbing a fresh session needs:** `a_c = 25_000e3 m`; feed `w_nd = w_metres / a_c`
+(Δv comes out in m/s); public API `solve(&dyn, &cost, w, grid, &params) -> Solution`,
+`refine_socp(w, &[ConicRows]) -> {lambda, objective}`, `extract_qp(w, &ys, &Q, budget)`;
+`J2Roe::new(chief, t_i, t_f)`, `AbsoluteOrbit::new(a[m], e, i,Ω,ω,M [rad])`,
+`Piecewise::new(period_s)` (eq.49) or `1e18` (pure Norm2). Memory file
+`memory/spec-validation-status.md` UPDATE 8 has the full Phase-5 narrative; a DM to the
+paper's author about the dt² typo + the worked-example reconciliation is drafted in
+`adam.md` (repo root, untracked).
 
 ### Phase 6 — Monte Carlo harness (`src/bin/monte_carlo.rs`)
 200 pseudostates `~ N(0, σ=1km)` per ROE; record iterations + wall-time. Reproduce
