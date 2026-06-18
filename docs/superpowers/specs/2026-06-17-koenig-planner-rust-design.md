@@ -1,7 +1,9 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** Approved (ready for implementation planning)
+- **Status:** In implementation. **Phases 0–1 landed** (CI green); Phases 2–7 pending. See §6 for per-phase status.
+- **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
+- **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
 
 ## 1. Goal & scope
@@ -382,12 +384,16 @@ Then `Γ(t) = Φ(t,t_f)·B(t)`.
 
 ## 6. Roadmap (phases & exit criteria)
 
-### Phase 0 — Scaffolding
+### Phase 0 — Scaffolding ✅ Done (2026-06-17, commits `2c6dec1`…`1e43195`)
 Cargo lib + deps; `types.rs` (`Pseudostate = SVector<f64,6>`, `Maneuver{t, dv:SVector<f64,3>}`,
 `TimeGrid`, `SolveParams`, error enum); empty trait defs compile.
 **Exit:** `cargo test` green on stubs; CI runs.
+**Done:** crate rooted at the repo root; full module tree + trait seams (`Dynamics`,
+`SublevelSet`, `CostModel`) + stubs compile; 12 tests green; GitHub Actions CI green.
+Deps locked: `nalgebra 0.35`, `clarabel 0.11`, `thiserror 2.0`, `approx 0.5` (dev),
+`csv 1.4`/`plotters 0.3` (optional, behind a `validation` feature).
 
-### Phase 1 — J₂ mean-ROE dynamics (highest correctness risk)
+### Phase 1 — J₂ mean-ROE dynamics (highest correctness risk) ◧ Implementation complete; one exit item open (commits `f2c7277`…`cb6e53b`)
 Mean-element secular propagation (eq. 50); Kepler solve `M→E→ν` (Newton, must handle
 `e = 0.7`); `B(t)`; ROE STM `Φ(t,t_f)`; `gamma(t) = Φ·B`.
 **Tests:** `Φ → I` as `Δt → 0`; finite-difference cross-check of `B(t)` columns vs
@@ -398,6 +404,15 @@ not in any source PDF — verify by self-consistency, not PDF cross-check).
 against `docs/Planner.pdf` — *except* the Kepler block, which has no paper counterpart
 and is covered by the round-trip / known-value tests instead. The `Φ₂₄`-nonzero and
 `a_c`-scaling conventions (§5.4–5.5) are locked before anything depends on Phase 1.
+**Done:** files `dynamics/{constants,kepler,orbit,b_matrix,stm,j2_roe}.rs`; 26 tests green.
+`B`/`Φ`/`Γ` are checked **entrywise** against an independent Python oracle transcribed from
+§5.4 (Rust ↔ Python agree ≤ 1e-9); `Φ→I`, `Φ₂₄`-nonzero, the dimensional `√(a/μ)` law,
+the Kepler round-trip + known-`ν` pairs, and the secular-rate/mean-motion anchors are all
+asserted. Caught + fixed in review: at `M=π`, `wrap_to_pi(π)=−π`, so `ν=−π` (apoapsis) —
+the Kepler test compares `|ν|`. **Still open before Phase 1 fully closes:** the
+**character-by-character read of every `B`/`Φ` term against `docs/Planner.pdf`** (the
+entrywise oracle proves internal Rust↔Python consistency, *not* independent agreement with
+the printed paper — that read is the remaining exit gate, to be done with the PDF open).
 
 ### Phase 2 — Cost models (Table II, eq. 47–49)
 `Norm2`, `FaceMax` (with `Vᵛᵉʳᵗᵉˣ/Vᶠᵃᶜᵉ`), `Piecewise` selector.
