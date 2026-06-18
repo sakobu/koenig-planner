@@ -65,6 +65,10 @@ fn worked_example_is_self_consistent() {
         .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
+    assert!(
+        exact_dual > 0.0,
+        "exact_dual must be positive, got {exact_dual}"
+    );
     let refine_dual = sol.lambda.dot(&w);
     assert!(
         (refine_dual - exact_dual).abs() / exact_dual < 1e-2,
@@ -136,6 +140,10 @@ fn hunter_l2_cross_check_recovers_w() {
         .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
+    assert!(
+        exact_dual > 0.0,
+        "exact_dual must be positive, got {exact_dual}"
+    );
     assert!(
         (sol.lambda.dot(&w) - exact_dual).abs() / exact_dual < 1e-2,
         "refine dual {} vs exact {exact_dual}",

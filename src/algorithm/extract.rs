@@ -47,6 +47,7 @@ pub(super) fn extract<C: CostModel>(
         sol.objective
     );
 
+    // NOTE: residual is measured on the FULL unpruned solution (true reachability); total_dv below sums only the kept maneuvers. They are deliberately measured pre/post-prune.
     // Residual of the FULL (unpruned) min-fuel solution: this is the ~0 we report.
     let mut w_acc_full = SVector::<f64, N>::zeros();
     for (idx, &k) in t_opt.iter().enumerate() {

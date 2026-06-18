@@ -322,6 +322,25 @@ mod tests {
     }
 
     #[test]
+    fn facemax_two_vertex_combination_charges_sum() {
+        // Target on a FACE, not a vertex: w = Gamma . (v0 + v2). The gauge must
+        // COMBINE two vertices -> f(v0+v2) = 2 (theta0 = theta2 = 1; no cheaper
+        // nonnegative combo exists, since the four vertices sum to 0). Exercises
+        // the Polytope LP's multi-vertex path (single-vertex tests cannot).
+        let dirs = vertex_dirs();
+        let gammas = [gamma_top_identity()];
+        let target_dv = dirs[0] + dirs[2];
+        let mut w = SVector::<f64, N>::zeros();
+        for r in 0..M {
+            w[r] = target_dv[r];
+        }
+        let sol = min_fuel_socp(&w, &gammas, &[FuelGenerator::Polytope(dirs.clone())]).unwrap();
+        assert!(residual(&w, &gammas, &sol.dvs) < 1e-5);
+        assert_relative_eq!(sol.objective, 2.0, epsilon = 1e-3);
+        assert_relative_eq!(sol.dvs[0], target_dv, epsilon = 1e-3);
+    }
+
+    #[test]
     fn unreachable_w_is_solver_failed() {
         // Γ = [I;0] reaches only coords 0..2; w in coord 4 is unreachable ->
         // the equality is primal-infeasible -> SolverFailed through the wrapper.
