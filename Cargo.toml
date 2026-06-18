@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2021"
 rust-version = "1.92"
 license = "MIT OR Apache-2.0"
-description = "Faithful Rust reimplementation of the Koenig-D'Amico fuel-optimal impulsive control algorithm (IEEE TAC 2020)"
+description = "Faithful Rust re-implementation of the Koenig-D'Amico fuel-optimal impulsive control algorithm (IEEE TAC 2020)"
 
 [dependencies]
 nalgebra = "0.35"
