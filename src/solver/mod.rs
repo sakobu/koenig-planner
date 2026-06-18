@@ -2,9 +2,11 @@
 //! the extraction QP (Algorithm 3), plus shared settings/status helpers.
 
 pub mod extract_qp;
+pub mod min_fuel_socp;
 pub mod refine_socp;
 
 pub use extract_qp::extract_qp;
+pub use min_fuel_socp::{min_fuel_socp, MinFuelSolution};
 pub use refine_socp::{refine_socp, RefineSolution};
 
 use crate::types::PlannerError;

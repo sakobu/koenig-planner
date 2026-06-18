@@ -13,7 +13,7 @@ pub mod types;
 pub use algorithm::solve;
 pub use cost::{CostModel, SublevelSet};
 pub use dynamics::Dynamics;
-pub use solver::{extract_qp, refine_socp, RefineSolution};
+pub use solver::{extract_qp, min_fuel_socp, refine_socp, MinFuelSolution, RefineSolution};
 pub use types::{
     ConicRows, Dual, FuelGenerator, Maneuver, PlannerError, Pseudostate, Solution, SolveParams,
     TimeGrid, M, N,
