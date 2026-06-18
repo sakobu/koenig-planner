@@ -16,6 +16,7 @@
 //! -1.5 n dt). So this example validates the *math* (FD-verified dynamics + a
 //! self-consistent dual/primal), not bit-for-bit reproduction of the paper's
 //! (internally inconsistent) worked-example figures.
+//! Phase 5b: the min-fuel SOCP extractor now reconstructs w to ~0 residual.
 
 use koenig_planner::cost::Piecewise;
 use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
@@ -128,6 +129,11 @@ fn main() {
     assert!(
         max_g <= 1.0 + params.eps_cost + 1e-6,
         "max_t g exceeds tolerance"
+    );
+    assert!(
+        sol.residual < 1e-3,
+        "Phase 5b: extraction residual {:.3e} should be << 0.1%",
+        sol.residual
     );
     // The refinement finds the true discretized dual optimum (self-consistency).
     let rel = (sol.lambda.dot(&w) - exact_dual).abs() / exact_dual;

@@ -1,7 +1,7 @@
 //! Cost abstractions: the unit sublevel set of the cost at a time, and the
 //! time-varying selection of sublevel sets (eq. 49).
 
-use crate::types::{ConicRows, M, N};
+use crate::types::{ConicRows, FuelGenerator, M, N};
 use nalgebra::{SMatrix, SVector};
 
 /// The unit sublevel set `U(1,t)` of the cost at a fixed time.
@@ -12,6 +12,9 @@ pub trait SublevelSet {
     fn support(&self, y: SVector<f64, M>) -> SVector<f64, M>;
     /// Conic rows encoding `g_{U(1,t)}(Gamma^T(t) lambda) <= 1`.
     fn cone_constraints(&self, gamma_t: &SMatrix<f64, N, M>) -> ConicRows;
+    /// Primal fuel generator for the direct min-fuel SOCP (Phase 5b): how a Δv
+    /// in this sublevel set is built from solver variables and charged.
+    fn fuel_generator(&self) -> FuelGenerator;
 }
 
 /// Time-varying cost = piecewise selection of sublevel sets (eq. 49).

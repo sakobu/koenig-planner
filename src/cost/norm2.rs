@@ -1,7 +1,7 @@
 //! L2 cost `||u||_2`: the unit-ball sublevel set (Table II).
 
 use super::SublevelSet;
-use crate::types::{ConicRows, M, N};
+use crate::types::{ConicRows, FuelGenerator, M, N};
 use nalgebra::{SMatrix, SVector};
 
 /// L2 cost `||u||_2`. Contact `g(y) = ||y||_2`, support `s(y) = y / ||y||_2`,
@@ -29,6 +29,10 @@ impl SublevelSet for Norm2 {
             linear: Vec::new(),
             soc: vec![(gamma_t.transpose(), 1.0)],
         }
+    }
+
+    fn fuel_generator(&self) -> FuelGenerator {
+        FuelGenerator::Norm
     }
 }
 
@@ -97,6 +101,12 @@ mod tests {
             2.5 * Norm2.contact(y),
             epsilon = 1e-12
         );
+    }
+
+    #[test]
+    fn fuel_generator_is_norm() {
+        use crate::types::FuelGenerator;
+        assert_eq!(Norm2.fuel_generator(), FuelGenerator::Norm);
     }
 
     #[test]

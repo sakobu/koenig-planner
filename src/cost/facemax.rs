@@ -4,7 +4,7 @@
 //! (Table II); `V_face` itself is the cost definition and is not needed here.
 
 use super::SublevelSet;
-use crate::types::{ConicRows, M, N};
+use crate::types::{ConicRows, FuelGenerator, M, N};
 use nalgebra::{SMatrix, SVector};
 
 /// Face-max cost. Contact `g(y) = max(0, max_k y . v_k)` over the four
@@ -62,6 +62,14 @@ impl SublevelSet for FaceMax {
             linear,
             soc: Vec::new(),
         }
+    }
+
+    fn fuel_generator(&self) -> FuelGenerator {
+        // Unit ball U(1) = conv{0, V_vertex columns}; its gauge is
+        //   f(v) = min{ Σₖ θₖ : Σₖ θₖ vₖ = v, θ ≥ 0 }.
+        // (The eq.48 V_face matrix is the inconsistent printed form and is used
+        // nowhere; the algorithm's geometry is the V_vertex columns.)
+        FuelGenerator::Polytope(vertex_columns().to_vec())
     }
 }
 
@@ -181,6 +189,22 @@ mod tests {
         let cols = vertex_columns();
         for v in &cols {
             assert_relative_eq!((v_face * v).max(), 1.0 / 9.0, epsilon = 1e-12);
+        }
+    }
+
+    #[test]
+    fn fuel_generator_is_polytope_of_unit_vertices() {
+        use crate::types::FuelGenerator;
+        match FaceMax.fuel_generator() {
+            FuelGenerator::Polytope(dirs) => {
+                assert_eq!(dirs.len(), 4);
+                // Same four unit tetrahedral directions used by contact/support.
+                for (d, v) in dirs.iter().zip(vertex_columns()) {
+                    assert_relative_eq!(*d, v, epsilon = 1e-12);
+                    assert_relative_eq!(d.norm(), 1.0, epsilon = 1e-12);
+                }
+            }
+            other => panic!("expected Polytope, got {other:?}"),
         }
     }
 

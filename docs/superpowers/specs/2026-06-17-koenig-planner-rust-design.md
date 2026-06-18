@@ -1,7 +1,7 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–5 complete.** Phase 5 (worked-example
+- **Status:** In implementation. **Phases 0–5b complete.** Phase 5 (worked-example
   validation) **caught and fixed a real STM bug** (`Φ₂₁` δλ-drift was `−1.5 n Δt²`, a
   typo transcribed from the paper; now the dimensionally-correct linear `−1.5 n Δt`) and
   the J₂ dynamics are now **independently finite-difference verified at both worked-
@@ -9,10 +9,12 @@
   published worked-example figures turned out to be internally inconsistent with the
   (corrected) dynamics, so Phase 5 validation was **reframed around FD-verified
   correctness + pipeline self-consistency** rather than bit-reproduction (see §6 Phase 5).
+  Phase 5b (robust min-fuel extraction) replaced the support-direction QP with a direct
+  min-fuel SOCP, closing the degenerate-contact residual (see §6 Phase 5b).
   Earlier: Phase 1 dynamics confirmed across 5 routes (`docs/superpowers/phase1-dynamics-verification-report.md`,
   now superseded on the STM by the FD test); Phase 2 cost models (PR #1, `51ac590`);
   Phase 3 solver wrappers (PR #3, `cdaff18`); Phase 4 algorithms + `solve` (PR #5,
-  `71f4383`). **Resume at Phase 6 (Monte Carlo) / Phase 5b (robust extraction).** See §6.
+  `71f4383`). **Phases 0–5b complete. Resume at Phase 6 (Monte Carlo).** See §6.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
 - **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`, `…-phase3-solver-wrappers.md`, `…-phase4-algorithms.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
@@ -556,7 +558,7 @@ paper's inconsistent figures is explicitly out of scope.
 > case worse). The refinement dual is correct; tightening the primal recovery
 > (e.g. a direct min-fuel SOCP) is follow-up solver work.
 
-### Phase 5b — Robust Algorithm-3 extraction on degenerate contacts (fresh-session handoff)
+### Phase 5b — Robust Algorithm-3 extraction on degenerate contacts ✅ Done
 
 **Status going in:** Phases 0–5 are merged to `main` (Phase 5 = squash `f1edb9f`, PR #7).
 The dynamics are **FD-verified and locked** — do NOT re-litigate them. `tests/fd_stm.rs`
@@ -621,6 +623,21 @@ in `tests/algorithm.rs` converges too fast to exercise the loop body).
 `memory/spec-validation-status.md` UPDATE 8 has the full Phase-5 narrative; a DM to the
 paper's author about the dt² typo + the worked-example reconciliation is drafted in
 `adam.md` (repo root, untracked).
+
+**✅ Done (2026-06-18).** Algorithm 3 now extracts via a direct min-fuel SOCP
+(`src/solver/min_fuel_socp.rs`): `min Σⱼ f_{tⱼ}(Δvⱼ) s.t. Σⱼ Γ(tⱼ)Δvⱼ = w` over
+`T^opt`, recovering full 3-DOF maneuvers charged by the true per-time cost (L2 SOC
+for Norm2 times; a `V_vertex` nonnegative-combination LP for FaceMax times, via the
+new `SublevelSet::fuel_generator`). The worked example now reconstructs `w` to
+< 0.1 % residual with a small maneuver set, and the Hunter L2 case to < 0.01 %
+(`tests/worked_example.rs`), both self-consistent with the exact all-times dual.
+The faithful Algorithm-3-as-printed QP (`extract_qp`) is retained as a primitive but
+is off the `solve` path. The Phase-4 deferral is closed: `RefineOutcome.active_set_trace`
+plus a real-`J2Roe` drop-then-readd refine test. Achieved: worked example residual 1.1e-14
+with a clean 3-maneuver plan (no pruning needed); Hunter L2 residual 4.6e-9 — both
+self-consistent with the exact all-times dual. The `active_set_trace` test also confirmed
+the refinement churns its active set (drops and adds) over 3 iterations on the real J2Roe
+but never re-adds a dropped time on this fixture — an instance-specific outcome (not implied by the global max_t g monotonicity; column generation can in principle re-activate a dropped time).
 
 ### Phase 6 — Monte Carlo harness (`src/bin/monte_carlo.rs`)
 200 pseudostates `~ N(0, σ=1km)` per ROE; record iterations + wall-time. Reproduce

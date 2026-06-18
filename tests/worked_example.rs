@@ -65,6 +65,10 @@ fn worked_example_is_self_consistent() {
         .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
+    assert!(
+        exact_dual > 0.0,
+        "exact_dual must be positive, got {exact_dual}"
+    );
     let refine_dual = sol.lambda.dot(&w);
     assert!(
         (refine_dual - exact_dual).abs() / exact_dual < 1e-2,
@@ -80,16 +84,84 @@ fn worked_example_is_self_consistent() {
         exact_dual * 1e3
     );
 
-    // The extracted plan is a sane, near-optimal solution (not garbage). The
-    // residual is small but nonzero (the active-set extraction is not perfectly
-    // robust on this degenerate e=0.7 contact — a known solver-quality limitation,
-    // not a dynamics error).
+    // Phase 5b: the direct min-fuel SOCP now recovers w to ~0 residual with a
+    // small maneuver set (the fixed-support QP previously left ~0.4% over ~9
+    // maneuvers). Bands set from the characterized run (Step 1).
     assert!(
-        sol.total_dv > 0.0 && sol.total_dv < 0.090,
-        "total_dv = {}",
+        sol.total_dv > 0.078 && sol.total_dv < 0.083,
+        "total_dv = {} (expected ~80.9 mm/s)",
         sol.total_dv
     );
-    assert!(sol.residual < 5e-2, "residual = {:.3e}", sol.residual);
+    assert!(
+        sol.residual < 1e-3,
+        "residual = {:.3e} (Phase 5b target: << 0.1%)",
+        sol.residual
+    );
+    // <= N = 6: the R^6 dual needs at most N active contacts at the optimum
+    // (Caratheodory), so >6 post-prune maneuvers signals a pruning or
+    // sparsity regression. Observed here: 3.
+    assert!(
+        sol.maneuvers.len() <= 6,
+        "expected a sparse maneuver set (<= 6), got {}",
+        sol.maneuvers.len()
+    );
+    assert!(sol.lambda.iter().all(|x| x.is_finite()));
+}
+
+#[test]
+fn hunter_l2_cross_check_recovers_w() {
+    // Hunter & D'Amico 2025 "Sequential Formulation Validation": identical J2 ROE
+    // dynamics, pure L2 cost. The dual lower bound is correct (~2.48e-4 m/s in our
+    // FD-verified dynamics; the paper's 2.294e-4 is not reproducible — opposite-
+    // sign discrepancy, a paper inconsistency). What we assert is that the Phase-5b
+    // min-fuel extractor recovers w to <0.01% residual at the self-consistent dual.
+    let e_x: f64 = -0.658;
+    let e_y: f64 = -0.239;
+    let e = (e_x * e_x + e_y * e_y).sqrt();
+    let argp = e_y.atan2(e_x); // atan2 -> -2.7932 rad (-160 deg = 200 deg mod 360)
+    let u0 = 65.0_f64.to_radians();
+    let mean_anom = u0 - argp; // u0 = argp + M -> +3.9277 rad (= -135 deg mod 360); Kepler wraps it
+    let chief = AbsoluteOrbit::new(
+        A_C,
+        e,
+        51.0_f64.to_radians(),
+        30.0_f64.to_radians(),
+        argp,
+        mean_anom,
+    );
+    let dynamics = J2Roe::new(chief, 0.0, 39_000.0);
+    let cost = Piecewise::new(1.0e18); // pure Norm2 (no perigee window ever active)
+    let w = Pseudostate::from_row_slice(&[0.66, -1.52, -0.38, -1.44, 0.29, -0.91]) / A_C;
+    let grid = TimeGrid::uniform(0.0, 39_000.0, 10.0);
+    assert_eq!(grid.len(), 3901);
+
+    let sol = solve(&dynamics, &cost, w, grid, &SolveParams::default()).expect("should solve");
+
+    // Self-consistency: refinement objective equals the exact all-times dual.
+    let rows: Vec<_> = grid
+        .times()
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .collect();
+    let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
+    assert!(
+        exact_dual > 0.0,
+        "exact_dual must be positive, got {exact_dual}"
+    );
+    assert!(
+        (sol.lambda.dot(&w) - exact_dual).abs() / exact_dual < 1e-2,
+        "refine dual {} vs exact {exact_dual}",
+        sol.lambda.dot(&w)
+    );
+
+    // Phase 5b acceptance: extraction reconstructs w to < 0.01% residual.
+    assert!(sol.residual < 1e-4, "residual = {:.3e}", sol.residual);
+    // Our FD-verified optimum (~2.487e-4 m/s), NOT the paper's 2.294e-4 bound.
+    assert!(
+        (2.4e-4..=2.6e-4).contains(&sol.total_dv),
+        "total_dv = {:.4e} m/s",
+        sol.total_dv
+    );
+    assert!((1..=50).contains(&sol.iterations));
     assert!(sol.lambda.iter().all(|x| x.is_finite()));
 }
 
