@@ -50,11 +50,11 @@ pub(super) struct RefineOutcome {
     /// Number of `refine_socp` solves performed.
     pub iterations: usize,
     /// `max_t g` after each solve — non-increasing; read only by tests.
-    #[allow(dead_code)]
+    #[cfg_attr(not(test), allow(dead_code))]
     pub max_g_trace: Vec<f64>,
     /// The candidate set `T^est` (sorted grid indices) at the start of each
     /// iteration's solve — read only by tests (proves the drop/add loop runs).
-    #[allow(dead_code)]
+    #[cfg_attr(not(test), allow(dead_code))]
     pub active_set_trace: Vec<Vec<usize>>,
 }
 
