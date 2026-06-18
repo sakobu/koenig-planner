@@ -79,6 +79,7 @@ pub struct SolveParams {
     /// Slack-removal tolerance `eps_remove` (Table III: 0.01).
     pub eps_remove: f64,
     /// Positive-definite weight `Q` for the extraction QP (identity in the example).
+    /// (Reserved; unused by the Phase-5b min-fuel extractor.)
     pub q: SMatrix<f64, N, N>,
 }
 

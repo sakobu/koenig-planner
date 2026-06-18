@@ -93,16 +93,7 @@ pub fn solve<D: Dynamics, C: CostModel>(
     let refined = refine::refine(cost, &grid, &gammas, &w, params, t_est, MAX_REFINE_ITERS)?;
 
     // --- Algorithm 3: control-input extraction. ---
-    let extracted = extract::extract(
-        cost,
-        &grid,
-        &gammas,
-        &w,
-        &params.q,
-        &refined.lambda,
-        refined.objective,
-        &refined.t_opt,
-    )?;
+    let extracted = extract::extract(cost, &grid, &gammas, &w, refined.objective, &refined.t_opt)?;
 
     Ok(Solution {
         maneuvers: extracted.maneuvers,
