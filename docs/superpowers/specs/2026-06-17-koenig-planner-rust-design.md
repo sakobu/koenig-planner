@@ -637,7 +637,7 @@ plus a real-`J2Roe` drop-then-readd refine test. Achieved: worked example residu
 with a clean 3-maneuver plan (no pruning needed); Hunter L2 residual 4.6e-9 — both
 self-consistent with the exact all-times dual. The `active_set_trace` test also confirmed
 the refinement churns its active set (drops and adds) over 3 iterations on the real J2Roe
-but never re-adds a dropped time, corroborating the paper's monotone max_t g convergence.
+but never re-adds a dropped time on this fixture — an instance-specific outcome (not implied by the global max_t g monotonicity; column generation can in principle re-activate a dropped time).
 
 ### Phase 6 — Monte Carlo harness (`src/bin/monte_carlo.rs`)
 200 pseudostates `~ N(0, σ=1km)` per ROE; record iterations + wall-time. Reproduce

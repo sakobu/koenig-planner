@@ -52,9 +52,9 @@ pub fn min_fuel_socp(
     //   Polytope(p) -> [θ_j(p)]        (p   vars; Δv_j = Σₖ θ_jk d_k; cost = Σ θ)
     let mut offsets = Vec::with_capacity(k);
     let mut n_var = 0usize;
-    for gen in generators {
+    for generator in generators {
         offsets.push(n_var);
-        n_var += match gen {
+        n_var += match generator {
             FuelGenerator::Norm => M + 1,
             FuelGenerator::Polytope(dirs) => dirs.len(),
         };
@@ -62,8 +62,8 @@ pub fn min_fuel_socp(
 
     // --- Objective q (P = 0): minimize the sum of the cost variables. ---
     let mut q = vec![0.0f64; n_var];
-    for (j, gen) in generators.iter().enumerate() {
-        match gen {
+    for (j, generator) in generators.iter().enumerate() {
+        match generator {
             FuelGenerator::Norm => q[offsets[j]] = 1.0, // the epigraph c_j
             FuelGenerator::Polytope(dirs) => {
                 for kk in 0..dirs.len() {
@@ -77,9 +77,9 @@ pub fn min_fuel_socp(
     //     multiplies each variable in `Σ Γ Δv = w`. For Norm, the c_j column is
     //     0 and the v_j columns are Γ[:,m]; for Polytope, column k is Γ·d_k. ---
     let mut eq_cols: Vec<Vec<SVector<f64, N>>> = Vec::with_capacity(k);
-    for (j, gen) in generators.iter().enumerate() {
+    for (j, generator) in generators.iter().enumerate() {
         let g = &gammas[j];
-        match gen {
+        match generator {
             FuelGenerator::Norm => {
                 let mut cols = vec![SVector::<f64, N>::zeros()]; // c_j
                 for m in 0..M {
@@ -116,8 +116,8 @@ pub fn min_fuel_socp(
     cones.push(ZeroConeT(N));
 
     // (2) Per-maneuver cost cones.  clarabel: s = b - A·x.
-    for (j, gen) in generators.iter().enumerate() {
-        match gen {
+    for (j, generator) in generators.iter().enumerate() {
+        match generator {
             FuelGenerator::Norm => {
                 // s = (c_j, v_j) ∈ SOC(M+1): A = -selector, b = 0.
                 let mut s0 = vec![0.0; n_var];
@@ -157,8 +157,8 @@ pub fn min_fuel_socp(
     // --- Reconstruct Δv per maneuver and total fuel. ---
     let mut dvs = Vec::with_capacity(k);
     let mut objective = 0.0;
-    for (j, gen) in generators.iter().enumerate() {
-        match gen {
+    for (j, generator) in generators.iter().enumerate() {
+        match generator {
             FuelGenerator::Norm => {
                 let v = SVector::<f64, M>::from_iterator((0..M).map(|m| x[offsets[j] + 1 + m]));
                 objective += x[offsets[j]]; // c_j ≈ ‖v‖

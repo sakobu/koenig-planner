@@ -97,9 +97,12 @@ fn worked_example_is_self_consistent() {
         "residual = {:.3e} (Phase 5b target: << 0.1%)",
         sol.residual
     );
+    // <= N = 6: the R^6 dual needs at most N active contacts at the optimum
+    // (Caratheodory), so >6 post-prune maneuvers signals a pruning or
+    // sparsity regression. Observed here: 3.
     assert!(
-        sol.maneuvers.len() <= 12,
-        "expected a small maneuver set, got {}",
+        sol.maneuvers.len() <= 6,
+        "expected a sparse maneuver set (<= 6), got {}",
         sol.maneuvers.len()
     );
     assert!(sol.lambda.iter().all(|x| x.is_finite()));

@@ -296,11 +296,15 @@ mod tests {
 
         // The drop/add loop body genuinely integrates on real dynamics: across
         // iterations the active set BOTH loses a time (a drop) AND gains a time
-        // (an add). A literal drop-then-re-add of the SAME index does not occur
-        // here -- because max_t g converges monotonically, a removed time's
-        // contact never climbs back above 1 (a corroboration of the paper's
-        // monotone-convergence guarantee) -- so we assert the churn the loop
-        // actually produces rather than a re-add it cannot.
+        // (an add). A literal drop-then-re-add of the SAME index is not observed
+        // on this fixture (checked across 15 seeds x 3 parameter variants) -- an
+        // instance-specific outcome (fast-converging dual plus the eps_remove
+        // hysteresis band), NOT a theorem: max_t g being non-increasing globally
+        // does not preclude a single dropped time's contact rebounding above 1
+        // (column-generation methods can re-activate dropped columns). Re-add is
+        // not a distinct code path anyway -- the add step's push/sort/dedup is
+        // identical for a recycled index -- so asserting the churn the loop
+        // actually produces leaves nothing untested.
         let trace = &out.active_set_trace;
         let mut saw_drop = false;
         let mut saw_add = false;
