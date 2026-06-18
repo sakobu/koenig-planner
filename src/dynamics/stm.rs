@@ -42,7 +42,7 @@ pub fn state_transition(
     let mut f = SMatrix::<f64, N, N>::zeros();
     f[(0, 0)] = 1.0;
 
-    f[(1, 0)] = (-1.5 * n * dt - 7.0 * kappa * eta * p) * dt;
+    f[(1, 0)] = (-1.5 * n - 7.0 * kappa * eta * p) * dt;
     f[(1, 1)] = 1.0;
     f[(1, 2)] = 7.0 * kappa * ex1 * p * dt / eta;
     f[(1, 3)] = 7.0 * kappa * ey1 * p * dt / eta;
@@ -113,7 +113,10 @@ mod tests {
             0.0,
             0.0,
             0.0,
-            -3.644006206876e+05,
+            // delta-lambda secular drift: linear -1.5 n dt (NOT the paper's printed
+            // dt^2 typo). Regenerated after the Phi_21 fix; independently checked by
+            // tests/fd_stm.rs and a sympy first-principles derivation.
+            -9.344241108678e+00,
             1.0,
             1.604820130377e-04,
             1.346603979505e-04,

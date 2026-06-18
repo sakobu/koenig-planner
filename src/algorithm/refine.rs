@@ -207,7 +207,19 @@ mod tests {
         // Three candidate times don't span T^opt, so one solve won't converge.
         let err = refine(&cost, &grid, &gammas, &w, &params, vec![0, 30, 60], 1).unwrap_err();
         match err {
-            PlannerError::NotConverged { max_iters, .. } => assert_eq!(max_iters, 1),
+            PlannerError::NotConverged {
+                max_iters,
+                achieved,
+                target,
+            } => {
+                assert_eq!(max_iters, 1);
+                // Not converged => the achieved max_t g must still exceed the
+                // 1 + eps_cost target (otherwise it would have converged).
+                assert!(
+                    achieved > target,
+                    "achieved {achieved} should exceed target {target}"
+                );
+            }
             other => panic!("expected NotConverged, got {other:?}"),
         }
     }
