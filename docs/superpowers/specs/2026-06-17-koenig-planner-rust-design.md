@@ -1,7 +1,18 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–4 complete** (CI green throughout; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers merged via PR #3, squash `cdaff18`, 65 tests; Phase 4 three algorithms + `solve` orchestration merged via PR #5, squash `71f4383`, +24 tests, whole-branch-reviewed); Phases 5–7 pending. **Resume at Phase 5 (worked-example validation).** See §6 for per-phase status.
+- **Status:** In implementation. **Phases 0–5 complete.** Phase 5 (worked-example
+  validation) **caught and fixed a real STM bug** (`Φ₂₁` δλ-drift was `−1.5 n Δt²`, a
+  typo transcribed from the paper; now the dimensionally-correct linear `−1.5 n Δt`) and
+  the J₂ dynamics are now **independently finite-difference verified at both worked-
+  example orbit regimes** (`tests/fd_stm.rs` + `tests/fd_b_matrix.rs`). The paper's
+  published worked-example figures turned out to be internally inconsistent with the
+  (corrected) dynamics, so Phase 5 validation was **reframed around FD-verified
+  correctness + pipeline self-consistency** rather than bit-reproduction (see §6 Phase 5).
+  Earlier: Phase 1 dynamics confirmed across 5 routes (`docs/superpowers/phase1-dynamics-verification-report.md`,
+  now superseded on the STM by the FD test); Phase 2 cost models (PR #1, `51ac590`);
+  Phase 3 solver wrappers (PR #3, `cdaff18`); Phase 4 algorithms + `solve` (PR #5,
+  `71f4383`). **Resume at Phase 6 (Monte Carlo) / Phase 5b (robust extraction).** See §6.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
 - **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`, `…-phase3-solver-wrappers.md`, `…-phase4-algorithms.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
@@ -324,9 +335,23 @@ e_{x2}=e cos(ω(t_f)), e_{y2}=e sin(ω(t_f))
 
 Nonzero terms (VERIFY against PDF in Phase 1):
 
+> **CORRECTION (Phase 5, FD-verified):** the printed `Φ₂₁=(−1.5 n Δt − 7κηP)Δt`
+> below contains a **typo in the paper** — the first term expands to `−1.5 n Δt²`,
+> which is dimensionally invalid (an STM entry must be dimensionless) and ~`Δt`≈10⁵×
+> too large. The Keplerian along-track drift is **linear**: `Φ₂₁=(−1.5 n − 7κηP)Δt`.
+> This was caught by the worked example and confirmed three ways — dimensional
+> analysis, ref [27]'s linear form, and an **independent mean-element finite-
+> difference reconstruction of the whole STM** (`tests/fd_stm.rs`) plus a sympy
+> first-principles derivation. Phase 1 missed it because its oracle was transcribed
+> from the same (typo-bearing) source. The code (`src/dynamics/stm.rs`) uses the
+> corrected linear form. (The `7κηP` κ-coefficient and the `/η` on Φ₂₃/Φ₂₄ are the
+> *exact* η-modified-δλ form — they agree with the FD/sympy derivation to 1e-16 and
+> differ only negligibly from Chernick eq.32's "dominant-effects-only" approximation
+> of `3.5κηP`, no `/η`.)
+
 ```
 Φ₁₁=1
-Φ₂₁=(−1.5 n Δt − 7κηP)Δt   Φ₂₂=1   Φ₂₃=7κe_{x1}PΔt/η   Φ₂₄=7κe_{y1}PΔt/η   Φ₂₅=−7κηSΔt
+Φ₂₁=(−1.5 n − 7κηP)Δt      Φ₂₂=1   Φ₂₃=7κe_{x1}PΔt/η   Φ₂₄=7κe_{y1}PΔt/η   Φ₂₅=−7κηSΔt
 Φ₃₁=3.5κe_{y2}QΔt          Φ₃₃=cos(ω̇Δt)−4κe_{x1}e_{y2}GQΔt
 Φ₃₄=−sin(ω̇Δt)−4κe_{y1}e_{y2}GQΔt                       Φ₃₅=5κe_{y2}SΔt
 Φ₄₁=−3.5κe_{x2}QΔt         Φ₄₃=sin(ω̇Δt)+4κe_{x1}e_{x2}GQΔt
@@ -492,9 +517,48 @@ grid-endpoint handling); Alg. 3 extract; `solve(...)` wiring with Γ(t) caching.
 **Exit:** end-to-end `solve` runs on a synthetic problem and converges.
 **Done:** files `src/algorithm/{mod,init,refine,extract}.rs` + integration suite `tests/algorithm.rs`; **+18 lib unit tests + 6 integration tests**, full CI gate green (`fmt` + `clippy --all-features -D warnings` + `build` + `test`, all `--all-features`). Implemented subagent-driven over 6 commits (`ebf137c` finder → `d390dfb` init → `7757d49` refine → `05e6a01` extract → `43a6b3a` solve → `f2c566e` validation fix, atop the `bfae272` plan), each task gated by an independent spec+quality review, plus a final whole-branch review (**"ready to merge"**, zero Critical/Important left). The three submodule files were empty stubs and `solve()` was an `unimplemented!()` stub; the public `solve` signature and the `lib.rs` re-exports of `solve`/`Solution` were left **unchanged**. **Key decisions:** (1) `T^est`/`T^opt` are `Vec<usize>` grid indices into a **one-shot `Γ(t)` cache** built once per `solve` (`J2Roe` caches nothing — it re-propagates the chief and re-runs the Kepler solve on every `gamma()` call). (2) **Iteration cap is a module const `MAX_REFINE_ITERS = 50`** — `SolveParams` has no `max_iters` field and its shape is locked; `refine` takes the cap as an argument so a test can force `NotConverged`. (3) **Convergence is checked *before* the drop/add step**, so `T^opt` is exactly the active set that produced `λ_opt` (a faithful restructuring of the paper's `do/while`). (4) Initial dual `λ_est = w` — the contact is positively homogeneous (eq. 8), so its scale does not change Algorithm 1's `argmax`. (5) `total_dv = Σ‖Δvⱼ‖₂` (the Table IV figure), `residual = ‖w−Σαⱼyⱼ‖/‖w‖`, `budget = λ_optᵀw` (the `refine_socp` objective); zero-support times (`‖sⱼ‖ < 1e-9`) are dropped before `extract_qp`; the local-maxima finder is plateau- and endpoint-aware (Risk 4). **Findings caught + fixed during review (all real for later phases):** (a) a **single-time candidate set makes the eq. 40 SOCP unbounded** → `clarabel` returns `DualInfeasible` → `SolverFailed`, **not** `NotConverged` — the cap test must seed ≥2 spanning-but-suboptimal times. (b) `clarabel` lands **~5e-4 from the optimum whenever the budget constraint binds**, which is the *generic* case here (`budget = λᵀw = c*` and the optimal `Σα = c*`) — so synthetic assertions use solver-tolerance bands (Risk 3), never bit-equality. (c) **non-finite-input validation** must use `!x.is_finite()` guards: the `x ≤ 0.0` form silently admits `NaN`, while the `!(x > 0.0)` form trips `clippy::neg_cmp_op_on_partial_ord` — the regression was caught by the whole-branch review and fixed with three `solve_rejects_{nan_dt, infinite_dt, nan_target}` tests. (d) `pub(super)` helpers unused in the lib target until `solve()` wires them carry a transient `#[allow(dead_code)]` (the Phase-3 pattern; `#[expect]` mis-fires under `cfg(test)`), removed at the end — only `RefineOutcome.max_g_trace`'s field-level allow (read solely by tests) and `extract`'s `#[allow(clippy::too_many_arguments)]` (8-arg helper) remain. Synthetic tests use a mock `Dynamics` + `Piecewise::new(1e12)` (≈ pure `Norm2`, since `Piecewise` is the only public `CostModel`). **Deferred to Phase 5** (flagged by the whole-branch review): a refinement test on the **real ill-conditioned `J2Roe` `Γ`** that observably runs ≥3 iterations with a drop-then-readd — Phase 4's well-conditioned synthetic converges too fast to exercise the loop-body drop/add integration — plus an `achieved > target` assertion in the `NotConverged` test.
 
-### Phase 5 — Worked-example validation (`examples/mdot.rs`)
-Encode Table III + params; reproduce the published result. **Targets** in §7.
-**Exit:** all §7 worked-example assertions pass within stated bands.
+### Phase 5 — Worked-example validation ✅ Done (reframed around FD-verified correctness)
+Encoding Table III and running the worked example **caught a real dynamics bug** the
+earlier phases could not: the STM `Φ₂₁` δλ-drift was `−1.5 n Δt²` (a typo faithfully
+transcribed from the paper's printed STM) instead of the dimensionally-correct
+`−1.5 n Δt`. Fixed (`src/dynamics/stm.rs`), oracle anchors regenerated, **committed**.
+
+The dynamics are now **independently finite-difference verified at both worked-example
+regimes**: `tests/fd_stm.rs` (mean-element FD reconstruction of the full STM) and
+`tests/fd_b_matrix.rs` (Cartesian r,v FD of `B`) both pass at the Koenig chief
+(ω=0°, i=40°), the e=0.3 fixture, **and the Hunter chief** (ω≈200°, i=51° — which
+activates the `e_{y1}`/`sin ω` couplings that are identically zero at Koenig). The
+secular rates (eq.50), the δλ map (eq.51) and `B` were cross-checked against Chernick,
+ref [27] and Hunter; a sympy first-principles STM derivation matches the code to 1e-16.
+
+**The published worked-example *figures* are not bit-reproducible — because they are
+internally inconsistent with the (now FD-verified) dynamics, not because of an
+implementation error:** (1) Koenig's own Table IV maneuvers leave a ≈65% residual
+reconstructing Table III's `w`, and our optimum (80.85 mm/s) is ≈1.8% *below* the
+paper's 82.0 mm/s bound; (2) the Hunter L2 case lands ≈8% *above* its reported bound
+(2.484e-4 vs 2.294e-4). The **opposite signs rule out a systematic dynamics error**;
+both papers also carry confirmed typos (Koenig's dt² and eq-48/Fig-6 `V_face`; Hunter's
+`F=4+2η`), and these e=0.7 problems have degenerate flat-contact optima. The δλ
+convention (Hunter's standard vs Koenig's η-modified) and the row-2 κ/η form were both
+tested and make **negligible difference**.
+
+**Files:** `examples/mdot.rs` (reports the computed plan + the exact dual lower bound +
+the Fig. 7 contact curve, with the paper-discrepancy note), `tests/worked_example.rs`
+(asserts self-consistency: converges, the refinement equals the exact all-times SOCP
+optimum, the optimum is where the FD-verified dynamics put it; plus
+`paper_table_iv_does_not_reconstruct` as documented evidence). **Exit (reframed):** the
+math is FD-verified correct and the pipeline is self-consistent; bit-reproduction of the
+paper's inconsistent figures is explicitly out of scope.
+
+> **Known limitation (not a dynamics bug):** Algorithm 3's active-set + support-
+> direction extraction is not fully robust on the degenerate flat contact of these
+> e=0.7 orbits (the worked example lands at ~0.4% residual / 9 maneuvers; the Hunter
+> case worse). The refinement dual is correct; tightening the primal recovery
+> (e.g. a direct min-fuel SOCP) is follow-up solver work.
+
+### Phase 5b — (optional follow-up) robust extraction + Monte Carlo dynamics check
+Deferred: a more robust Algorithm-3 primal recovery for degenerate contacts; a
+`RefineOutcome.active_set_trace` + a real-`J2Roe` drop-then-readd refine test.
 
 ### Phase 6 — Monte Carlo harness (`src/bin/monte_carlo.rs`)
 200 pseudostates `~ N(0, σ=1km)` per ROE; record iterations + wall-time. Reproduce

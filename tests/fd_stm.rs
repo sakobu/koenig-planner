@@ -1,11 +1,11 @@
 //! Independent finite-difference verification of the J2 mean-ROE STM Phi(t,t_f).
 //!
-//! This does NOT use the analytic STM formula. It reconstructs Phi from:
-//!   - eq.51 ROE map  x = roe(chief, deputy)              (algebraic)
-//!   - eq.50 secular propagation  oe(t_f) = propagate(oe) (AbsoluteOrbit::propagate)
-//! via  Phi = d x(t_f)/d x(t) = J_f * P * J_t^{-1}, where J_t,J_f are the eq.51
-//! Jacobians and P = d propagate / d oe is the secular-propagation Jacobian.
-//! Both factors are finite-differenced, so the whole Phi is independent of stm.rs.
+//! This does NOT use the analytic STM formula. It reconstructs Phi from the eq.51
+//! ROE map `x = roe(chief, deputy)` (algebraic) and the eq.50 secular propagation
+//! `oe(t_f) = propagate(oe)` (AbsoluteOrbit::propagate), via
+//! `Phi = d x(t_f)/d x(t) = J_f * P * J_t^{-1}`, where J_t, J_f are the eq.51
+//! Jacobians and P = d propagate / d oe is the secular-propagation Jacobian. Both
+//! factors are finite-differenced, so the whole Phi is independent of stm.rs.
 
 use koenig_planner::dynamics::stm::state_transition;
 use koenig_planner::dynamics::AbsoluteOrbit;
@@ -157,10 +157,31 @@ fn stm_matches_independent_finite_difference() {
     );
     let w3 = report("low-e fixture", &fix, 39_000.0);
 
+    // Hunter & D'Amico 2025 chief (e=0.70, i=51 deg, omega~200 deg): omega != 0
+    // makes e_{y1} = e sin(omega) != 0, activating the Phi_34 / Phi_44 / Phi_64
+    // delta-e couplings that are identically zero at the worked-example chief.
+    let (hx, hy) = (-0.658_f64, -0.239_f64);
+    let hunter = AbsoluteOrbit::new(
+        25_000e3,
+        (hx * hx + hy * hy).sqrt(),
+        51.0_f64.to_radians(),
+        30.0_f64.to_radians(),
+        hy.atan2(hx),
+        65.0_f64.to_radians() - hy.atan2(hx),
+    );
+    let w4 = report("Hunter chief @ t=0", &hunter, 39_000.0);
+    let w5 = report(
+        "Hunter chief @ t=10000",
+        &hunter.propagate(10_000.0),
+        29_000.0,
+    );
+
     // FD precision floor on the smallest term (Phi_24, ~1e-5) is ~3e-5 through
     // the J_t^-1 amplification; a real coefficient/sign bug is O(1e-2..1e0)
     // relative (the dt^2 bug was ~1.0), so 1e-4 cleanly separates the two.
     assert!(w1 < 1e-4, "worst @16050 = {w1:e}");
     assert!(w2 < 1e-4, "worst @0 = {w2:e}");
     assert!(w3 < 1e-4, "worst fixture = {w3:e}");
+    assert!(w4 < 1e-4, "worst Hunter @0 = {w4:e}");
+    assert!(w5 < 1e-4, "worst Hunter @10000 = {w5:e}");
 }

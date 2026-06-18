@@ -149,7 +149,19 @@ fn b_matrix_matches_independent_finite_difference() {
     );
     let worked_at_16050 = chief.propagate(16_050.0);
 
-    for orbit in [fixture, worked_at_16050] {
+    // Hunter & D'Amico 2025 chief (e=0.70, i=51 deg, omega~200 deg): exercises the
+    // B(t) terms that vanish at the worked-example chief (omega=0 zeros sin(omega)).
+    let (hx, hy) = (-0.658_f64, -0.239_f64);
+    let hunter = AbsoluteOrbit::new(
+        25_000e3,
+        (hx * hx + hy * hy).sqrt(),
+        51.0_f64.to_radians(),
+        30.0_f64.to_radians(),
+        hy.atan2(hx),
+        65.0_f64.to_radians() - hy.atan2(hx),
+    );
+
+    for orbit in [fixture, worked_at_16050, hunter, hunter.propagate(20_000.0)] {
         let analytic = control_input_matrix(&orbit);
         let numeric = fd_b(&orbit);
         let rel = frob_rel_err(&numeric, &analytic);
