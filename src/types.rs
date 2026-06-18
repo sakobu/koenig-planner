@@ -121,6 +121,25 @@ pub struct ConicRows {
     pub soc: Vec<(SMatrix<f64, M, N>, f64)>,
 }
 
+/// Primal fuel generator for one maneuver in the direct min-fuel SOCP
+/// (Phase 5b, Algorithm 3). Describes how a Δv at one candidate time is built
+/// from solver variables and how it is charged, mirroring the cost's unit
+/// sublevel set:
+///
+/// * `Norm` — a free vector `v ∈ ℝᴹ` charged its L2 norm `‖v‖₂` (an `‖v‖ ≤ c`
+///   second-order cone). This is the L2 cost.
+/// * `Polytope(dirs)` — a nonnegative combination `Δv = Σₖ θₖ·dirs[k]`,
+///   `θₖ ≥ 0`, charged `Σₖ θₖ` (a nonnegative-cone LP). The unit ball is
+///   `conv{0, dirs…}`, so this is the gauge of that polytope; `dirs` are the
+///   FaceMax `V_vertex` columns.
+#[derive(Debug, Clone, PartialEq)]
+pub enum FuelGenerator {
+    /// L2: free `v ∈ ℝᴹ` charged `‖v‖₂`.
+    Norm,
+    /// Polytopic: `Δv = Σₖ θₖ·dirs[k]`, `θ ≥ 0`, charged `Σₖ θₖ`.
+    Polytope(Vec<SVector<f64, M>>),
+}
+
 /// Errors surfaced by the planner.
 #[derive(Debug, Error)]
 pub enum PlannerError {

@@ -15,5 +15,6 @@ pub use cost::{CostModel, SublevelSet};
 pub use dynamics::Dynamics;
 pub use solver::{extract_qp, refine_socp, RefineSolution};
 pub use types::{
-    ConicRows, Dual, Maneuver, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N,
+    ConicRows, Dual, FuelGenerator, Maneuver, PlannerError, Pseudostate, Solution, SolveParams,
+    TimeGrid, M, N,
 };
