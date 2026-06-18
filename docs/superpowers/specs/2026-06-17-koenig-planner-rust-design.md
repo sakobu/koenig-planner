@@ -1,9 +1,9 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–2 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`); Phases 3–7 pending. **Resume at Phase 3 (solver wrappers).** See §6 for per-phase status.
+- **Status:** In implementation. **Phases 0–3 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers in **PR #3**, branch `phase3-solver-wrappers`, +17 tests → 61, local gate green); Phases 4–7 pending. **Resume at Phase 4 (three algorithms + orchestration).** See §6 for per-phase status.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
-- **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`.
+- **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`, `…-phase3-solver-wrappers.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
 
 ## 1. Goal & scope
@@ -444,12 +444,44 @@ character-by-character against `docs/Planner.pdf`. Two gate gotchas caught + fix
 on the `1/√2` literal (L2 test uses the `(3,4,12)→13` vector); the exact eq. 49 window boundary
 (`|t−center|=3600 s`) is a floating-point knife-edge (the boundary test probes ±1 s either side).
 
-### Phase 3 — Solver wrappers
+### Phase 3 — Solver wrappers ✅ Done & verified (PR #3, branch `phase3-solver-wrappers`)
 `refine_socp`: assemble eq. 40 over a candidate-time set into clarabel conic form
 (linear + SOC cones from each time's `cone_constraints`), map maximize→minimize, return
-`λ`, objective, per-time slack. `extract_qp`: the Algorithm 3 QP.
+`λ` + objective. `extract_qp`: the Algorithm 3 QP.
 **Tests:** small hand-checkable problems with closed-form optima.
 **Exit:** solver tests pass.
+**Done:** files `src/solver/{mod,refine_socp,extract_qp}.rs` + re-exports in `lib.rs`; integration
+test `tests/solver.rs`. **+17 tests → 61 total, CI gate green** (`fmt` + `clippy --all-features -D warnings`
++ `build` + `test`). Both wrappers are stateless/pure — they consume pre-assembled data, so the
+`Dynamics`/`CostModel` traits are not referenced here. **clarabel 0.11.1 API pinned** (from the installed
+crate source): solves `min ½xᵀPx+qᵀx s.t. Ax+s=b, s∈K`; `DefaultSolver::new(&P,&q,&A,&b,&cones,settings)
+→ Result`; read `solution.{x,status,obj_val}`; **`solver.solve()` requires `use clarabel::solver::IPSolver`
+in scope** (clarabel's own examples pull it via a `use …::*` glob — an explicit import list MUST add it);
+cones via `use clarabel::solver::*` (`NonnegativeConeT`/`SecondOrderConeT`); `CscMatrix::from(&dense)` drops
+exact zeros; **`P` must be passed UPPER-TRIANGULAR** (clarabel never symmetrizes — `kkt_assembly.rs`:
+"user provided P is always triu regardless"). **Encodings (independently re-derived + 4-agent-verified
+before coding):** *SOCP* — `x=λ`, `P=0`, `q=−w` (maximize→minimize), recover `c*=w·λ` directly from the
+primal (not `obj_val`); `Norm2` time → one `SecondOrderConeT(M+1=4)` block `A=[0ᵀ;−Γᵀ]`, `b=[1,0,0,0]`;
+`FaceMax` time → four `NonnegativeConeT` rows `(Γvₖ)ᵀλ≤1`; rows assembled **linear-first then SOC** in
+lockstep with the cone vector; **`λ` is FREE (no sign cone — do not copy the QP's `α≥0`)**. *QP* —
+`P=2·YᵀQY` (triu), `q=−2·YᵀQw`, drop const `wᵀQw` (add back for residual), one `NonnegativeConeT(K+1)`
+with `A=[−I_K;1ᵀ]`, `b=[0_K;budget]`, `budget=λ_optᵀw`; `Q` symmetrized defensively. **Status mapping:**
+accept `Solved`+`AlmostSolved`; every other `SolverStatus` → `PlannerError::SolverFailed` naming the status.
+**KEY DECISION:** `refine_socp` returns `{lambda, objective}` only — the **"per-time slack" is the caller's
+job** (Phase 4 recomputes `g_{U(1,t)}(Γᵀ(t)λ)` via `SublevelSet::contact`; it scans `g` over the full grid
+`T` anyway, and `refine_socp` consumes `ConicRows`, not cost objects). Closed-form optima reproduced to
+`1e-6`: pure-SOC `c*=13`; **face-max LP `c*=√3`** (Risk 6 — was un-cross-validated by the literature, here
+hand-derived); mixed SOC+LP `c*=√3+1` (validates cone ordering = the realistic eq.49 Piecewise case); QP
+α-cases covering interior / budget-binding / nonneg-binding / weighted-`Q` / **non-orthogonal-`Y`** (guards
+the triu-`P` packing + factor-of-2 — a diagonal-only test can't) / singular-`P` (assert the unique residual,
+not the non-unique `α`). **Two plan gaps caught during execution (both fixed):** (1) the `IPSolver` import
+above; (2) helpers used only by `#[cfg(test)]` trip `dead_code` under `clippy -D warnings` until their
+consumer lands — use `#[allow(dead_code)]` transiently, **not** `#[expect]` (which mis-fires in the
+`cfg(test)` build where the tests *do* use them). **Phase 4 hand-off:** build `Vec<ConicRows>` via
+`cost.at(t).cone_constraints(&dynamics.gamma(t))` for each `t ∈ T^est` → `refine_socp(w, &rows)`; then
+`sⱼ = cost.at(tⱼ).support(Γᵀ(tⱼ)λ)`, `yⱼ = gamma(tⱼ)·sⱼ`, `extract_qp(w, &ys, &Q, budget=λ·w)` → `αⱼ`,
+emit `Maneuver{ t: tⱼ, dv: αⱼ·sⱼ }`; **filter zero-support times before extract** (a `yⱼ=0` column leaves
+`αⱼ` irrelevant-but-unconstrained).
 
 ### Phase 4 — Three algorithms + orchestration
 Alg. 1 init; Alg. 2 refine (incl. discrete local-maxima finder over the grid, with
@@ -528,7 +560,9 @@ coverage, the Table III/IV case stays primary):
    character-by-character verification against the PDF + the Phase 1 property tests;
    build and lock Phase 1 before anything depends on it.
 2. **Solver convention mismatch** (maximize vs minimize, cone ordering in clarabel).
-   *Mitigate:* Phase 3 closed-form unit tests before integration.
+   *Mitigate:* Phase 3 closed-form unit tests before integration. **[✅ retired in Phase 3:**
+   `q=−w` + SOC layout `[0ᵀ;−Γᵀ]`/`b=[1,0,0,0]` verified against clarabel's shipped `example_socp.rs`
+   and reproduce all closed-form optima to `1e-6`; `λ` is free; rows linear-first then SOC.**]**
 3. **Exact-number matching** depends on solver tolerances. *Mitigate:* assert on bands
    tied to the paper's tolerances, not bit-equality.
 4. **Discrete local-maxima finder (Alg. 2)** edge cases at grid ends / plateaus.
@@ -540,7 +574,8 @@ coverage, the Table III/IV case stays primary):
    validate only the L2/SDP cost cases; the `max(Vᶠᵃᶜᵉu)` LP path is un-cross-validated by
    the literature. *Mitigate:* a standalone Phase-3 unit test with a hand-derived
    closed-form LP optimum (not only the eq. 49 piecewise case, where the LP and L2 rows
-   are entangled).
+   are entangled). **[✅ retired in Phase 3:** `s2_face_max_lp_closed_form` asserts the standalone
+   hand-derived optimum `c*=√3` (`w=(0,0,1,0,0,0)`, `Γ=[I₃;0]`), disentangled from L2.**]**
 7. **Non-smooth contact × local-maxima finder.** For the face-max cost the contact
    `maxₖ yᵀwₖ` is evaluated by enumerating the columns of `W` (no smooth closed form),
    which interacts with risk #4. *Mitigate:* exercise the Alg. 2 grid local-maxima finder
