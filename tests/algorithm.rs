@@ -77,3 +77,33 @@ fn solve_rejects_degenerate_grid() {
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
+
+#[test]
+fn solve_rejects_nan_dt() {
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, f64::NAN);
+    let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    let cost = Piecewise::new(1.0e12);
+    let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
+    assert!(matches!(err, PlannerError::InvalidInput(_)));
+}
+
+#[test]
+fn solve_rejects_infinite_dt() {
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, f64::INFINITY);
+    let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    let cost = Piecewise::new(1.0e12);
+    let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
+    assert!(matches!(err, PlannerError::InvalidInput(_)));
+}
+
+#[test]
+fn solve_rejects_nan_target() {
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0);
+    let w = SVector::<f64, N>::from_row_slice(&[f64::NAN, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    let cost = Piecewise::new(1.0e12);
+    let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
+    assert!(matches!(err, PlannerError::InvalidInput(_)));
+}

@@ -61,9 +61,14 @@ pub fn solve<D: Dynamics, C: CostModel>(
     params: &SolveParams,
 ) -> Result<Solution, PlannerError> {
     // --- Input validation (Design Decision 9). ---
-    if grid.dt <= 0.0 || grid.t_f <= grid.t_i {
+    if !grid.dt.is_finite()
+        || grid.dt <= 0.0
+        || !grid.t_f.is_finite()
+        || !grid.t_i.is_finite()
+        || grid.t_f <= grid.t_i
+    {
         return Err(PlannerError::InvalidInput(
-            "grid must satisfy dt > 0 and t_f > t_i".into(),
+            "grid must satisfy dt > 0 and t_f > t_i (finite)".into(),
         ));
     }
     if params.n_init == 0 || params.n_coarse == 0 {
@@ -71,9 +76,10 @@ pub fn solve<D: Dynamics, C: CostModel>(
             "n_init and n_coarse must be >= 1".into(),
         ));
     }
-    if w.norm() <= 0.0 {
+    let w_norm = w.norm();
+    if !w_norm.is_finite() || w_norm <= 0.0 {
         return Err(PlannerError::InvalidInput(
-            "target pseudostate w must be nonzero".into(),
+            "target pseudostate w must be nonzero and finite".into(),
         ));
     }
 
