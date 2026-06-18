@@ -14,5 +14,6 @@ pub mod constants;
 pub mod j2_roe;
 pub mod kepler;
 pub mod orbit;
+pub mod stm;
 pub use j2_roe::J2Roe;
 pub use orbit::AbsoluteOrbit;
