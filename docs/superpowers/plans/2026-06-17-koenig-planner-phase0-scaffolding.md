@@ -918,7 +918,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # plotters (validation feature, pulled by --all-features) needs system
+      # fontconfig on Linux; absent on the runner, so install it. macOS uses
+      # CoreText and does not need this — a local gate cannot catch the gap.
+      - name: Install system deps (fontconfig, for the plotters validation feature)
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
