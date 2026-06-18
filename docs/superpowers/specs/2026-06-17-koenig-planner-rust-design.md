@@ -1,7 +1,7 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–3 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers in **PR #3**, branch `phase3-solver-wrappers`, +21 tests → 65, CI green); Phases 4–7 pending. **Resume at Phase 4 (three algorithms + orchestration).** See §6 for per-phase status.
+- **Status:** In implementation. **Phases 0–3 complete & verified** (CI green; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers merged via **PR #3**, squash `cdaff18`, +21 tests → 65, CI green); Phases 4–7 pending. **Resume at Phase 4 (three algorithms + orchestration).** See §6 for per-phase status.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
 - **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`, `…-phase3-solver-wrappers.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
@@ -444,7 +444,7 @@ character-by-character against `docs/Planner.pdf`. Two gate gotchas caught + fix
 on the `1/√2` literal (L2 test uses the `(3,4,12)→13` vector); the exact eq. 49 window boundary
 (`|t−center|=3600 s`) is a floating-point knife-edge (the boundary test probes ±1 s either side).
 
-### Phase 3 — Solver wrappers ✅ Done & verified (PR #3, branch `phase3-solver-wrappers`)
+### Phase 3 — Solver wrappers ✅ Done & verified (merged via PR #3, squash `cdaff18`)
 `refine_socp`: assemble eq. 40 over a candidate-time set into clarabel conic form
 (linear + SOC cones from each time's `cone_constraints`), map maximize→minimize, return
 `λ` + objective. `extract_qp`: the Algorithm 3 QP.
