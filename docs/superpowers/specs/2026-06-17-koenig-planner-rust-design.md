@@ -1,7 +1,7 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–4 complete** (CI green throughout; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers merged via PR #3, squash `cdaff18`, 65 tests; Phase 4 three algorithms + `solve` orchestration on branch `phase4-algorithms` (head `f2c566e`, +24 tests, full gate green, whole-branch-reviewed "ready to merge") — **not yet merged**); Phases 5–7 pending. **Resume at Phase 5 (worked-example validation).** See §6 for per-phase status.
+- **Status:** In implementation. **Phases 0–4 complete** (CI green throughout; Phase 1 dynamics confirmed across 5 independent routes — see `docs/superpowers/phase1-dynamics-verification-report.md`; Phase 2 cost models merged via PR #1, squash `51ac590`; Phase 3 solver wrappers merged via PR #3, squash `cdaff18`, 65 tests; Phase 4 three algorithms + `solve` orchestration merged via PR #5, squash `71f4383`, +24 tests, whole-branch-reviewed); Phases 5–7 pending. **Resume at Phase 5 (worked-example validation).** See §6 for per-phase status.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
 - **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`, `…-phase3-solver-wrappers.md`, `…-phase4-algorithms.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
@@ -444,7 +444,7 @@ character-by-character against `docs/Planner.pdf`. Two gate gotchas caught + fix
 on the `1/√2` literal (L2 test uses the `(3,4,12)→13` vector); the exact eq. 49 window boundary
 (`|t−center|=3600 s`) is a floating-point knife-edge (the boundary test probes ±1 s either side).
 
-### Phase 3 — Solver wrappers ✅ Done & verified (PR #3, branch `phase3-solver-wrappers`)
+### Phase 3 — Solver wrappers ✅ Done & verified (PR #3, squash `cdaff18`)
 `refine_socp`: assemble eq. 40 over a candidate-time set into clarabel conic form
 (linear + SOC cones from each time's `cone_constraints`), map maximize→minimize, return
 `λ` + objective. `extract_qp`: the Algorithm 3 QP.
@@ -484,7 +484,7 @@ consumer lands — use `#[allow(dead_code)]` transiently, **not** `#[expect]` (w
 emit `Maneuver{ t: tⱼ, dv: αⱼ·sⱼ }`; **filter zero-support times before extract** (a `yⱼ=0` column leaves
 `αⱼ` irrelevant-but-unconstrained).
 
-### Phase 4 — Three algorithms + orchestration ✅ Done (branch `phase4-algorithms`, head `f2c566e`; reviewed, gate green; not yet merged)
+### Phase 4 — Three algorithms + orchestration ✅ Done & merged (PR #5, squash `71f4383`)
 Alg. 1 init; Alg. 2 refine (incl. discrete local-maxima finder over the grid, with
 grid-endpoint handling); Alg. 3 extract; `solve(...)` wiring with Γ(t) caching.
 **Tests:** `max_t g` decreases monotonically across iterations; convergence within
