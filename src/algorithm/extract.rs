@@ -12,7 +12,6 @@ const SUPPORT_EPS: f64 = 1e-9;
 
 /// Result of Algorithm 3.
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // fields wired into solve() in Task 5
 pub(super) struct ExtractOutcome {
     pub maneuvers: Vec<Maneuver>,
     pub total_dv: f64,
@@ -20,7 +19,6 @@ pub(super) struct ExtractOutcome {
 }
 
 /// Algorithm 3 — recover maneuver directions `s_j` and magnitudes `α_j`.
-#[allow(dead_code)] // wired into solve() in Task 5
 #[allow(clippy::too_many_arguments)] // 8 params mirror Algorithm 3's inputs; collapsed into solve() in Task 5
 pub(super) fn extract<C: CostModel>(
     cost: &C,

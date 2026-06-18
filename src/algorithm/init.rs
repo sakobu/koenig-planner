@@ -23,7 +23,6 @@ pub(super) fn coarse_indices(grid_len: usize, n_coarse: usize) -> Vec<usize> {
 
 /// The `n_init` coarse times with the largest contact `g_{U(1,t)}(Γᵀ(t)·lambda)`,
 /// returned as sorted grid indices (`T^est`). `lambda` is the initial dual `∥ w`.
-#[allow(dead_code)] // wired into solve() in Task 5
 pub(super) fn initialize<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,

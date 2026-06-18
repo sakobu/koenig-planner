@@ -14,7 +14,7 @@ const PLATEAU_EPS: f64 = 1e-12;
 ///
 /// A flat top (run of values within [`PLATEAU_EPS`]) yields a single
 /// representative (the plateau midpoint). Endpoints are local maxima by the
-/// boundary rule (compared only against their one in-bounds neighbour). The
+/// boundary rule (compared only against their one in-bounds neighbor). The
 /// global maximum is always a local maximum, so a violated global max is always
 /// returned — guaranteeing Algorithm 2 makes progress.
 pub(super) fn violated_local_maxima(g: &[f64], threshold: f64) -> Vec<usize> {
@@ -39,7 +39,6 @@ pub(super) fn violated_local_maxima(g: &[f64], threshold: f64) -> Vec<usize> {
 
 /// Result of Algorithm 2.
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // fields wired into solve() in Task 5
 pub(super) struct RefineOutcome {
     /// Optimal candidate times `T^opt` (grid indices) — the active set that
     /// produced `lambda`.
@@ -56,7 +55,6 @@ pub(super) struct RefineOutcome {
 }
 
 /// Algorithm 2 — iteratively refine `T^est` until `max_t g ≤ 1 + ε_cost`.
-#[allow(dead_code)] // wired into solve() in Task 5
 pub(super) fn refine<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,
