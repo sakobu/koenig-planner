@@ -36,6 +36,8 @@ mod tests {
     fn cost_types_wire_to_their_traits() {
         let _s: &dyn SublevelSet = &Norm2;
         let _f: &dyn SublevelSet = &FaceMax;
-        let _c: &dyn CostModel = &Piecewise;
+        // Piecewise now carries fields, so construct it via `new`.
+        let pw = Piecewise::new(39_338.811_433_158_5);
+        let _c: &dyn CostModel = &pw;
     }
 }
