@@ -78,8 +78,11 @@ mod tests {
             -4.292240669143e-04,
             4.630275430939e-04,
             0.0,
-            1.068619416128e+03,
-            -1.152778796710e+03,
+            // delta-lambda (row 2): regenerated after the Phi_21 dt^2 fix. The old
+            // anchors (~1e3) encoded the typo; the correct linear-drift values are
+            // ~1e-2. Cross-checked by tests/fd_stm.rs + fd_b_matrix.rs.
+            1.009859094742e-02,
+            -1.131471991149e-02,
             2.136815027274e-06,
             -1.570198747958e-04,
             -2.573333198136e-05,
