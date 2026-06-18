@@ -1,9 +1,10 @@
 //! Public-API integration tests for the Phase 4 three-step planner.
 
 use koenig_planner::cost::Piecewise;
-use koenig_planner::dynamics::Dynamics;
+use koenig_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
 use koenig_planner::{solve, PlannerError, SolveParams, TimeGrid};
 use nalgebra::{SMatrix, SVector};
+use std::f64::consts::TAU;
 
 const N: usize = 6;
 const M: usize = 3;
@@ -106,4 +107,33 @@ fn solve_rejects_nan_target() {
     let cost = Piecewise::new(1.0e12);
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
+}
+
+#[test]
+fn refine_on_real_j2roe_runs_multiple_iterations() {
+    // The Phase-4 well-conditioned synthetic converges too fast to exercise the
+    // drop/add loop body. The real worked-example J2Roe Γ is ill-conditioned
+    // (δλ row ~1e3 vs others ~1e-4), so refinement takes several iterations on
+    // the degenerate e=0.7 contact. This is a public-API guard that the loop
+    // body actually runs on real dynamics.
+    const A_C: f64 = 25_000e3;
+    let chief = AbsoluteOrbit::new(
+        A_C,
+        0.7,
+        40.0_f64.to_radians(),
+        358.0_f64.to_radians(),
+        0.0,
+        180.0_f64.to_radians(),
+    );
+    let dynamics = J2Roe::new(chief, 0.0, 117_990.0);
+    let cost = Piecewise::new(TAU / chief.mean_motion());
+    let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
+    let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);
+
+    let sol = solve(&dynamics, &cost, w, grid, &SolveParams::default()).expect("should solve");
+    assert!(
+        sol.iterations >= 2,
+        "real J2Roe refinement should take >= 2 iterations, got {}",
+        sol.iterations
+    );
 }
