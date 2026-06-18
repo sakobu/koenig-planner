@@ -6,7 +6,23 @@ mod refine;
 
 use crate::cost::CostModel;
 use crate::dynamics::Dynamics;
-use crate::types::{PlannerError, Pseudostate, Solution, SolveParams, TimeGrid};
+use crate::types::{Dual, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N};
+use nalgebra::SMatrix;
+
+/// Contact value `g_{U(1,t)}(Γᵀ(t)·lambda)` at grid index `k`.
+///
+/// `gammas[k] = Γ(grid.time(k))` is the 6×3 dynamics matrix; the cost methods
+/// operate on the control-space projection `Γᵀ(t)·lambda ∈ ℝ³`.
+fn contact_at<C: CostModel>(
+    cost: &C,
+    grid: &TimeGrid,
+    gammas: &[SMatrix<f64, N, M>],
+    k: usize,
+    lambda: &Dual,
+) -> f64 {
+    let y = gammas[k].transpose() * lambda;
+    cost.at(grid.time(k)).contact(y)
+}
 
 /// Solve the fuel-optimal impulsive control problem.
 ///
