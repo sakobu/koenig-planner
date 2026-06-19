@@ -640,11 +640,65 @@ the refinement churns its active set (drops and adds) over 3 iterations on the r
 but never re-adds a dropped time on this fixture — an instance-specific outcome (not implied by the global max_t g monotonicity; column generation can in principle re-activate a dropped time).
 
 ### Phase 6 — Monte Carlo harness (`src/bin/monte_carlo.rs`)
-200 pseudostates `~ N(0, σ=1km)` per ROE; record iterations + wall-time. Reproduce
-Fig. 8 (iteration CDFs for 2/6/10-time inits) and Fig. 9 (compute time vs `|T|`,
-10→10⁶). Emit CSV (+ optional `plotters` PNGs).
-**Exit:** iteration means near 4.90 / 3.99 / 3.31; Fig. 9 shape (≈constant ≤10⁴, then
-linear) reproduced; residuals `< 0.01%` across the 200 cases.
+Reproduce Fig. 8 (iteration-count distributions for 2/6/10-time inits) and Fig. 9
+(compute time vs discretization `|T|`, 10→10⁶) for the *proposed* algorithm on the
+worked-example problem. **Design (brainstormed 2026-06-19, approved):**
+
+**Structure.** One feature-gated binary (`src/bin/monte_carlo.rs`) runs both sweeps and
+writes CSV/PNG; a separate seeded CI test (`tests/monte_carlo.rs`) asserts
+paper-independent invariants via the public `solve` API. No harness code leaks into the
+library — the sampling *convention* is documented so the bin and test agree, but each
+samples independently (the asserted invariants hold for any seed). A bin always compiles,
+so the whole `main` is gated: `#[cfg(feature="validation")]` runs the harness,
+`#[cfg(not(...))]` prints "build with `--features validation`" (same reason `mdot.rs`
+gates its CSV block).
+
+**Dependencies.** Add `rand` (0.10) + `rand_distr` (0.6) as `optional` deps folded into
+the existing feature: `validation = ["dep:csv","dep:plotters","dep:rand","dep:rand_distr"]`
+(CI runs `--all-features`, so both bin and test build/run there). Use `StdRng`
+(ChaCha-based, **portable** across macOS ↔ Linux CI) seeded from a documented constant —
+**not** `SmallRng` (non-portable). Pin the API against the installed crate source (the
+Phase-3 clarabel methodology); both crates are already in the local cargo cache.
+
+**Shared setup & sampling convention.** Fixed problem = the worked example (Table III
+chief `a=25000km, e=0.7, i=40°, Ω=358°, ω=0°, M=180°`; `t_f=117990 s`; eq. 49 `Piecewise`
+cost; `a_c=25 000 km`). Each of the 6 ROE components `~ Normal(0, σ=1000 m)` (the
+metre-scaled `w`, per Table III's display convention), then `w_nd = w_metres / a_c`.
+Gaussian norms are ~2.4 km a.s. ⇒ `w` is never near-zero (no degenerate `w=0`).
+
+**Fig. 8.** Pre-generate **200** paired `w` once; reuse across `n_init ∈ {2,6,10}`
+(`n_coarse=20` fixed, ≥ all three). Per `(n_init, w)`: `solve`, record
+`iterations`/`residual`/`total_dv`; count (don't panic on) any solver error (Phase 5b ⇒
+expect 0). Report per-`n_init` mean iterations / fraction-≤8 / max residual alongside the
+paper's 4.90/3.99/3.31 as **reference, not pass/fail**. CSV `target/fig8_iterations.csv`
+(`n_init,sample,iterations,residual,total_dv`); optional PNG of the three empirical
+iteration CDFs.
+
+**Fig. 9.** Grid sizes `[10,10²,10³,10⁴,10⁵,10⁶]`, `dt=(t_f−t_i)/(n−1)`; fixed Table III
+`w` (timing shape is `w`-independent; ties Fig. 9 to the canonical problem). Per size: one
+warmup `solve` (discarded) + one timed `solve` (`std::time::Instant`); record
+`(grid_len,dt,seconds,iterations,residual)`. CSV `target/fig9_timing.csv`; optional
+log-log PNG. Documented: 10⁶ ≈ multi-second / ~150 MB Γ cache. Optional `fig8`/`fig9` arg
+selects one sweep (default both).
+
+**CI invariant test (validation stance).** `tests/monte_carlo.rs`, gated
+`#[cfg(feature="validation")]`, seeded, smaller `N≈64` (tunable for CI runtime), same
+problem, `n_init ∈ {2,6,10}`. Asserts **robust, paper-independent** invariants: every
+solve succeeds; **max iterations ≤ 8** (the paper's stated bound); **all residuals
+< 0.01%** (Phase 5b makes this easy); and the Fig. 8 shape gap **mean_iters(2) >
+mean_iters(10)**. Does **not** hard-assert 4.90/3.99/3.31 — consistent with the Phase 5
+reframing and risk #3 (bands, not bit-equality). Per the Phase-4/5 band methodology:
+implement, run to observe actual means/maxes, then lock bands with margin.
+
+**Determinism & performance.** `StdRng`+fixed seed ⇒ identical macOS ↔ CI results. Serial
+(no rayon — YAGNI). Rough cost: Fig. 8 ≈ 600 solves on the 3934-grid (~tens of s); Fig. 9
+dominated by the 10⁶ run; CI test ≈ 192 small-N solves.
+
+**Exit:** harness emits both CSVs (+ optional PNGs); per-`n_init` means reported and
+compared to 4.90/3.99/3.31 as reference; Fig. 9 reproduces the ≈constant-(`|T|`≤10⁴)-then-
+linear shape; the CI invariant test is green (every solve succeeds, ≤8 iters, <0.01%
+residual, the `mean(2)>mean(10)` ordering gap). Bit-reproduction of the paper's means is
+explicitly **not** required (same rationale as Phase 5).
 
 ### Phase 7 — Polish
 Rustdoc cross-referencing code ↔ equation numbers; README; runnable examples; CI green.
@@ -698,6 +752,7 @@ coverage, the Table III/IV case stays primary):
 | `thiserror` | error types |
 | `approx` (dev) | float-tolerant test assertions |
 | `csv`, `plotters` (validation bin only) | emit Fig. 7/8/9 data |
+| `rand`, `rand_distr` (validation bin only) | seeded portable Gaussian pseudostates for the Monte Carlo harness |
 
 ## 9. Risks & mitigations
 
