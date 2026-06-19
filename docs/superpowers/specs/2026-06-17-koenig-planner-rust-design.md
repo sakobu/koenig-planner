@@ -30,7 +30,11 @@
 
 Build a **faithful Rust reimplementation** of the paper's fuel-optimal impulsive
 control algorithm. Faithful means: reproduce the algorithm exactly and match the
-paper's published numbers.
+paper's published numbers. Note (Phase 5): "faithful" here means the *dynamics and convex program* match the
+paper term-for-term (FD-verified in `tests/fd_stm.rs` / `tests/fd_b_matrix.rs`),
+**not** bit-reproduction of the §VIII worked-example figures — those are not
+self-consistent under the corrected STM (author-confirmed typo in `Φ₂₁`; see
+`tests/worked_example.rs::paper_table_iv_does_not_reconstruct`).
 
 **In scope (definition of done):**
 
@@ -139,6 +143,7 @@ pub trait SublevelSet {
     fn contact(&self, y: SVector<f64, M>) -> f64;             // g(y) = max_{z∈U} y·z
     fn support(&self, y: SVector<f64, M>) -> SVector<f64, M>; // s(y) = argmax z
     fn cone_constraints(&self, gamma_t: &SMatrix<f64, N, M>) -> ConicRows; // for SOCP/LP build
+    fn fuel_generator(&self) -> FuelGenerator;  // primal builder for the min-fuel SOCP (Norm | Polytope(dirs))
 }
 
 // Time-varying cost = piecewise selection of sublevel sets (eq. 49).
@@ -207,17 +212,32 @@ T^opt ← T^est;  λ_opt ← λ_est
 
 `max_{t∈T} g` decreases monotonically toward 1, guaranteeing convergence.
 
-**Algorithm 3 — Control-Input Extraction.** Inputs `T^opt`, `λ_opt`, `Γ(t)`, `w`,
-`Q` (PD weight, identity in the example).
+**Algorithm 3 — Control-Input Extraction (as implemented).** Inputs `T^opt`,
+`Γ(t)`, `w`, and the per-time fuel generators (one unit sublevel set per `tⱼ`).
+
+The code (`src/algorithm/extract.rs` → `src/solver/min_fuel_socp.rs`) solves a
+**direct gauge-aware minimum-fuel SOCP** over the converged active set, recovering
+the full 3-DOF `Δvⱼ` (not just magnitudes along fixed support directions):
 
 ```
-for tⱼ ∈ T^opt:
-    sⱼ ← s_{U(1,tⱼ)}(Γᵀ(tⱼ)λ_opt)        // optimal direction
-    yⱼ ← Γ(tⱼ)·sⱼ                          // its pseudostate contribution
-α ← argmin  w_errᵀ Q w_err,  w_err = w − Σⱼ αⱼyⱼ
-       s.t.  αⱼ ≥ 0,  Σⱼ αⱼ ≤ λ_optᵀw      // QP
-u_opt = Σⱼ αⱼ·sⱼ  applied at tⱼ            // Maneuver{ t: tⱼ, dv: αⱼ·sⱼ }
+minimize   Σⱼ f_{U(1,tⱼ)}(Δvⱼ)        // total fuel = sum of per-time gauges
+   over    Δvⱼ ∈ ℝ³,  j indexing T^opt
+ s.t.      Σⱼ Γ(tⱼ)·Δvⱼ = w            // exact reachability (equality)
+u_opt = { Maneuver{ t: tⱼ, dv: Δvⱼ } : ‖Δvⱼ‖ > PRUNE_REL · maxⱼ‖Δvⱼ‖ }
 ```
+
+`f_{U(1,t)}` is the cost's gauge: an `‖·‖₂` SOC for the L2 (Norm2) cost, and a
+nonnegative-combination LP (`Δv = Σₖ θₖ·vₖ, θ≥0`, charged `Σₖ θₖ`) for the
+polytopic FaceMax cost. The dual optimum `c* = λ_optᵀw` from Algorithm 2 is used
+only as a `debug_assert` self-consistency reference, not as a constraint.
+
+> **Deviation from the printed paper (deliberate, strong-duality-justified).** The
+> 2020 TAC paper states Algorithm 3 as a fixed-support-direction magnitude QP:
+> `sⱼ ← s_{U(1,tⱼ)}(Γᵀ(tⱼ)λ_opt)`, then `α ← argmin ‖w − Σ αⱼ Γ(tⱼ)sⱼ‖²_Q,
+> αⱼ≥0, Σαⱼ ≤ λ_optᵀw`. That QP under-spans `w` on the degenerate `e=0.7` contact
+> (Phase 5b), so it is **retained verbatim only as the `solver::extract_qp`
+> primitive and its pinning test**, and the min-fuel SOCP above is what `solve()`
+> calls. Both share the same optimum where the QP is non-degenerate.
 
 ### 5.2 Cost models (Table II)
 
