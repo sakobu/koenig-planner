@@ -1,6 +1,6 @@
 [package]
 name = "koenig-planner"
-version = "0.0.0"
+version = "0.0.0" # intentional: unpublished research crate (audit P2 #11). Bump + add crates.io metadata only when publishing.
 edition = "2021"
 rust-version = "1.92"
 license = "MIT OR Apache-2.0"
