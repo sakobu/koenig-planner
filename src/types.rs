@@ -120,7 +120,15 @@ pub struct Solution {
     pub total_dv: f64,
     /// Algorithm 2 iteration count.
     pub iterations: usize,
-    /// Relative residual ||w_err|| / ||w||.
+    /// Relative residual `||w_err|| / ||w||` of the **full, pre-prune** min-fuel
+    /// solution over `T^opt` — the true reachability metric (approximately 0
+    /// when `w` is reachable).
+    ///
+    /// Measured before interior-point dust is pruned from `maneuvers` (maneuvers
+    /// below `1e-3` of the largest are dropped). Recomputing the residual from
+    /// the returned, pruned `maneuvers` can therefore give a slightly larger
+    /// value; it is bounded by the pruned mass and stays small. Use this field
+    /// for the reachability check.
     pub residual: f64,
     /// Optimal dual lambda_opt.
     pub lambda: Dual,
