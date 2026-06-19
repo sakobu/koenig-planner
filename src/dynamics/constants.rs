@@ -3,7 +3,7 @@
 /// Earth gravitational parameter [m^3/s^2].
 pub const MU: f64 = 3.986e14;
 
-/// Earth equatorial radius [m].
+/// Earth equatorial radius `[m]`.
 pub const R_E: f64 = 6.378e6;
 
 /// J2 zonal harmonic coefficient (dimensionless).

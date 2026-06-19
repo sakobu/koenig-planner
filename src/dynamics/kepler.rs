@@ -1,18 +1,18 @@
 //! Kepler's equation solve `M -> E -> nu`. Not present in any source PDF
-//! (Koenig/Chernick/Hunter/ref [27] all defer to "Kepler's equation"); taken
+//! (Koenig/Chernick/Hunter/ref `[27]` all defer to "Kepler's equation"); taken
 //! from standard astrodynamics (Vallado) and verified by round-trip identity
 //! and known `M -> nu` pairs, not by a PDF cross-check.
 
 use crate::types::PlannerError;
 use std::f64::consts::PI;
 
-/// Reduce an angle [rad] to the interval `[-pi, pi)`.
+/// Reduce an angle `[rad]` to the interval `[-pi, pi)`.
 pub fn wrap_to_pi(x: f64) -> f64 {
     let two_pi = 2.0 * PI;
     (x + PI).rem_euclid(two_pi) - PI
 }
 
-/// Solve Kepler's equation `M = E - e sin E` for the eccentric anomaly `E` [rad].
+/// Solve Kepler's equation `M = E - e sin E` for the eccentric anomaly `E` `[rad]`.
 ///
 /// Newton iteration with initial guess `E0 = M + e sin M`. Well-conditioned at
 /// `e = 0.7` (`1 - e cos E >= 0.3`); converges in ~5-8 iterations.
@@ -41,7 +41,7 @@ pub fn mean_to_eccentric(m: f64, e: f64) -> Result<f64, PlannerError> {
     Err(PlannerError::KeplerDivergence { m, e })
 }
 
-/// True anomaly `nu` [rad] from mean anomaly `M` [rad] at eccentricity `e`.
+/// True anomaly `nu` `[rad]` from mean anomaly `M` `[rad]` at eccentricity `e`.
 ///
 /// # Errors
 /// Propagates [`mean_to_eccentric`]'s errors.

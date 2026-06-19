@@ -5,7 +5,7 @@ use nalgebra::SMatrix;
 
 /// Maps an impulse at time `t` into pseudostate space via `Gamma(t) = Phi(t,t_f) B(t)`.
 pub trait Dynamics {
-    /// `Gamma(t)` in R^{6x3}: pseudostate change per unit Delta-v [m/s] applied at `t` [s].
+    /// `Gamma(t)` in R^{6x3}: pseudostate change per unit Delta-v `[m/s]` applied at `t` `[s]`.
     ///
     /// # Errors
     /// Returns [`PlannerError`] if evaluating `B(t)` requires an out-of-domain

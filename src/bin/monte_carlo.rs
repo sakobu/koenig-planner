@@ -56,16 +56,16 @@ mod harness {
     /// Paper's reported mean iterations for the three schemes (reference, not a target).
     pub const PAPER_MEANS: [f64; 3] = [4.90, 3.99, 3.31];
 
-    /// Chief semimajor axis a_c [m] — the I/O scaling factor (spec §5.5).
+    /// Chief semimajor axis a_c `[m]` — the I/O scaling factor (spec §5.5).
     pub const A_C: f64 = 25_000e3;
     /// Per-ROE Gaussian std, metre-scaled (σ = 1 km; spec §6 Phase 6).
     pub const SIGMA_M: f64 = 1000.0;
     /// Documented constant seed (portable StdRng) — "koenig" in hex-ish.
     pub const SEED: u64 = 0x6F_656E_6967;
-    /// Worked-example window [s].
+    /// Worked-example window `[s]`.
     pub const T_I: f64 = 0.0;
     pub const T_F: f64 = 117_990.0;
-    /// Fig. 8 grid step [s] (Table III 30 s grid → 3934 candidate times).
+    /// Fig. 8 grid step `[s]` (Table III 30 s grid → 3934 candidate times).
     pub const GRID_DT: f64 = 30.0;
     /// Fig. 9 grid sizes (10 → 10⁶). 10⁶ is ~150 MB Γ cache / multi-second; documented.
     pub const FIG9_SIZES: [usize; 6] = [10, 100, 1_000, 10_000, 100_000, 1_000_000];

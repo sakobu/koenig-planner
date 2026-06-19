@@ -8,17 +8,17 @@ use crate::types::PlannerError;
 /// A mean absolute Keplerian orbit `[a, e, i, Omega, omega, M]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AbsoluteOrbit {
-    /// Semimajor axis [m].
+    /// Semimajor axis `[m]`.
     pub a: f64,
     /// Eccentricity.
     pub e: f64,
-    /// Inclination [rad].
+    /// Inclination `[rad]`.
     pub i: f64,
-    /// Right ascension of the ascending node, Omega [rad].
+    /// Right ascension of the ascending node, Omega `[rad]`.
     pub raan: f64,
-    /// Argument of perigee, omega [rad].
+    /// Argument of perigee, omega `[rad]`.
     pub argp: f64,
-    /// Mean anomaly, M [rad].
+    /// Mean anomaly, M `[rad]`.
     pub mean_anom: f64,
 }
 
@@ -57,7 +57,7 @@ impl AbsoluteOrbit {
         (1.0 - self.e * self.e).sqrt()
     }
 
-    /// True anomaly `nu` [rad] from the current mean anomaly.
+    /// True anomaly `nu` `[rad]` from the current mean anomaly.
     ///
     /// # Errors
     /// Propagates [`mean_to_true`]'s errors (non-elliptic `e`).

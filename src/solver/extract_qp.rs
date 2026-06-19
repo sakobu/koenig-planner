@@ -17,7 +17,7 @@ use nalgebra::{SMatrix, SVector};
 /// `Maneuver` as `dv = alpha_j . s_j` applied at `t_j`.
 ///
 /// **Superseded on the solve path.** Algorithm 3 now runs
-/// [`crate::min_fuel_socp`] (the direct full-3-DOF min-fuel SOCP), which is
+/// [`crate::min_fuel_socp()`] (the direct full-3-DOF min-fuel SOCP), which is
 /// robust on the degenerate flat contacts where this fixed-support-direction
 /// magnitude QP under-spans `w`. This function is retained as the paper's
 /// original primitive (and for its pinning test) but is not re-exported at the

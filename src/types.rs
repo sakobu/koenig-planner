@@ -16,10 +16,10 @@ pub type Pseudostate = SVector<f64, N>;
 /// The dual variable lambda in R^6 (outward reachable-set normal).
 pub type Dual = SVector<f64, N>;
 
-/// An impulsive maneuver: a Delta-v [m/s] in the RTN frame applied at time `t` [s].
+/// An impulsive maneuver: a Delta-v `[m/s]` in the RTN frame applied at time `t` `[s]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Maneuver {
-    /// Application time [s], measured from `t_i`.
+    /// Application time `[s]`, measured from `t_i`.
     pub t: f64,
     /// Delta-v [m/s], RTN components (R, T, N).
     pub dv: SVector<f64, M>,
@@ -32,11 +32,11 @@ pub struct Maneuver {
 /// -> 3901 candidate times.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TimeGrid {
-    /// Initial time `t_i` [s].
+    /// Initial time `t_i` `[s]`.
     pub t_i: f64,
-    /// Final time `t_f` [s].
+    /// Final time `t_f` `[s]`.
     pub t_f: f64,
-    /// Grid step `dt` [s].
+    /// Grid step `dt` `[s]`.
     pub dt: f64,
 }
 
@@ -72,12 +72,12 @@ impl TimeGrid {
         self.len() == 0
     }
 
-    /// The time [s] at grid index `idx`.
+    /// The time `[s]` at grid index `idx`.
     pub fn time(&self, idx: usize) -> f64 {
         self.t_i + (idx as f64) * self.dt
     }
 
-    /// Iterator over all grid times [s].
+    /// Iterator over all grid times `[s]`.
     pub fn times(&self) -> impl Iterator<Item = f64> + '_ {
         (0..self.len()).map(move |i| self.time(i))
     }
@@ -133,7 +133,7 @@ pub struct Solution {
 /// Conic rows encoding `g_{U(1,t)}(Gamma^T(t) lambda) <= 1` for one candidate time.
 ///
 /// Linear rows encode `a^T lambda <= b`; SOC rows encode `||G lambda||_2 <= h`.
-/// [`crate::refine_socp`] assembles these into clarabel cones.
+/// [`crate::refine_socp()`] assembles these into clarabel cones.
 #[derive(Debug, Clone, Default)]
 pub struct ConicRows {
     /// Linear rows `(a, b)` with `a^T lambda <= b`.
@@ -180,7 +180,7 @@ pub enum PlannerError {
     /// The Kepler Newton iteration failed to converge.
     #[error("Kepler solve diverged for M = {m} rad, e = {e}")]
     KeplerDivergence {
-        /// Mean anomaly [rad].
+        /// Mean anomaly `[rad]`.
         m: f64,
         /// Eccentricity.
         e: f64,
