@@ -39,7 +39,7 @@ fn main() {
         180.0_f64.to_radians(),
     );
     let (t_i, t_f) = (0.0, 117_990.0);
-    let dynamics = J2Roe::new(chief, t_i, t_f);
+    let dynamics = J2Roe::new(chief, t_i, t_f).expect("worked-example chief is valid");
     let cost = Piecewise::new(TAU / chief.mean_motion()); // eq.49 perigee windows
     let w = Pseudostate::from_row_slice(&W_METRES) / A_C; // dimensionless w_nd
     let grid = TimeGrid::uniform(t_i, t_f, 30.0); // 3934 candidate times

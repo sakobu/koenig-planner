@@ -125,7 +125,7 @@ fn refine_on_real_j2roe_runs_multiple_iterations() {
         0.0,
         180.0_f64.to_radians(),
     );
-    let dynamics = J2Roe::new(chief, 0.0, 117_990.0);
+    let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
     let cost = Piecewise::new(TAU / chief.mean_motion());
     let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
     let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);
@@ -152,7 +152,7 @@ fn solve_from_initial_times_endpoints_seed_reconstructs_w() {
         0.0,
         180.0_f64.to_radians(),
     );
-    let dynamics = J2Roe::new(chief, 0.0, 117_990.0);
+    let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
     let cost = Piecewise::new(TAU / chief.mean_motion());
     let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
     let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);

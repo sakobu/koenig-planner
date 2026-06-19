@@ -276,7 +276,7 @@ mod tests {
             0.0,
             180.0_f64.to_radians(),
         );
-        let dynamics = J2Roe::new(chief, 0.0, 117_990.0);
+        let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
         let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| dynamics.gamma(t).unwrap()).collect();

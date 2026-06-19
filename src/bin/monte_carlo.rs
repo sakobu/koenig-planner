@@ -85,6 +85,7 @@ mod harness {
     /// J2 mean-ROE dynamics for the worked-example window.
     pub fn worked_example_dynamics() -> J2Roe {
         J2Roe::new(worked_example_chief(), T_I, T_F)
+            .expect("worked-example chief is a valid elliptic, inclined orbit")
     }
 
     /// eq. 49 piecewise cost (FaceMax in 2-hr perigee windows, Norm2 elsewhere).
