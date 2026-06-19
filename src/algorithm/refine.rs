@@ -136,6 +136,7 @@ mod tests {
     use super::*;
     use crate::cost::Piecewise;
     use crate::dynamics::Dynamics;
+    use crate::types::PlannerError;
     use nalgebra::SVector;
 
     /// Mock dynamics: gently rotating, well-conditioned Γ(t). `rate` is chosen
@@ -144,10 +145,10 @@ mod tests {
         rate: f64,
     }
     impl Dynamics for SpinDyn {
-        fn gamma(&self, t: f64) -> SMatrix<f64, N, M> {
+        fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
             let a = self.rate * t;
             let (c, s) = (a.cos(), a.sin());
-            SMatrix::<f64, N, M>::from_row_slice(&[
+            Ok(SMatrix::<f64, N, M>::from_row_slice(&[
                 c,
                 -s,
                 0.0, //
@@ -166,24 +167,24 @@ mod tests {
                 0.5 * s,
                 -0.5 * c,
                 0.0,
-            ])
+            ]))
         }
     }
 
     fn cache(dynamics: &SpinDyn, grid: &TimeGrid) -> Vec<SMatrix<f64, N, M>> {
-        grid.times().map(|t| dynamics.gamma(t)).collect()
+        grid.times().map(|t| dynamics.gamma(t).unwrap()).collect()
     }
 
     #[test]
     fn refine_converges_and_trace_is_non_increasing() {
         let dynamics = SpinDyn { rate: 0.05 };
-        let grid = TimeGrid::uniform(0.0, 60.0, 1.0); // 61 points
+        let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap(); // 61 points
         let gammas = cache(&dynamics, &grid);
         let cost = Piecewise::new(1.0e12); // Norm2 everywhere
                                            // Reachable target: impulses at two distinct grid times.
         let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
         let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
-        let w = dynamics.gamma(12.0) * ua + dynamics.gamma(47.0) * ub;
+        let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
         let params = SolveParams::default();
 
         let out = refine(&cost, &grid, &gammas, &w, &params, vec![0, 30, 60], 50).unwrap();
@@ -205,12 +206,12 @@ mod tests {
     #[test]
     fn refine_reports_not_converged_at_iteration_cap() {
         let dynamics = SpinDyn { rate: 0.05 };
-        let grid = TimeGrid::uniform(0.0, 60.0, 1.0);
+        let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
         let gammas = cache(&dynamics, &grid);
         let cost = Piecewise::new(1.0e12);
         let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
         let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
-        let w = dynamics.gamma(12.0) * ua + dynamics.gamma(47.0) * ub;
+        let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
         let params = SolveParams::default();
 
         // Three candidate times don't span T^opt, so one solve won't converge.
@@ -239,7 +240,7 @@ mod tests {
         // Realistic period so the perigee window is a thin band, giving a true
         // FaceMax/Norm2 mix across the grid.
         let dynamics = SpinDyn { rate: 1.0e-4 };
-        let grid = TimeGrid::uniform(0.0, 80_000.0, 1000.0); // 81 points
+        let grid = TimeGrid::uniform(0.0, 80_000.0, 1000.0).unwrap(); // 81 points
         let gammas = cache(&dynamics, &grid);
         let cost = Piecewise::new(40_000.0); // FaceMax for t mod 40000 in (16400, 23600)
                                              // Seed T^est with one Norm2 time (k=5, t=5000) and one FaceMax time
@@ -248,7 +249,8 @@ mod tests {
         // FaceMax support directions are tetrahedral vertices; use vertex 0
         // = [√(2/3), 0, -√(1/3)] so the FaceMax time is genuinely reachable.
         let v0 = SVector::<f64, M>::new((2.0_f64 / 3.0).sqrt(), 0.0, -(1.0_f64 / 3.0).sqrt());
-        let w = dynamics.gamma(5000.0) * ua + dynamics.gamma(20_000.0) * (0.8 * v0);
+        let w =
+            dynamics.gamma(5000.0).unwrap() * ua + dynamics.gamma(20_000.0).unwrap() * (0.8 * v0);
         let params = SolveParams::default();
 
         // Mixed-cone refine_socp must succeed and the trace must be sane; we do
@@ -274,9 +276,10 @@ mod tests {
             0.0,
             180.0_f64.to_radians(),
         );
-        let dynamics = J2Roe::new(chief, 0.0, 117_990.0);
-        let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);
-        let gammas: Vec<SMatrix<f64, N, M>> = grid.times().map(|t| dynamics.gamma(t)).collect();
+        let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
+        let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
+        let gammas: Vec<SMatrix<f64, N, M>> =
+            grid.times().map(|t| dynamics.gamma(t).unwrap()).collect();
         let cost = Piecewise::new(TAU / chief.mean_motion());
         let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
         let params = SolveParams::default();

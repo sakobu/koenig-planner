@@ -39,10 +39,10 @@ fn main() {
         180.0_f64.to_radians(),
     );
     let (t_i, t_f) = (0.0, 117_990.0);
-    let dynamics = J2Roe::new(chief, t_i, t_f);
+    let dynamics = J2Roe::new(chief, t_i, t_f).expect("worked-example chief is valid");
     let cost = Piecewise::new(TAU / chief.mean_motion()); // eq.49 perigee windows
     let w = Pseudostate::from_row_slice(&W_METRES) / A_C; // dimensionless w_nd
-    let grid = TimeGrid::uniform(t_i, t_f, 30.0); // 3934 candidate times
+    let grid = TimeGrid::uniform(t_i, t_f, 30.0).expect("valid grid"); // 3934 candidate times
     let params = SolveParams::default();
 
     let sol = solve(&dynamics, &cost, w, grid, &params).expect("worked example should solve");
@@ -50,7 +50,7 @@ fn main() {
     // --- Exact discretized dual (all-times SOCP) = the self-consistent optimum. ---
     let rows: Vec<_> = grid
         .times()
-        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t).unwrap()))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
 
@@ -89,7 +89,7 @@ fn main() {
     let curve: Vec<(f64, f64)> = grid
         .times()
         .map(|t| {
-            let y = dynamics.gamma(t).transpose() * sol.lambda;
+            let y = dynamics.gamma(t).unwrap().transpose() * sol.lambda;
             (t, cost.at(t).contact(y))
         })
         .collect();

@@ -6,7 +6,7 @@ use super::b_matrix::control_input_matrix;
 use super::orbit::AbsoluteOrbit;
 use super::stm::state_transition;
 use super::Dynamics;
-use crate::types::{M, N};
+use crate::types::{PlannerError, M, N};
 use nalgebra::SMatrix;
 
 /// J2 mean-ROE dynamics for a fixed chief orbit and control window `[t_i, t_f]`.
@@ -20,18 +20,42 @@ pub struct J2Roe {
 impl J2Roe {
     /// Build from the chief's mean absolute orbit at `t_i` and the window
     /// endpoints `[t_i, t_f]` [s].
-    pub fn new(chief_ti: AbsoluteOrbit, t_i: f64, t_f: f64) -> Self {
-        Self { chief_ti, t_i, t_f }
+    ///
+    /// # Errors
+    /// Returns [`PlannerError::InvalidInput`] if the chief is non-elliptic
+    /// (`e ∉ [0,1)`), equatorial (`i` within `1e-9` rad of `0` or `π`, where the
+    /// `tan i` term in `B(t)` is singular), or the window is not `t_f > t_i`
+    /// (finite).
+    pub fn new(chief_ti: AbsoluteOrbit, t_i: f64, t_f: f64) -> Result<Self, PlannerError> {
+        if !(0.0..1.0).contains(&chief_ti.e) {
+            return Err(PlannerError::InvalidInput(format!(
+                "J2Roe: chief must be elliptic (0 <= e < 1), got e = {}",
+                chief_ti.e
+            )));
+        }
+        if chief_ti.i.sin().abs() < 1e-9 {
+            return Err(PlannerError::InvalidInput(format!(
+                "J2Roe: chief inclination must be bounded away from 0 and pi \
+                 (B(t) has a 1/tan(i) singularity), got i = {} rad",
+                chief_ti.i
+            )));
+        }
+        if !t_i.is_finite() || !t_f.is_finite() || t_f <= t_i {
+            return Err(PlannerError::InvalidInput(
+                "J2Roe: window must satisfy finite t_i, t_f and t_f > t_i".into(),
+            ));
+        }
+        Ok(Self { chief_ti, t_i, t_f })
     }
 }
 
 impl Dynamics for J2Roe {
-    fn gamma(&self, t: f64) -> SMatrix<f64, N, M> {
+    fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
         let orb_t = self.chief_ti.propagate(t - self.t_i);
         let orb_tf = self.chief_ti.propagate(self.t_f - self.t_i);
-        let b = control_input_matrix(&orb_t);
+        let b = control_input_matrix(&orb_t)?;
         let phi = state_transition(&orb_t, &orb_tf, self.t_f - t);
-        phi * b
+        Ok(phi * b)
     }
 }
 
@@ -49,7 +73,25 @@ mod tests {
             0.0,
             180.0_f64.to_radians(),
         );
-        J2Roe::new(chief, 0.0, 117_990.0)
+        J2Roe::new(chief, 0.0, 117_990.0).unwrap()
+    }
+
+    #[test]
+    fn new_rejects_out_of_domain_chief() {
+        let ok = AbsoluteOrbit::new(25_000e3, 0.7, 40.0_f64.to_radians(), 0.0, 0.0, 0.0);
+        assert!(J2Roe::new(ok, 0.0, 100.0).is_ok());
+
+        let hyperbolic = AbsoluteOrbit::new(25_000e3, 1.2, 40.0_f64.to_radians(), 0.0, 0.0, 0.0);
+        assert!(J2Roe::new(hyperbolic, 0.0, 100.0).is_err());
+
+        let equatorial = AbsoluteOrbit::new(25_000e3, 0.7, 0.0, 0.0, 0.0, 0.0);
+        assert!(J2Roe::new(equatorial, 0.0, 100.0).is_err()); // tan(i)=0 singularity
+
+        let polar_flip = AbsoluteOrbit::new(25_000e3, 0.7, std::f64::consts::PI, 0.0, 0.0, 0.0);
+        assert!(J2Roe::new(polar_flip, 0.0, 100.0).is_err()); // i = pi, tan=0
+
+        let bad_window = AbsoluteOrbit::new(25_000e3, 0.7, 40.0_f64.to_radians(), 0.0, 0.0, 0.0);
+        assert!(J2Roe::new(bad_window, 100.0, 100.0).is_err()); // t_f <= t_i
     }
 
     #[test]
@@ -64,8 +106,8 @@ mod tests {
         let j = worked_example();
         let orb_tf = j.chief_ti.propagate(j.t_f - j.t_i);
         assert_relative_eq!(
-            j.gamma(j.t_f),
-            control_input_matrix(&orb_tf),
+            j.gamma(j.t_f).unwrap(),
+            control_input_matrix(&orb_tf).unwrap(),
             epsilon = 1e-12,
             max_relative = 1e-10
         );
@@ -73,7 +115,7 @@ mod tests {
 
     #[test]
     fn gamma_entrywise_matches_oracle() {
-        let g = worked_example().gamma(16_050.0);
+        let g = worked_example().gamma(16_050.0).unwrap();
         let expected = SMatrix::<f64, N, M>::from_row_slice(&[
             -4.292240669143e-04,
             4.630275430939e-04,

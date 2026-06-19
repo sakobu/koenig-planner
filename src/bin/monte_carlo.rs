@@ -85,6 +85,7 @@ mod harness {
     /// J2 mean-ROE dynamics for the worked-example window.
     pub fn worked_example_dynamics() -> J2Roe {
         J2Roe::new(worked_example_chief(), T_I, T_F)
+            .expect("worked-example chief is a valid elliptic, inclined orbit")
     }
 
     /// eq. 49 piecewise cost (FaceMax in 2-hr perigee windows, Norm2 elsewhere).
@@ -229,7 +230,7 @@ mod harness {
         ws: &[Pseudostate],
         schemes: &[(usize, InitScheme)],
     ) -> (Vec<Fig8Row>, usize) {
-        let grid = TimeGrid::uniform(T_I, T_F, GRID_DT);
+        let grid = TimeGrid::uniform(T_I, T_F, GRID_DT).expect("valid sweep grid");
         let mut rows = Vec::with_capacity(ws.len() * schemes.len());
         let mut failures = 0usize;
         for &(n_init, scheme) in schemes {
@@ -383,7 +384,7 @@ mod harness {
             .iter()
             .map(|&n| {
                 let dt = (T_F - T_I) / (n.max(2) - 1) as f64;
-                let grid = TimeGrid::uniform(T_I, T_F, dt);
+                let grid = TimeGrid::uniform(T_I, T_F, dt).expect("valid sweep grid");
                 let _ = solve(dynamics, cost, w, grid, &params); // warmup
                 let start = Instant::now();
                 let result = solve(dynamics, cost, w, grid, &params);

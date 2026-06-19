@@ -45,7 +45,13 @@ const MAX_REFINE_ITERS: usize = 50;
 
 /// Precompute `Γ(t)` over the grid once (`J2Roe` caches nothing — see Design
 /// Decision 2). Indexed by grid index.
-fn cache_gamma<D: Dynamics>(dynamics: &D, grid: &TimeGrid) -> Vec<SMatrix<f64, N, M>> {
+///
+/// # Errors
+/// Propagates the first `Dynamics::gamma` failure (out-of-domain chief).
+fn cache_gamma<D: Dynamics>(
+    dynamics: &D,
+    grid: &TimeGrid,
+) -> Result<Vec<SMatrix<f64, N, M>>, PlannerError> {
     grid.times().map(|t| dynamics.gamma(t)).collect()
 }
 
@@ -126,7 +132,7 @@ pub fn solve<D: Dynamics, C: CostModel>(
     params: &SolveParams,
 ) -> Result<Solution, PlannerError> {
     validate_inputs(&w, &grid, params)?;
-    let gammas = cache_gamma(dynamics, &grid);
+    let gammas = cache_gamma(dynamics, &grid)?;
     // Algorithm 1: initialization (λ_est ∥ w) → the n_init largest-contact times.
     let t_est = init::initialize(cost, &grid, &gammas, &w, params);
     run_pipeline(cost, &grid, &gammas, &w, params, t_est)
@@ -151,7 +157,7 @@ pub fn solve_from_initial_times<D: Dynamics, C: CostModel>(
     initial_times: &[f64],
 ) -> Result<Solution, PlannerError> {
     validate_inputs(&w, &grid, params)?;
-    let gammas = cache_gamma(dynamics, &grid);
+    let gammas = cache_gamma(dynamics, &grid)?;
     let t_est = nearest_grid_indices(&grid, initial_times);
     if t_est.is_empty() {
         return Err(PlannerError::InvalidInput(
@@ -167,8 +173,8 @@ mod tests {
 
     #[test]
     fn nearest_grid_indices_snaps_dedups_and_clamps() {
-        let grid = TimeGrid::uniform(0.0, 100.0, 10.0); // indices 0..=10
-                                                        // Endpoints map to the first and last index.
+        let grid = TimeGrid::uniform(0.0, 100.0, 10.0).unwrap(); // indices 0..=10
+                                                                 // Endpoints map to the first and last index.
         assert_eq!(nearest_grid_indices(&grid, &[0.0, 100.0]), vec![0, 10]);
         // Nearest rounding, then sorted + deduped: 4->0, 24->2, 26->3.
         assert_eq!(
@@ -186,6 +192,9 @@ mod tests {
 
     #[test]
     fn empty_initial_times_is_rejected() {
-        assert!(nearest_grid_indices(&TimeGrid::uniform(0.0, 10.0, 1.0), &[f64::NAN]).is_empty());
+        assert!(
+            nearest_grid_indices(&TimeGrid::uniform(0.0, 10.0, 1.0).unwrap(), &[f64::NAN])
+                .is_empty()
+        );
     }
 }

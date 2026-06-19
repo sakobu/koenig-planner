@@ -84,6 +84,7 @@ mod tests {
     use super::*;
     use crate::cost::Piecewise;
     use crate::dynamics::Dynamics;
+    use crate::types::PlannerError;
 
     fn top_identity() -> SMatrix<f64, N, M> {
         let mut g = SMatrix::<f64, N, M>::zeros();
@@ -96,19 +97,19 @@ mod tests {
     /// Γ(t) = top 3×3 identity for every t.
     struct TopId;
     impl Dynamics for TopId {
-        fn gamma(&self, _t: f64) -> SMatrix<f64, N, M> {
-            top_identity()
+        fn gamma(&self, _t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
+            Ok(top_identity())
         }
     }
 
     /// Γ(t) = top identity for t < 5, the zero matrix otherwise.
     struct TopThenZero;
     impl Dynamics for TopThenZero {
-        fn gamma(&self, t: f64) -> SMatrix<f64, N, M> {
+        fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
             if t < 5.0 {
-                top_identity()
+                Ok(top_identity())
             } else {
-                SMatrix::<f64, N, M>::zeros()
+                Ok(SMatrix::<f64, N, M>::zeros())
             }
         }
     }
@@ -118,8 +119,9 @@ mod tests {
         // w = (3,4,12,0,0,0); ‖w_top‖ = 13. min-fuel SOCP recovers dv = w_top
         // directly; budget = 13. Tolerance 1e-3: interior-point solvers achieve
         // ~5e-4 accuracy when the budget constraint is exactly tight.
-        let grid = TimeGrid::uniform(0.0, 10.0, 1.0);
-        let gammas: Vec<SMatrix<f64, N, M>> = grid.times().map(|t| TopId.gamma(t)).collect();
+        let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
+        let gammas: Vec<SMatrix<f64, N, M>> =
+            grid.times().map(|t| TopId.gamma(t).unwrap()).collect();
         let cost = Piecewise::new(1.0e12); // Norm2
         let w = SVector::<f64, N>::from_row_slice(&[3.0, 4.0, 12.0, 0.0, 0.0, 0.0]);
         let out = extract(&cost, &grid, &gammas, &w, 13.0, &[0]).unwrap();
@@ -135,8 +137,11 @@ mod tests {
     fn extract_drops_unused_times() {
         // T^opt includes a time (t=8) where Γ = 0; min-fuel assigns it Δv≈0,
         // then pruning drops it. Only the t=0 maneuver survives.
-        let grid = TimeGrid::uniform(0.0, 10.0, 1.0);
-        let gammas: Vec<SMatrix<f64, N, M>> = grid.times().map(|t| TopThenZero.gamma(t)).collect();
+        let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
+        let gammas: Vec<SMatrix<f64, N, M>> = grid
+            .times()
+            .map(|t| TopThenZero.gamma(t).unwrap())
+            .collect();
         let cost = Piecewise::new(1.0e12);
         let w = SVector::<f64, N>::from_row_slice(&[3.0, 4.0, 12.0, 0.0, 0.0, 0.0]);
         let out = extract(&cost, &grid, &gammas, &w, 13.0, &[0, 8]).unwrap();

@@ -28,10 +28,10 @@ fn worked_example() -> (J2Roe, Piecewise, Pseudostate, TimeGrid) {
         0.0,
         180.0_f64.to_radians(),
     );
-    let dynamics = J2Roe::new(chief, 0.0, 117_990.0);
+    let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
     let cost = Piecewise::new(TAU / chief.mean_motion());
     let w = Pseudostate::from_row_slice(&W_METRES) / A_C;
-    let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);
+    let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
     (dynamics, cost, w, grid)
 }
 
@@ -53,7 +53,7 @@ fn worked_example_is_self_consistent() {
         .times()
         .map(|t| {
             cost.at(t)
-                .contact(dynamics.gamma(t).transpose() * sol.lambda)
+                .contact(dynamics.gamma(t).unwrap().transpose() * sol.lambda)
         })
         .fold(f64::NEG_INFINITY, f64::max);
     assert!(max_g <= 1.01 + 1e-6, "max_t g = {max_g}");
@@ -62,7 +62,7 @@ fn worked_example_is_self_consistent() {
     // the exact all-times SOCP solved over every grid time (self-consistency).
     let rows: Vec<_> = grid
         .times()
-        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t).unwrap()))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
     assert!(
@@ -129,10 +129,10 @@ fn hunter_l2_cross_check_recovers_w() {
         argp,
         mean_anom,
     );
-    let dynamics = J2Roe::new(chief, 0.0, 39_000.0);
+    let dynamics = J2Roe::new(chief, 0.0, 39_000.0).unwrap();
     let cost = Piecewise::new(1.0e18); // pure Norm2 (no perigee window ever active)
     let w = Pseudostate::from_row_slice(&[0.66, -1.52, -0.38, -1.44, 0.29, -0.91]) / A_C;
-    let grid = TimeGrid::uniform(0.0, 39_000.0, 10.0);
+    let grid = TimeGrid::uniform(0.0, 39_000.0, 10.0).unwrap();
     assert_eq!(grid.len(), 3901);
 
     let sol = solve(&dynamics, &cost, w, grid, &SolveParams::default()).expect("should solve");
@@ -140,7 +140,7 @@ fn hunter_l2_cross_check_recovers_w() {
     // Self-consistency: refinement objective equals the exact all-times dual.
     let rows: Vec<_> = grid
         .times()
-        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t).unwrap()))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
     assert!(
@@ -188,7 +188,7 @@ fn paper_table_iv_does_not_reconstruct() {
     ];
     let mut recon = SVector::<f64, 6>::zeros();
     for (t, u) in &table_iv {
-        recon += dynamics.gamma(*t) * u;
+        recon += dynamics.gamma(*t).unwrap() * u;
     }
     let residual = (w - recon).norm() / w.norm();
     assert!(

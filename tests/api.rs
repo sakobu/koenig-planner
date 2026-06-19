@@ -35,6 +35,6 @@ fn error_displays_message() {
 
 #[test]
 fn worked_and_hunter_grid_counts() {
-    assert_eq!(TimeGrid::uniform(0.0, 117990.0, 30.0).len(), 3934);
-    assert_eq!(TimeGrid::uniform(0.0, 39000.0, 10.0).len(), 3901);
+    assert_eq!(TimeGrid::uniform(0.0, 117990.0, 30.0).unwrap().len(), 3934);
+    assert_eq!(TimeGrid::uniform(0.0, 39000.0, 10.0).unwrap().len(), 3901);
 }

@@ -162,7 +162,7 @@ fn b_matrix_matches_independent_finite_difference() {
     );
 
     for orbit in [fixture, worked_at_16050, hunter, hunter.propagate(20_000.0)] {
-        let analytic = control_input_matrix(&orbit);
+        let analytic = control_input_matrix(&orbit).unwrap();
         let numeric = fd_b(&orbit);
         let rel = frob_rel_err(&numeric, &analytic);
         assert!(

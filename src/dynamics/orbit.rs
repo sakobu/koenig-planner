@@ -3,6 +3,7 @@
 
 use super::constants::{J2, MU, R_E};
 use super::kepler::mean_to_true;
+use crate::types::PlannerError;
 
 /// A mean absolute Keplerian orbit `[a, e, i, Omega, omega, M]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -57,7 +58,10 @@ impl AbsoluteOrbit {
     }
 
     /// True anomaly `nu` [rad] from the current mean anomaly.
-    pub fn true_anomaly(&self) -> f64 {
+    ///
+    /// # Errors
+    /// Propagates [`mean_to_true`]'s errors (non-elliptic `e`).
+    pub fn true_anomaly(&self) -> Result<f64, PlannerError> {
         mean_to_true(self.mean_anom, self.e)
     }
 
