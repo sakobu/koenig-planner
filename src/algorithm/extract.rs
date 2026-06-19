@@ -119,7 +119,7 @@ mod tests {
         // w = (3,4,12,0,0,0); ‖w_top‖ = 13. min-fuel SOCP recovers dv = w_top
         // directly; budget = 13. Tolerance 1e-3: interior-point solvers achieve
         // ~5e-4 accuracy when the budget constraint is exactly tight.
-        let grid = TimeGrid::uniform(0.0, 10.0, 1.0);
+        let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| TopId.gamma(t).unwrap()).collect();
         let cost = Piecewise::new(1.0e12); // Norm2
@@ -137,7 +137,7 @@ mod tests {
     fn extract_drops_unused_times() {
         // T^opt includes a time (t=8) where Γ = 0; min-fuel assigns it Δv≈0,
         // then pruning drops it. Only the t=0 maneuver survives.
-        let grid = TimeGrid::uniform(0.0, 10.0, 1.0);
+        let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
         let gammas: Vec<SMatrix<f64, N, M>> = grid
             .times()
             .map(|t| TopThenZero.gamma(t).unwrap())

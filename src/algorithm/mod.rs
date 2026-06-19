@@ -173,8 +173,8 @@ mod tests {
 
     #[test]
     fn nearest_grid_indices_snaps_dedups_and_clamps() {
-        let grid = TimeGrid::uniform(0.0, 100.0, 10.0); // indices 0..=10
-                                                        // Endpoints map to the first and last index.
+        let grid = TimeGrid::uniform(0.0, 100.0, 10.0).unwrap(); // indices 0..=10
+                                                                 // Endpoints map to the first and last index.
         assert_eq!(nearest_grid_indices(&grid, &[0.0, 100.0]), vec![0, 10]);
         // Nearest rounding, then sorted + deduped: 4->0, 24->2, 26->3.
         assert_eq!(
@@ -192,6 +192,9 @@ mod tests {
 
     #[test]
     fn empty_initial_times_is_rejected() {
-        assert!(nearest_grid_indices(&TimeGrid::uniform(0.0, 10.0, 1.0), &[f64::NAN]).is_empty());
+        assert!(
+            nearest_grid_indices(&TimeGrid::uniform(0.0, 10.0, 1.0).unwrap(), &[f64::NAN])
+                .is_empty()
+        );
     }
 }

@@ -42,11 +42,27 @@ pub struct TimeGrid {
 
 impl TimeGrid {
     /// Build a uniform grid with step `dt` over `[t_i, t_f]`.
-    pub fn uniform(t_i: f64, t_f: f64, dt: f64) -> Self {
-        Self { t_i, t_f, dt }
+    ///
+    /// # Errors
+    /// Returns [`PlannerError::InvalidInput`] unless `t_i`, `t_f`, `dt` are all
+    /// finite, `dt > 0`, and `t_f >= t_i`. This is the only validating entry
+    /// point: constructing `TimeGrid { .. }` via the public fields bypasses it,
+    /// in which case `len`/`time`/`times` assume that same invariant.
+    pub fn uniform(t_i: f64, t_f: f64, dt: f64) -> Result<Self, PlannerError> {
+        if !t_i.is_finite() || !t_f.is_finite() || !dt.is_finite() || dt <= 0.0 || t_f < t_i {
+            return Err(PlannerError::InvalidInput(format!(
+                "TimeGrid::uniform requires finite t_i,t_f,dt with dt > 0 and \
+                 t_f >= t_i (got t_i={t_i}, t_f={t_f}, dt={dt})"
+            )));
+        }
+        Ok(Self { t_i, t_f, dt })
     }
 
     /// Number of grid points, inclusive of both endpoints.
+    ///
+    /// Assumes the [`uniform`](Self::uniform) invariant (`dt > 0`, `t_f >= t_i`,
+    /// finite); on a hand-built `TimeGrid` violating it the `f64 -> usize` cast
+    /// saturates.
     pub fn len(&self) -> usize {
         ((self.t_f - self.t_i) / self.dt).round() as usize + 1
     }
@@ -183,7 +199,7 @@ mod tests {
 
     #[test]
     fn worked_example_grid_has_3934_times() {
-        let g = TimeGrid::uniform(0.0, 117990.0, 30.0);
+        let g = TimeGrid::uniform(0.0, 117990.0, 30.0).unwrap();
         assert_eq!(g.len(), 3934);
         assert_abs_diff_eq!(g.time(0), 0.0, epsilon = 1e-9);
         assert_abs_diff_eq!(g.time(g.len() - 1), 117990.0, epsilon = 1e-6);
@@ -192,7 +208,7 @@ mod tests {
 
     #[test]
     fn hunter_grid_has_3901_times() {
-        let g = TimeGrid::uniform(0.0, 39000.0, 10.0);
+        let g = TimeGrid::uniform(0.0, 39000.0, 10.0).unwrap();
         assert_eq!(g.len(), 3901);
     }
 
@@ -211,5 +227,15 @@ mod tests {
         let c = ConicRows::default();
         assert!(c.linear.is_empty());
         assert!(c.soc.is_empty());
+    }
+
+    #[test]
+    fn uniform_rejects_degenerate_grids() {
+        assert!(TimeGrid::uniform(0.0, 60.0, 0.0).is_err()); // dt = 0
+        assert!(TimeGrid::uniform(0.0, 60.0, -1.0).is_err()); // dt < 0
+        assert!(TimeGrid::uniform(0.0, 60.0, f64::NAN).is_err());
+        assert!(TimeGrid::uniform(0.0, 60.0, f64::INFINITY).is_err());
+        assert!(TimeGrid::uniform(60.0, 0.0, 1.0).is_err()); // t_f < t_i
+        assert!(TimeGrid::uniform(0.0, 0.0, 1.0).is_ok()); // single-point grid is valid
     }
 }

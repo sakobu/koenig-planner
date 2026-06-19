@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn refine_converges_and_trace_is_non_increasing() {
         let dynamics = SpinDyn { rate: 0.05 };
-        let grid = TimeGrid::uniform(0.0, 60.0, 1.0); // 61 points
+        let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap(); // 61 points
         let gammas = cache(&dynamics, &grid);
         let cost = Piecewise::new(1.0e12); // Norm2 everywhere
                                            // Reachable target: impulses at two distinct grid times.
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn refine_reports_not_converged_at_iteration_cap() {
         let dynamics = SpinDyn { rate: 0.05 };
-        let grid = TimeGrid::uniform(0.0, 60.0, 1.0);
+        let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
         let gammas = cache(&dynamics, &grid);
         let cost = Piecewise::new(1.0e12);
         let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
@@ -240,7 +240,7 @@ mod tests {
         // Realistic period so the perigee window is a thin band, giving a true
         // FaceMax/Norm2 mix across the grid.
         let dynamics = SpinDyn { rate: 1.0e-4 };
-        let grid = TimeGrid::uniform(0.0, 80_000.0, 1000.0); // 81 points
+        let grid = TimeGrid::uniform(0.0, 80_000.0, 1000.0).unwrap(); // 81 points
         let gammas = cache(&dynamics, &grid);
         let cost = Piecewise::new(40_000.0); // FaceMax for t mod 40000 in (16400, 23600)
                                              // Seed T^est with one Norm2 time (k=5, t=5000) and one FaceMax time
@@ -277,7 +277,7 @@ mod tests {
             180.0_f64.to_radians(),
         );
         let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
-        let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);
+        let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| dynamics.gamma(t).unwrap()).collect();
         let cost = Piecewise::new(TAU / chief.mean_motion());

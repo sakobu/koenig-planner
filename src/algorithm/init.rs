@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn initialize_picks_largest_contact_times() {
-        let grid = TimeGrid::uniform(0.0, 100.0, 1.0); // 101 points
+        let grid = TimeGrid::uniform(0.0, 100.0, 1.0).unwrap(); // 101 points
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| RampDyn.gamma(t).unwrap()).collect();
         let cost = Piecewise::new(1.0e12); // huge period -> Norm2 everywhere
