@@ -210,7 +210,7 @@ mod harness {
         pub total_dv: f64,
     }
 
-    /// Per-`n_init` summary statistics.
+    /// Per-scheme summary statistics (one row per Fig. 8 seeding).
     pub struct Fig8Stat {
         pub n_init: usize,
         pub n: usize,
