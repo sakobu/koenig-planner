@@ -273,3 +273,31 @@ fn solve_reports_not_converged_through_public_api() {
         other => panic!("expected NotConverged, got {other:?}"),
     }
 }
+
+#[test]
+fn solve_reports_solver_failed_on_unreachable_target() {
+    // A constant rank-deficient Gamma (top 3x3 identity; ROE rows 4-6 always
+    // zero) leaves lambda_4..6 unconstrained. A target with mass in ROE index 3
+    // makes the eq.40 dual (maximize lambda^T w) unbounded => clarabel returns a
+    // non-Solved status => SolverFailed propagates through solve().
+    struct RankDeficientDyn;
+    impl Dynamics for RankDeficientDyn {
+        fn gamma(&self, _t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
+            let mut g = SMatrix::<f64, N, M>::zeros();
+            g[(0, 0)] = 1.0;
+            g[(1, 1)] = 1.0;
+            g[(2, 2)] = 1.0;
+            Ok(g)
+        }
+    }
+
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
+    let w = SVector::<f64, N>::from_row_slice(&[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
+    let cost = Piecewise::new(1.0e12);
+
+    let err = solve(&RankDeficientDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
+    assert!(
+        matches!(err, PlannerError::SolverFailed(_)),
+        "expected SolverFailed, got {err:?}"
+    );
+}
