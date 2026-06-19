@@ -28,6 +28,7 @@ mod harness {
     use koenig_planner::cost::Piecewise;
     use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
     use koenig_planner::{solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
+    use plotters::prelude::*;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
     use rand_distr::{Distribution, Normal};
@@ -238,6 +239,22 @@ mod harness {
             Ok(()) => println!("  rows written         : {path} ({} rows)", rows.len()),
             Err(e) => eprintln!("  CSV write failed     : {e}"),
         }
+
+        let cdf: Vec<(usize, Vec<(f64, f64)>)> = N_INITS
+            .iter()
+            .map(|&n_init| {
+                let counts: Vec<usize> = rows
+                    .iter()
+                    .filter(|r| r.n_init == n_init)
+                    .map(|r| r.iterations)
+                    .collect();
+                (n_init, empirical_cdf(&counts))
+            })
+            .collect();
+        match plot_fig8_cdf("target/fig8_cdf.png", &cdf) {
+            Ok(()) => println!("  CDF plot             : target/fig8_cdf.png"),
+            Err(e) => eprintln!("  PNG write failed     : {e}"),
+        }
     }
 
     /// One Fig. 9 timing outcome.
@@ -327,6 +344,115 @@ mod harness {
             Ok(()) => println!("  rows written         : {path} ({} rows)", rows.len()),
             Err(e) => eprintln!("  CSV write failed     : {e}"),
         }
+
+        match plot_fig9_timing("target/fig9_timing.png", &rows) {
+            Ok(()) => println!("  timing plot          : target/fig9_timing.png"),
+            Err(e) => eprintln!("  PNG write failed     : {e}"),
+        }
+    }
+
+    /// Empirical CDF of iteration counts as `(value, fraction ≤ value)` over the
+    /// distinct sorted values, anchored at `(min-1, 0)` so the curve starts at 0.
+    pub fn empirical_cdf(counts: &[usize]) -> Vec<(f64, f64)> {
+        assert!(
+            !counts.is_empty(),
+            "empirical_cdf needs at least one sample"
+        );
+        let n = counts.len() as f64;
+        let mut sorted = counts.to_vec();
+        sorted.sort_unstable();
+        let mut pts = vec![((*sorted.first().unwrap() as f64) - 1.0, 0.0)];
+        let mut i = 0;
+        while i < sorted.len() {
+            let v = sorted[i];
+            let mut j = i;
+            while j < sorted.len() && sorted[j] == v {
+                j += 1;
+            }
+            pts.push((v as f64, j as f64 / n));
+            i = j;
+        }
+        pts
+    }
+
+    /// Plot one step-CDF per `n_init` to a PNG.
+    pub fn plot_fig8_cdf(
+        path: &str,
+        series: &[(usize, Vec<(f64, f64)>)],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let root = BitMapBackend::new(path, (900, 600)).into_drawing_area();
+        root.fill(&WHITE)?;
+        let x_max = series
+            .iter()
+            .flat_map(|(_, p)| p.iter().map(|&(x, _)| x))
+            .fold(1.0_f64, f64::max);
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Fig. 8 - Algorithm-2 iteration CDF", ("sans-serif", 28))
+            .margin(12)
+            .x_label_area_size(45)
+            .y_label_area_size(55)
+            .build_cartesian_2d(0f64..(x_max + 1.0), 0f64..1.02f64)?;
+        chart
+            .configure_mesh()
+            .x_desc("iterations")
+            .y_desc("empirical CDF")
+            .draw()?;
+        let palette = [RED, BLUE, GREEN];
+        for (i, (n_init, pts)) in series.iter().enumerate() {
+            let color = palette[i % palette.len()];
+            chart
+                .draw_series(LineSeries::new(pts.iter().cloned(), color.stroke_width(2)))?
+                .label(format!("n_init = {n_init}"))
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 18, y)], color));
+        }
+        chart
+            .configure_series_labels()
+            .background_style(WHITE.mix(0.85))
+            .border_style(BLACK)
+            .draw()?;
+        root.present()?;
+        Ok(())
+    }
+
+    /// Plot solve-time vs |T| on log-log axes to a PNG.
+    pub fn plot_fig9_timing(
+        path: &str,
+        rows: &[Fig9Row],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let root = BitMapBackend::new(path, (900, 600)).into_drawing_area();
+        root.fill(&WHITE)?;
+        let xs: Vec<f64> = rows.iter().map(|r| r.grid_len as f64).collect();
+        let ys: Vec<f64> = rows.iter().map(|r| r.seconds.max(1e-6)).collect();
+        let x_lo = xs.iter().cloned().fold(f64::INFINITY, f64::min).max(1.0);
+        let x_hi = xs.iter().cloned().fold(0.0, f64::max).max(10.0);
+        let y_lo = ys.iter().cloned().fold(f64::INFINITY, f64::min);
+        let y_hi = ys.iter().cloned().fold(0.0, f64::max);
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Fig. 9 - solve time vs |T|", ("sans-serif", 28))
+            .margin(12)
+            .x_label_area_size(45)
+            .y_label_area_size(70)
+            .build_cartesian_2d(
+                (x_lo..x_hi * 1.5).log_scale(),
+                (y_lo * 0.5..y_hi * 2.0).log_scale(),
+            )?;
+        chart
+            .configure_mesh()
+            .x_desc("|T| (grid size)")
+            .y_desc("solve time [s]")
+            .draw()?;
+        chart.draw_series(LineSeries::new(
+            xs.iter().cloned().zip(ys.iter().cloned()),
+            BLUE.stroke_width(2),
+        ))?;
+        chart.draw_series(
+            xs.iter()
+                .cloned()
+                .zip(ys.iter().cloned())
+                .map(|(x, y)| Circle::new((x, y), 3, BLUE.filled())),
+        )?;
+        root.present()?;
+        Ok(())
     }
 
     #[cfg(test)]
@@ -371,6 +497,18 @@ mod harness {
             assert!(rows.iter().all(|r| r.seconds >= 0.0 && r.grid_len >= 2));
             // Finer grid is at least as large in point count.
             assert!(rows[1].grid_len >= rows[0].grid_len);
+        }
+
+        #[test]
+        fn empirical_cdf_is_monotone_and_ends_at_one() {
+            let pts = empirical_cdf(&[3, 3, 4, 5]);
+            // Left anchor at 0, then steps at the distinct values, ending at 1.0.
+            assert_eq!(pts.first().unwrap().1, 0.0);
+            assert!((pts.last().unwrap().1 - 1.0).abs() < 1e-12);
+            // (value, fraction <= value): (2,0), (3,0.5), (4,0.75), (5,1.0).
+            assert_eq!(pts, vec![(2.0, 0.0), (3.0, 0.5), (4.0, 0.75), (5.0, 1.0)]);
+            // Monotone non-decreasing in the fraction.
+            assert!(pts.windows(2).all(|w| w[1].1 >= w[0].1));
         }
 
         #[test]
