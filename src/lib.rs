@@ -10,11 +10,17 @@ pub mod dynamics;
 pub mod solver;
 pub mod types;
 
+// --- Core API: the entry points and results most users need. ---
 pub use algorithm::{solve, solve_from_initial_times};
-pub use cost::{CostModel, SublevelSet};
 pub use dynamics::Dynamics;
-pub use solver::{extract_qp, min_fuel_socp, refine_socp, MinFuelSolution, RefineSolution};
-pub use types::{
-    ConicRows, Dual, FuelGenerator, Maneuver, PlannerError, Pseudostate, Solution, SolveParams,
-    TimeGrid, M, N,
-};
+pub use types::{Maneuver, PlannerError, Solution, SolveParams, TimeGrid};
+
+// --- Problem-definition types. ---
+pub use cost::{CostModel, SublevelSet};
+pub use types::{Pseudostate, M, N};
+
+// --- Convex-encoding internals (advanced use; the solve path wraps these).
+// `extract_qp` is intentionally NOT re-exported here: it is the paper's
+// superseded fixed-direction QP, retained under `solver::extract_qp`. ---
+pub use solver::{min_fuel_socp, refine_socp, MinFuelSolution, RefineSolution};
+pub use types::{ConicRows, Dual, FuelGenerator};

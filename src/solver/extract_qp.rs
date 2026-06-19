@@ -15,6 +15,13 @@ use nalgebra::{SMatrix, SVector};
 /// `ys[j] = Gamma(t_j) . s_j` is the pseudostate contribution of the unit
 /// support direction `s_j` at the j-th optimal time; the caller builds the
 /// `Maneuver` as `dv = alpha_j . s_j` applied at `t_j`.
+///
+/// **Superseded on the solve path.** Algorithm 3 now runs
+/// [`crate::min_fuel_socp`] (the direct full-3-DOF min-fuel SOCP), which is
+/// robust on the degenerate flat contacts where this fixed-support-direction
+/// magnitude QP under-spans `w`. This function is retained as the paper's
+/// original primitive (and for its pinning test) but is not re-exported at the
+/// crate root.
 pub fn extract_qp(
     w: &Pseudostate,
     ys: &[SVector<f64, N>],
