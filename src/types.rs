@@ -94,9 +94,6 @@ pub struct SolveParams {
     pub eps_cost: f64,
     /// Slack-removal tolerance `eps_remove` (Table III: 0.01).
     pub eps_remove: f64,
-    /// Positive-definite weight `Q` for the extraction QP (identity in the example).
-    /// (Reserved; unused by the Phase-5b min-fuel extractor.)
-    pub q: SMatrix<f64, N, N>,
 }
 
 impl Default for SolveParams {
@@ -106,7 +103,6 @@ impl Default for SolveParams {
             n_init: 6,
             eps_cost: 0.01,
             eps_remove: 0.01,
-            q: SMatrix::<f64, N, N>::identity(),
         }
     }
 }
@@ -227,7 +223,6 @@ mod tests {
         assert_eq!(p.n_init, 6);
         assert_abs_diff_eq!(p.eps_cost, 0.01, epsilon = 1e-12);
         assert_abs_diff_eq!(p.eps_remove, 0.01, epsilon = 1e-12);
-        assert_eq!(p.q, SMatrix::<f64, N, N>::identity());
     }
 
     #[test]
