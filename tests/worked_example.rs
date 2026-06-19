@@ -53,7 +53,7 @@ fn worked_example_is_self_consistent() {
         .times()
         .map(|t| {
             cost.at(t)
-                .contact(dynamics.gamma(t).transpose() * sol.lambda)
+                .contact(dynamics.gamma(t).unwrap().transpose() * sol.lambda)
         })
         .fold(f64::NEG_INFINITY, f64::max);
     assert!(max_g <= 1.01 + 1e-6, "max_t g = {max_g}");
@@ -62,7 +62,7 @@ fn worked_example_is_self_consistent() {
     // the exact all-times SOCP solved over every grid time (self-consistency).
     let rows: Vec<_> = grid
         .times()
-        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t).unwrap()))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
     assert!(
@@ -140,7 +140,7 @@ fn hunter_l2_cross_check_recovers_w() {
     // Self-consistency: refinement objective equals the exact all-times dual.
     let rows: Vec<_> = grid
         .times()
-        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t).unwrap()))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
     assert!(
@@ -188,7 +188,7 @@ fn paper_table_iv_does_not_reconstruct() {
     ];
     let mut recon = SVector::<f64, 6>::zeros();
     for (t, u) in &table_iv {
-        recon += dynamics.gamma(*t) * u;
+        recon += dynamics.gamma(*t).unwrap() * u;
     }
     let residual = (w - recon).norm() / w.norm();
     assert!(

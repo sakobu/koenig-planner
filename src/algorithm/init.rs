@@ -52,6 +52,7 @@ mod tests {
     use super::*;
     use crate::cost::Piecewise;
     use crate::dynamics::Dynamics;
+    use crate::types::PlannerError;
     use nalgebra::SVector;
 
     #[test]
@@ -70,20 +71,21 @@ mod tests {
     /// Norm2 contact ‖Γᵀλ‖ grows monotonically with t.
     struct RampDyn;
     impl Dynamics for RampDyn {
-        fn gamma(&self, t: f64) -> SMatrix<f64, N, M> {
+        fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
             let mut g = SMatrix::<f64, N, M>::zeros();
             let s = 1.0 + t;
             for i in 0..M {
                 g[(i, i)] = s;
             }
-            g
+            Ok(g)
         }
     }
 
     #[test]
     fn initialize_picks_largest_contact_times() {
         let grid = TimeGrid::uniform(0.0, 100.0, 1.0); // 101 points
-        let gammas: Vec<SMatrix<f64, N, M>> = grid.times().map(|t| RampDyn.gamma(t)).collect();
+        let gammas: Vec<SMatrix<f64, N, M>> =
+            grid.times().map(|t| RampDyn.gamma(t).unwrap()).collect();
         let cost = Piecewise::new(1.0e12); // huge period -> Norm2 everywhere
         let w = SVector::<f64, N>::from_row_slice(&[1.0, 2.0, 3.0, 0.0, 0.0, 0.0]);
         let params = SolveParams {

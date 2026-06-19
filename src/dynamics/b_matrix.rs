@@ -4,17 +4,20 @@
 
 use super::constants::MU;
 use super::orbit::AbsoluteOrbit;
-use crate::types::{M, N};
+use crate::types::{PlannerError, M, N};
 use nalgebra::SMatrix;
 
 /// `B(t)` evaluated at `orbit`, including the `sqrt(a/mu)` scaling. The `[B_ij]`
 /// block depends only on `e, i, omega, nu`; `a` enters solely through the scale.
-pub fn control_input_matrix(orbit: &AbsoluteOrbit) -> SMatrix<f64, N, M> {
+///
+/// # Errors
+/// Propagates [`AbsoluteOrbit::true_anomaly`]'s errors (non-elliptic `e`).
+pub fn control_input_matrix(orbit: &AbsoluteOrbit) -> Result<SMatrix<f64, N, M>, PlannerError> {
     let e = orbit.e;
     let i = orbit.i;
     let argp = orbit.argp;
     let eta = orbit.eta();
-    let nu = orbit.true_anomaly();
+    let nu = orbit.true_anomaly()?;
     let theta = argp + nu;
     let ecn = 1.0 + e * nu.cos(); // 1 + e cos nu
     let tan_i = i.tan();
@@ -32,7 +35,7 @@ pub fn control_input_matrix(orbit: &AbsoluteOrbit) -> SMatrix<f64, N, M> {
     b[(3, 2)] = -eta * e * argp.cos() * theta.sin() / (tan_i * ecn);
     b[(4, 2)] = eta * theta.cos() / ecn;
     b[(5, 2)] = eta * theta.sin() / ecn;
-    b * scale
+    Ok(b * scale)
 }
 
 #[cfg(test)]
@@ -54,7 +57,7 @@ mod tests {
 
     #[test]
     fn zero_structure_matches_spec() {
-        let b = control_input_matrix(&fixture());
+        let b = control_input_matrix(&fixture()).unwrap();
         assert_eq!(b[(0, 2)], 0.0);
         assert_eq!(b[(1, 1)], 0.0);
         assert_eq!(b[(1, 2)], 0.0);
@@ -66,7 +69,7 @@ mod tests {
 
     #[test]
     fn entrywise_matches_oracle() {
-        let b = control_input_matrix(&fixture());
+        let b = control_input_matrix(&fixture()).unwrap();
         let expected = SMatrix::<f64, N, M>::from_row_slice(&[
             1.523378438764e-04,
             4.849959064280e-04,
@@ -96,8 +99,8 @@ mod tests {
         // Quadrupling a (same e,i,omega,M) scales B by sqrt(4) = 2.
         let o1 = fixture();
         let o4 = AbsoluteOrbit::new(4.0 * o1.a, o1.e, o1.i, o1.raan, o1.argp, o1.mean_anom);
-        let b1 = control_input_matrix(&o1);
-        let b4 = control_input_matrix(&o4);
+        let b1 = control_input_matrix(&o1).unwrap();
+        let b4 = control_input_matrix(&o4).unwrap();
         assert_relative_eq!(b4, b1 * 2.0, epsilon = 1e-12, max_relative = 1e-10);
     }
 }

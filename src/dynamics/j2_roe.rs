@@ -6,7 +6,7 @@ use super::b_matrix::control_input_matrix;
 use super::orbit::AbsoluteOrbit;
 use super::stm::state_transition;
 use super::Dynamics;
-use crate::types::{M, N};
+use crate::types::{PlannerError, M, N};
 use nalgebra::SMatrix;
 
 /// J2 mean-ROE dynamics for a fixed chief orbit and control window `[t_i, t_f]`.
@@ -26,12 +26,12 @@ impl J2Roe {
 }
 
 impl Dynamics for J2Roe {
-    fn gamma(&self, t: f64) -> SMatrix<f64, N, M> {
+    fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
         let orb_t = self.chief_ti.propagate(t - self.t_i);
         let orb_tf = self.chief_ti.propagate(self.t_f - self.t_i);
-        let b = control_input_matrix(&orb_t);
+        let b = control_input_matrix(&orb_t)?;
         let phi = state_transition(&orb_t, &orb_tf, self.t_f - t);
-        phi * b
+        Ok(phi * b)
     }
 }
 
@@ -64,8 +64,8 @@ mod tests {
         let j = worked_example();
         let orb_tf = j.chief_ti.propagate(j.t_f - j.t_i);
         assert_relative_eq!(
-            j.gamma(j.t_f),
-            control_input_matrix(&orb_tf),
+            j.gamma(j.t_f).unwrap(),
+            control_input_matrix(&orb_tf).unwrap(),
             epsilon = 1e-12,
             max_relative = 1e-10
         );
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn gamma_entrywise_matches_oracle() {
-        let g = worked_example().gamma(16_050.0);
+        let g = worked_example().gamma(16_050.0).unwrap();
         let expected = SMatrix::<f64, N, M>::from_row_slice(&[
             -4.292240669143e-04,
             4.630275430939e-04,

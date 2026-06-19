@@ -14,10 +14,10 @@ struct SpinDyn {
     rate: f64,
 }
 impl Dynamics for SpinDyn {
-    fn gamma(&self, t: f64) -> SMatrix<f64, N, M> {
+    fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
         let a = self.rate * t;
         let (c, s) = (a.cos(), a.sin());
-        SMatrix::<f64, N, M>::from_row_slice(&[
+        Ok(SMatrix::<f64, N, M>::from_row_slice(&[
             c,
             -s,
             0.0, //
@@ -36,7 +36,7 @@ impl Dynamics for SpinDyn {
             0.5 * s,
             -0.5 * c,
             0.0,
-        ])
+        ]))
     }
 }
 
@@ -46,7 +46,7 @@ fn solve_converges_on_reachable_synthetic_problem() {
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0); // 61 points
     let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
     let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
-    let w = dynamics.gamma(12.0) * ua + dynamics.gamma(47.0) * ub; // reachable
+    let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub; // reachable
     let cost = Piecewise::new(1.0e12); // Norm2 everywhere
     let params = SolveParams::default();
 
@@ -180,4 +180,21 @@ fn solve_from_initial_times_rejects_empty_seed() {
     let err = solve_from_initial_times(&dynamics, &cost, w, grid, &SolveParams::default(), &[])
         .unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
+}
+
+#[test]
+fn solve_propagates_dynamics_gamma_error() {
+    // A Dynamics whose gamma always fails must surface through cache_gamma -> solve,
+    // proving the fallible-gamma path is wired end-to-end (not swallowed).
+    struct FailDyn;
+    impl Dynamics for FailDyn {
+        fn gamma(&self, _t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
+            Err(PlannerError::InvalidInput("boom".into()))
+        }
+    }
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0); // NOTE: becomes .unwrap() in Task 5
+    let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    let cost = Piecewise::new(1.0e12);
+    let err = solve(&FailDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
+    assert!(matches!(err, PlannerError::InvalidInput(m) if m == "boom"));
 }

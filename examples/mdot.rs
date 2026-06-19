@@ -50,7 +50,7 @@ fn main() {
     // --- Exact discretized dual (all-times SOCP) = the self-consistent optimum. ---
     let rows: Vec<_> = grid
         .times()
-        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t)))
+        .map(|t| cost.at(t).cone_constraints(&dynamics.gamma(t).unwrap()))
         .collect();
     let exact_dual = refine_socp(&w, &rows).expect("exact SOCP").objective;
 
@@ -89,7 +89,7 @@ fn main() {
     let curve: Vec<(f64, f64)> = grid
         .times()
         .map(|t| {
-            let y = dynamics.gamma(t).transpose() * sol.lambda;
+            let y = dynamics.gamma(t).unwrap().transpose() * sol.lambda;
             (t, cost.at(t).contact(y))
         })
         .collect();
