@@ -27,12 +27,15 @@ fn main() {
 mod harness {
     use koenig_planner::cost::Piecewise;
     use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
+    use koenig_planner::Pseudostate;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+    use rand_distr::{Distribution, Normal};
     use std::f64::consts::TAU;
 
     /// Chief semimajor axis a_c [m] — the I/O scaling factor (spec §5.5).
     pub const A_C: f64 = 25_000e3;
     /// Per-ROE Gaussian std, metre-scaled (σ = 1 km; spec §6 Phase 6).
-    #[allow(dead_code)] // used in later tasks (sweep samplers)
     pub const SIGMA_M: f64 = 1000.0;
     /// Documented constant seed (portable StdRng) — "koenig" in hex-ish.
     pub const SEED: u64 = 0x6F_656E_6967;
@@ -77,5 +80,56 @@ mod harness {
         );
         println!("  Fig. 8 grid        : dt = {GRID_DT} s");
         println!("  seed               : {SEED:#x}");
+    }
+
+    /// `n` random target pseudostates as dimensionless `w_nd`: each of the 6 ROE
+    /// components `~ Normal(0, σ = SIGMA_M metres)`, then divided by `a_c`
+    /// (spec §6 Phase 6 sampling convention). `StdRng` is portable, so a fixed
+    /// `seed` yields identical samples on every platform.
+    #[allow(dead_code)]
+    pub fn sample_pseudostates(n: usize, seed: u64) -> Vec<Pseudostate> {
+        let mut rng = StdRng::seed_from_u64(seed);
+        let normal = Normal::new(0.0_f64, SIGMA_M).expect("σ > 0 is a valid normal");
+        (0..n)
+            .map(|_| {
+                let mut comp = [0.0_f64; 6];
+                for c in comp.iter_mut() {
+                    *c = normal.sample(&mut rng);
+                }
+                Pseudostate::from_row_slice(&comp) / A_C
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use approx::assert_abs_diff_eq;
+
+        #[test]
+        fn sampler_is_deterministic_and_well_scaled() {
+            let a = sample_pseudostates(200, SEED);
+            let b = sample_pseudostates(200, SEED);
+            assert_eq!(a.len(), 200);
+            // Determinism: same seed -> identical samples.
+            for (x, y) in a.iter().zip(&b) {
+                assert_eq!(x, y);
+            }
+            // Convention: components ~ Normal(0, SIGMA_M / A_C); never near-zero norm.
+            let expected_sd = SIGMA_M / A_C;
+            let flat: Vec<f64> = a.iter().flat_map(|w| w.iter().copied()).collect();
+            let mean = flat.iter().sum::<f64>() / flat.len() as f64;
+            let var = flat.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / flat.len() as f64;
+            assert_abs_diff_eq!(mean, 0.0, epsilon = expected_sd * 0.15);
+            assert_abs_diff_eq!(var.sqrt(), expected_sd, epsilon = expected_sd * 0.15);
+            assert!(a.iter().all(|w| w.norm() > 0.0));
+        }
+
+        #[test]
+        fn different_seeds_differ() {
+            let a = sample_pseudostates(8, SEED);
+            let b = sample_pseudostates(8, SEED + 1);
+            assert!(a.iter().zip(&b).any(|(x, y)| x != y));
+        }
     }
 }
