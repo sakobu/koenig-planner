@@ -252,13 +252,24 @@ mod harness {
         (rows, failures)
     }
 
-    /// Group rows by `n_init` and compute mean iterations, fraction ≤ 8 iterations,
-    /// max iterations, and max residual.
-    pub fn summarize_fig8(rows: &[Fig8Row], n_inits: &[usize]) -> Vec<Fig8Stat> {
-        n_inits
+    /// Group rows by scheme label (not the `n_init` count, which could collide
+    /// across future schemes) and compute mean iterations, fraction ≤ 8
+    /// iterations, max iterations, and max residual.
+    pub fn summarize_fig8(rows: &[Fig8Row], schemes: &[(usize, InitScheme)]) -> Vec<Fig8Stat> {
+        debug_assert!(
+            {
+                let mut names: Vec<&str> = schemes.iter().map(|&(_, s)| scheme_name(s)).collect();
+                names.sort_unstable();
+                names.dedup();
+                names.len() == schemes.len()
+            },
+            "Fig.8 scheme labels must be unique to group correctly"
+        );
+        schemes
             .iter()
-            .map(|&n_init| {
-                let group: Vec<&Fig8Row> = rows.iter().filter(|r| r.n_init == n_init).collect();
+            .map(|&(n_init, scheme)| {
+                let name = scheme_name(scheme);
+                let group: Vec<&Fig8Row> = rows.iter().filter(|r| r.scheme == name).collect();
                 let n = group.len();
                 let denom = n.max(1) as f64;
                 let mean_iters = group.iter().map(|r| r.iterations as f64).sum::<f64>() / denom;
@@ -306,8 +317,7 @@ mod harness {
     pub fn fig8<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
         let ws = sample_pseudostates(N_MC, SEED);
         let (rows, failures) = run_fig8(dynamics, cost, &ws, &FIG8_SCHEMES);
-        let counts: Vec<usize> = FIG8_SCHEMES.iter().map(|(n, _)| *n).collect();
-        let stats = summarize_fig8(&rows, &counts);
+        let stats = summarize_fig8(&rows, &FIG8_SCHEMES);
 
         println!("\nFig. 8 — Algorithm-2 iteration distribution ({N_MC} samples/scheme)");
         println!("  paper's three seedings: n=2 endpoints, n=6 largest-g, n=10 evenly-spaced");
@@ -344,10 +354,11 @@ mod harness {
 
         let cdf: Vec<(usize, Vec<(f64, f64)>)> = FIG8_SCHEMES
             .iter()
-            .map(|&(n_init, _)| {
+            .map(|&(n_init, scheme)| {
+                let name = scheme_name(scheme);
                 let counts: Vec<usize> = rows
                     .iter()
-                    .filter(|r| r.n_init == n_init)
+                    .filter(|r| r.scheme == name)
                     .map(|r| r.iterations)
                     .collect();
                 (n_init, empirical_cdf(&counts))
@@ -638,8 +649,7 @@ mod harness {
                 );
                 assert!((1..=50).contains(&r.iterations));
             }
-            let counts = [2usize, 6];
-            let stats = summarize_fig8(&rows, &counts);
+            let stats = summarize_fig8(&rows, &schemes);
             assert_eq!(stats.len(), 2);
             assert!(stats.iter().all(|s| s.n == 3));
         }
