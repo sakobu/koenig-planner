@@ -32,6 +32,7 @@ mod harness {
     use rand::SeedableRng;
     use rand_distr::{Distribution, Normal};
     use std::f64::consts::TAU;
+    use std::time::Instant;
 
     /// Fig. 8 sample count (paper: 200).
     pub const N_MC: usize = 200;
@@ -51,6 +52,8 @@ mod harness {
     pub const T_F: f64 = 117_990.0;
     /// Fig. 8 grid step [s] (Table III 30 s grid → 3934 candidate times).
     pub const GRID_DT: f64 = 30.0;
+    /// Fig. 9 grid sizes (10 → 10⁶). 10⁶ is ~150 MB Γ cache / multi-second; documented.
+    pub const FIG9_SIZES: [usize; 6] = [10, 100, 1_000, 10_000, 100_000, 1_000_000];
 
     /// Table III chief mean absolute orbit (angles in radians).
     pub fn worked_example_chief() -> AbsoluteOrbit {
@@ -90,6 +93,10 @@ mod harness {
         let run_8 = matches!(which.as_deref(), None | Some("fig8"));
         if run_8 {
             fig8(&dynamics, &cost);
+        }
+        let run_9 = matches!(which.as_deref(), None | Some("fig9"));
+        if run_9 {
+            fig9(&dynamics, &cost);
         }
     }
 
@@ -233,6 +240,95 @@ mod harness {
         }
     }
 
+    /// One Fig. 9 timing outcome.
+    #[derive(Clone, Copy)]
+    pub struct Fig9Row {
+        pub grid_len: usize,
+        pub dt: f64,
+        pub seconds: f64,
+        pub iterations: usize,
+        pub residual: f64,
+    }
+
+    /// Time `solve` once per requested grid size on the fixed window. For each size:
+    /// `dt = (t_f - t_i)/(n-1)`, one warmup solve (discarded), one timed solve. The
+    /// actual `grid.len()` is recorded (it may differ from `n` by ±1 due to rounding
+    /// in `TimeGrid::len`). Timing shape is `w`-independent; use a single fixed `w`.
+    pub fn run_fig9<D: Dynamics, C: CostModel>(
+        dynamics: &D,
+        cost: &C,
+        w: Pseudostate,
+        sizes: &[usize],
+    ) -> Vec<Fig9Row> {
+        let params = SolveParams::default();
+        sizes
+            .iter()
+            .map(|&n| {
+                let dt = (T_F - T_I) / (n.max(2) - 1) as f64;
+                let grid = TimeGrid::uniform(T_I, T_F, dt);
+                let _ = solve(dynamics, cost, w, grid, &params); // warmup
+                let start = Instant::now();
+                let result = solve(dynamics, cost, w, grid, &params);
+                let seconds = start.elapsed().as_secs_f64();
+                match result {
+                    Ok(s) => Fig9Row {
+                        grid_len: grid.len(),
+                        dt,
+                        seconds,
+                        iterations: s.iterations,
+                        residual: s.residual,
+                    },
+                    Err(_) => Fig9Row {
+                        grid_len: grid.len(),
+                        dt,
+                        seconds,
+                        iterations: 0,
+                        residual: f64::NAN,
+                    },
+                }
+            })
+            .collect()
+    }
+
+    /// Write the Fig. 9 timing rows to `path` as CSV.
+    pub fn write_fig9_csv(path: &str, rows: &[Fig9Row]) -> csv::Result<()> {
+        let mut w = csv::Writer::from_path(path)?;
+        w.write_record(["grid_len", "dt_s", "seconds", "iterations", "residual"])?;
+        for r in rows {
+            w.write_record(&[
+                r.grid_len.to_string(),
+                format!("{:.6e}", r.dt),
+                format!("{:.6e}", r.seconds),
+                r.iterations.to_string(),
+                format!("{:.3e}", r.residual),
+            ])?;
+        }
+        w.flush()?;
+        Ok(())
+    }
+
+    /// Fig. 9 driver: time the Table III `w` across `FIG9_SIZES`, print, write CSV.
+    pub fn fig9<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
+        let w = sample_pseudostates(1, SEED)[0];
+        println!("\nFig. 9 — solve time vs |T| (10⁶ is multi-second / ~150 MB)");
+        let rows = run_fig9(dynamics, cost, w, &FIG9_SIZES);
+        println!(
+            "  {:>10}  {:>12}  {:>10}  {:>6}  {:>10}",
+            "grid_len", "dt_s", "seconds", "iters", "residual"
+        );
+        for r in &rows {
+            println!(
+                "  {:>10}  {:>12.4e}  {:>10.4}  {:>6}  {:>10.2e}",
+                r.grid_len, r.dt, r.seconds, r.iterations, r.residual
+            );
+        }
+        let path = "target/fig9_timing.csv";
+        match write_fig9_csv(path, &rows) {
+            Ok(()) => println!("  rows written         : {path} ({} rows)", rows.len()),
+            Err(e) => eprintln!("  CSV write failed     : {e}"),
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -262,6 +358,19 @@ mod harness {
             let a = sample_pseudostates(8, SEED);
             let b = sample_pseudostates(8, SEED + 1);
             assert!(a.iter().zip(&b).any(|(x, y)| x != y));
+        }
+
+        #[test]
+        fn fig9_sweep_times_each_size() {
+            let dynamics = worked_example_dynamics();
+            let cost = worked_example_cost();
+            let w = sample_pseudostates(1, SEED)[0];
+            let sizes = [10usize, 100];
+            let rows = run_fig9(&dynamics, &cost, w, &sizes);
+            assert_eq!(rows.len(), 2);
+            assert!(rows.iter().all(|r| r.seconds >= 0.0 && r.grid_len >= 2));
+            // Finer grid is at least as large in point count.
+            assert!(rows[1].grid_len >= rows[0].grid_len);
         }
 
         #[test]
