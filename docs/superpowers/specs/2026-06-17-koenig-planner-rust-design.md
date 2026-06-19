@@ -1,7 +1,7 @@
 # Koenig Planner — Rust Reimplementation Design
 
 - **Date:** 2026-06-17
-- **Status:** In implementation. **Phases 0–5b complete.** Phase 5 (worked-example
+- **Status:** In implementation. **Phases 0–6 complete.** Phase 5 (worked-example
   validation) **caught and fixed a real STM bug** (`Φ₂₁` δλ-drift was `−1.5 n Δt²`, a
   typo transcribed from the paper; now the dimensionally-correct linear `−1.5 n Δt`) and
   the J₂ dynamics are now **independently finite-difference verified at both worked-
@@ -11,10 +11,15 @@
   correctness + pipeline self-consistency** rather than bit-reproduction (see §6 Phase 5).
   Phase 5b (robust min-fuel extraction) replaced the support-direction QP with a direct
   min-fuel SOCP, closing the degenerate-contact residual (see §6 Phase 5b).
+  Phase 6 (Monte Carlo harness) reproduces Fig. 8 (iteration distributions) and Fig. 9
+  (compute-time vs `|T|`) via a feature-gated `monte_carlo` bin + a seeded CI invariant
+  test; observed mean iterations 4.20/3.64/3.35 for n_init 2/6/10 (paper 4.90/3.99/3.31),
+  all 600 solves ≤7 iters / residual ≤2.5e-10, Fig. 9 ≈constant-then-linear (see §6 Phase 6).
   Earlier: Phase 1 dynamics confirmed across 5 routes (`docs/superpowers/phase1-dynamics-verification-report.md`,
   now superseded on the STM by the FD test); Phase 2 cost models (PR #1, `51ac590`);
   Phase 3 solver wrappers (PR #3, `cdaff18`); Phase 4 algorithms + `solve` (PR #5,
-  `71f4383`). **Phases 0–5b complete. Resume at Phase 6 (Monte Carlo).** See §6.
+  `71f4383`). **Phases 0–6 complete** (Phase 6 = the Monte Carlo harness, branch
+  `phase6-monte-carlo`). **Next: Phase 7 (polish).** See §6.
 - **Repo:** `github.com/sakobu/koenig-planner` (private). CI = GitHub Actions (`fmt` + `clippy -D warnings` + `build` + `test`, all `--all-features`); the Linux runner installs `libfontconfig1-dev` for the `plotters` validation feature.
 - **Plans:** `docs/superpowers/plans/2026-06-17-koenig-planner-phase0-scaffolding.md`, `…-phase1-dynamics.md`, `…-phase2-cost-models.md`, `…-phase3-solver-wrappers.md`, `…-phase4-algorithms.md`.
 - **Source paper:** A. W. Koenig and S. D'Amico, "Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with Time-Varying Cost," *IEEE Transactions on Automatic Control*, 2020. DOI 10.1109/TAC.2020.3027804. (`docs/Planner.pdf`)
@@ -639,7 +644,7 @@ self-consistent with the exact all-times dual. The `active_set_trace` test also 
 the refinement churns its active set (drops and adds) over 3 iterations on the real J2Roe
 but never re-adds a dropped time on this fixture — an instance-specific outcome (not implied by the global max_t g monotonicity; column generation can in principle re-activate a dropped time).
 
-### Phase 6 — Monte Carlo harness (`src/bin/monte_carlo.rs`)
+### Phase 6 — Monte Carlo harness (`src/bin/monte_carlo.rs`) ✅ Done
 Reproduce Fig. 8 (iteration-count distributions for 2/6/10-time inits) and Fig. 9
 (compute time vs discretization `|T|`, 10→10⁶) for the *proposed* algorithm on the
 worked-example problem. **Design (brainstormed 2026-06-19, approved):**
@@ -699,6 +704,28 @@ compared to 4.90/3.99/3.31 as reference; Fig. 9 reproduces the ≈constant-(`|T|
 linear shape; the CI invariant test is green (every solve succeeds, ≤8 iters, <0.01%
 residual, the `mean(2)>mean(10)` ordering gap). Bit-reproduction of the paper's means is
 explicitly **not** required (same rationale as Phase 5).
+
+**✅ Done (2026-06-19, branch `phase6-monte-carlo`).** Implemented subagent-driven over
+7 tasks (each spec+quality reviewed; final whole-branch opus review **"ready to merge"**,
+0 Critical/Important). `src/bin/monte_carlo.rs` (feature-gated harness — both sweeps + CSV
++ plotters PNGs) and `tests/monte_carlo.rs` (the seeded CI invariant test) are committed;
+deps `rand 0.10` + `rand_distr 0.6` are `optional`, behind `validation`, using a portable
+`StdRng`. **Gate green at 111 tests** (`--all-features`: 87 lib + 5 bin-unit + 1 MC
+integration + 18 prior integration). **Observed Fig. 8** (200 samples/init, seed
+`0x6f656e6967`): mean iterations **4.20 / 3.64 / 3.35** for `n_init` 2/6/10 (paper
+4.90/3.99/3.31) — monotone ordering holds, `n_init=10` near-exact; **all 600 solves
+converged in ≤ 7 iterations** (frac≤8 = 1.000) with **max residual ≤ 2.5e-10** (≪ 0.01%).
+The means run slightly *below* the paper's — consistent with the Phase-5b min-fuel
+extractor finding tighter solutions on the FD-verified (typo-corrected) dynamics — and per
+the Phase-5 reframing they are **reported, not asserted**. **Observed Fig. 9** (10→10⁶):
+0.3 / 0.9 / 1.3 / 3.9 / 28.9 / 281.9 ms — ≈constant for `|T| ≤ 10⁴` then ~linear (the
+Fig. 9 shape), residuals 1e-16…1e-12 throughout. **CI invariant test** (seed `0xC0FFEE`,
+N=64, 192 solves) asserts only the paper-independent invariants — every solve succeeds,
+≤ 8 iters, residual < 0.01%, `mean(2) > mean(10)` — all hold (means 4.12/3.62/3.44).
+Artifacts (gitignored): `target/{fig8_iterations.csv (600 rows), fig9_timing.csv,
+fig8_cdf.png, fig9_timing.png}`. Two deferred **Minors** (the CI test inlines the
+window/grid constants rather than naming them; `plot_fig9_timing` log-scale robustness on a
+degenerate single-row input) — cosmetic, non-blocking.
 
 ### Phase 7 — Polish
 Rustdoc cross-referencing code ↔ equation numbers; README; runnable examples; CI green.
