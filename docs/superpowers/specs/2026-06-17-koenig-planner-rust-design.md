@@ -762,6 +762,12 @@ the paper-independent invariants — every solve succeeds, ≤ 8 iters, residual
 Deferred cosmetic **Minor**: `plot_fig9_timing` log-scale robustness on a degenerate
 single-row input.
 
+### P1 audit fixes (2026-06-19) ✅ Done
+- **P1 audit fixes (2026-06-19):** spec §5.1 now matches the implemented min-fuel
+  SOCP; LICENSE-MIT/APACHE + README added; dynamics pipeline made fallible
+  (KeplerDivergence live; non-elliptic e / equatorial i rejected at J2Roe::new);
+  TimeGrid::uniform and Piecewise epoch hardened. Gate green.
+
 ### Phase 7 — Polish
 Rustdoc cross-referencing code ↔ equation numbers; README; runnable examples; CI green.
 
