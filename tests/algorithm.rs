@@ -242,3 +242,34 @@ fn solution_residual_is_unpruned_and_kept_set_residual_is_bounded() {
     );
     assert!(kept_residual < 1e-2, "kept-set residual {kept_residual}");
 }
+
+#[test]
+fn solve_reports_not_converged_through_public_api() {
+    // eps_cost = -0.5 => convergence target max_t g <= 0.5, which a binding
+    // reachable problem (optimal max_t g -> 1.0) can never meet. Refinement
+    // exhausts MAX_REFINE_ITERS (50) and surfaces NotConverged through solve().
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
+    let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
+    let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
+    let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
+    let cost = Piecewise::new(1.0e12);
+    let params = SolveParams {
+        eps_cost: -0.5,
+        ..SolveParams::default()
+    };
+
+    let err = solve(&dynamics, &cost, w, grid, &params).unwrap_err();
+    match err {
+        PlannerError::NotConverged {
+            max_iters,
+            achieved,
+            target,
+        } => {
+            assert_eq!(max_iters, 50);
+            assert!((target - 0.5).abs() < 1e-12, "target {target}");
+            assert!(achieved > target, "achieved {achieved} > target {target}");
+        }
+        other => panic!("expected NotConverged, got {other:?}"),
+    }
+}
