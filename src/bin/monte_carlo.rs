@@ -56,16 +56,16 @@ mod harness {
     /// Paper's reported mean iterations for the three schemes (reference, not a target).
     pub const PAPER_MEANS: [f64; 3] = [4.90, 3.99, 3.31];
 
-    /// Chief semimajor axis a_c [m] — the I/O scaling factor (spec §5.5).
+    /// Chief semimajor axis a_c `[m]` — the I/O scaling factor (spec §5.5).
     pub const A_C: f64 = 25_000e3;
     /// Per-ROE Gaussian std, metre-scaled (σ = 1 km; spec §6 Phase 6).
     pub const SIGMA_M: f64 = 1000.0;
     /// Documented constant seed (portable StdRng) — "koenig" in hex-ish.
     pub const SEED: u64 = 0x6F_656E_6967;
-    /// Worked-example window [s].
+    /// Worked-example window `[s]`.
     pub const T_I: f64 = 0.0;
     pub const T_F: f64 = 117_990.0;
-    /// Fig. 8 grid step [s] (Table III 30 s grid → 3934 candidate times).
+    /// Fig. 8 grid step `[s]` (Table III 30 s grid → 3934 candidate times).
     pub const GRID_DT: f64 = 30.0;
     /// Fig. 9 grid sizes (10 → 10⁶). 10⁶ is ~150 MB Γ cache / multi-second; documented.
     pub const FIG9_SIZES: [usize; 6] = [10, 100, 1_000, 10_000, 100_000, 1_000_000];
@@ -210,7 +210,7 @@ mod harness {
         pub total_dv: f64,
     }
 
-    /// Per-`n_init` summary statistics.
+    /// Per-scheme summary statistics (one row per Fig. 8 seeding).
     pub struct Fig8Stat {
         pub n_init: usize,
         pub n: usize,
@@ -252,13 +252,24 @@ mod harness {
         (rows, failures)
     }
 
-    /// Group rows by `n_init` and compute mean iterations, fraction ≤ 8 iterations,
-    /// max iterations, and max residual.
-    pub fn summarize_fig8(rows: &[Fig8Row], n_inits: &[usize]) -> Vec<Fig8Stat> {
-        n_inits
+    /// Group rows by scheme label (not the `n_init` count, which could collide
+    /// across future schemes) and compute mean iterations, fraction ≤ 8
+    /// iterations, max iterations, and max residual.
+    pub fn summarize_fig8(rows: &[Fig8Row], schemes: &[(usize, InitScheme)]) -> Vec<Fig8Stat> {
+        debug_assert!(
+            {
+                let mut names: Vec<&str> = schemes.iter().map(|&(_, s)| scheme_name(s)).collect();
+                names.sort_unstable();
+                names.dedup();
+                names.len() == schemes.len()
+            },
+            "Fig.8 scheme labels must be unique to group correctly"
+        );
+        schemes
             .iter()
-            .map(|&n_init| {
-                let group: Vec<&Fig8Row> = rows.iter().filter(|r| r.n_init == n_init).collect();
+            .map(|&(n_init, scheme)| {
+                let name = scheme_name(scheme);
+                let group: Vec<&Fig8Row> = rows.iter().filter(|r| r.scheme == name).collect();
                 let n = group.len();
                 let denom = n.max(1) as f64;
                 let mean_iters = group.iter().map(|r| r.iterations as f64).sum::<f64>() / denom;
@@ -306,8 +317,7 @@ mod harness {
     pub fn fig8<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
         let ws = sample_pseudostates(N_MC, SEED);
         let (rows, failures) = run_fig8(dynamics, cost, &ws, &FIG8_SCHEMES);
-        let counts: Vec<usize> = FIG8_SCHEMES.iter().map(|(n, _)| *n).collect();
-        let stats = summarize_fig8(&rows, &counts);
+        let stats = summarize_fig8(&rows, &FIG8_SCHEMES);
 
         println!("\nFig. 8 — Algorithm-2 iteration distribution ({N_MC} samples/scheme)");
         println!("  paper's three seedings: n=2 endpoints, n=6 largest-g, n=10 evenly-spaced");
@@ -344,10 +354,11 @@ mod harness {
 
         let cdf: Vec<(usize, Vec<(f64, f64)>)> = FIG8_SCHEMES
             .iter()
-            .map(|&(n_init, _)| {
+            .map(|&(n_init, scheme)| {
+                let name = scheme_name(scheme);
                 let counts: Vec<usize> = rows
                     .iter()
-                    .filter(|r| r.n_init == n_init)
+                    .filter(|r| r.scheme == name)
                     .map(|r| r.iterations)
                     .collect();
                 (n_init, empirical_cdf(&counts))
@@ -638,8 +649,7 @@ mod harness {
                 );
                 assert!((1..=50).contains(&r.iterations));
             }
-            let counts = [2usize, 6];
-            let stats = summarize_fig8(&rows, &counts);
+            let stats = summarize_fig8(&rows, &schemes);
             assert_eq!(stats.len(), 2);
             assert!(stats.iter().all(|s| s.n == 3));
         }

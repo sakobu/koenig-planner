@@ -210,3 +210,94 @@ fn solve_propagates_dynamics_gamma_error() {
     let err = solve(&FailDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(m) if m == "boom"));
 }
+
+#[test]
+fn solution_residual_is_unpruned_and_kept_set_residual_is_bounded() {
+    // Solution.residual is the residual of the FULL (pre-prune) min-fuel
+    // solution. Recomputing it from the *returned* (pruned) maneuvers can yield
+    // a larger value, but pruning never decreases it and it stays small. This
+    // pins the documented contract.
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
+    let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
+    let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
+    let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
+    let cost = Piecewise::new(1.0e12);
+
+    let sol = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap();
+
+    // Recompute the residual from ONLY the returned (kept) maneuvers.
+    let mut w_acc = SVector::<f64, N>::zeros();
+    for m in &sol.maneuvers {
+        w_acc += dynamics.gamma(m.t).unwrap() * m.dv;
+    }
+    let kept_residual = (w - w_acc).norm() / w.norm();
+
+    // Reported residual is the small pre-prune one; pruning never decreases it.
+    assert!(sol.residual < 1e-2, "reported residual {}", sol.residual);
+    assert!(
+        kept_residual + 1e-9 >= sol.residual,
+        "kept-set residual {kept_residual} should be >= reported {}",
+        sol.residual
+    );
+    assert!(kept_residual < 1e-2, "kept-set residual {kept_residual}");
+}
+
+#[test]
+fn solve_reports_not_converged_through_public_api() {
+    // eps_cost = -0.5 => convergence target max_t g <= 0.5, which a binding
+    // reachable problem (optimal max_t g -> 1.0) can never meet. Refinement
+    // exhausts MAX_REFINE_ITERS (50) and surfaces NotConverged through solve().
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
+    let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
+    let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
+    let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
+    let cost = Piecewise::new(1.0e12);
+    let params = SolveParams {
+        eps_cost: -0.5,
+        ..SolveParams::default()
+    };
+
+    let err = solve(&dynamics, &cost, w, grid, &params).unwrap_err();
+    match err {
+        PlannerError::NotConverged {
+            max_iters,
+            achieved,
+            target,
+        } => {
+            assert_eq!(max_iters, 50);
+            assert!((target - 0.5).abs() < 1e-12, "target {target}");
+            assert!(achieved > target, "achieved {achieved} > target {target}");
+        }
+        other => panic!("expected NotConverged, got {other:?}"),
+    }
+}
+
+#[test]
+fn solve_reports_solver_failed_on_unreachable_target() {
+    // A constant rank-deficient Gamma (top 3x3 identity; ROE rows 4-6 always
+    // zero) leaves lambda_4..6 unconstrained. A target with mass in ROE index 3
+    // makes the eq.40 dual (maximize lambda^T w) unbounded => clarabel returns a
+    // non-Solved status => SolverFailed propagates through solve().
+    struct RankDeficientDyn;
+    impl Dynamics for RankDeficientDyn {
+        fn gamma(&self, _t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
+            let mut g = SMatrix::<f64, N, M>::zeros();
+            g[(0, 0)] = 1.0;
+            g[(1, 1)] = 1.0;
+            g[(2, 2)] = 1.0;
+            Ok(g)
+        }
+    }
+
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
+    let w = SVector::<f64, N>::from_row_slice(&[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
+    let cost = Piecewise::new(1.0e12);
+
+    let err = solve(&RankDeficientDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
+    assert!(
+        matches!(err, PlannerError::SolverFailed(_)),
+        "expected SolverFailed, got {err:?}"
+    );
+}

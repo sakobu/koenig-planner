@@ -19,7 +19,7 @@ pub struct J2Roe {
 
 impl J2Roe {
     /// Build from the chief's mean absolute orbit at `t_i` and the window
-    /// endpoints `[t_i, t_f]` [s].
+    /// endpoints `[t_i, t_f]` `[s]`.
     ///
     /// # Errors
     /// Returns [`PlannerError::InvalidInput`] if the chief is non-elliptic

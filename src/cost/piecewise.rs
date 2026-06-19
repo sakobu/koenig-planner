@@ -23,7 +23,7 @@ pub struct Piecewise {
 }
 
 impl Piecewise {
-    /// Build the eq.-49 selector for an orbit `period` [s], assuming the chief is
+    /// Build the eq.-49 selector for an orbit `period` `[s]`, assuming the chief is
     /// at apogee at `t = 0` (first perigee at `period/2`). Equivalent to
     /// `with_perigee_epoch(period, period / 2.0)`. The perigee window half-width
     /// is `1 hr = 3600 s`.
@@ -32,7 +32,7 @@ impl Piecewise {
     }
 
     /// Build the eq.-49 selector with an explicit perigee-passage epoch
-    /// `t_perigee0` [s]; window centers are `t_perigee0 + k·period`.
+    /// `t_perigee0` `[s]`; window centers are `t_perigee0 + k·period`.
     pub fn with_perigee_epoch(period: f64, t_perigee0: f64) -> Self {
         debug_assert!(
             period.is_finite() && period > 0.0,

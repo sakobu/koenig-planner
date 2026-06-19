@@ -16,10 +16,10 @@ pub type Pseudostate = SVector<f64, N>;
 /// The dual variable lambda in R^6 (outward reachable-set normal).
 pub type Dual = SVector<f64, N>;
 
-/// An impulsive maneuver: a Delta-v [m/s] in the RTN frame applied at time `t` [s].
+/// An impulsive maneuver: a Delta-v `[m/s]` in the RTN frame applied at time `t` `[s]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Maneuver {
-    /// Application time [s], measured from `t_i`.
+    /// Application time `[s]`, measured from `t_i`.
     pub t: f64,
     /// Delta-v [m/s], RTN components (R, T, N).
     pub dv: SVector<f64, M>,
@@ -32,11 +32,11 @@ pub struct Maneuver {
 /// -> 3901 candidate times.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TimeGrid {
-    /// Initial time `t_i` [s].
+    /// Initial time `t_i` `[s]`.
     pub t_i: f64,
-    /// Final time `t_f` [s].
+    /// Final time `t_f` `[s]`.
     pub t_f: f64,
-    /// Grid step `dt` [s].
+    /// Grid step `dt` `[s]`.
     pub dt: f64,
 }
 
@@ -72,12 +72,12 @@ impl TimeGrid {
         self.len() == 0
     }
 
-    /// The time [s] at grid index `idx`.
+    /// The time `[s]` at grid index `idx`.
     pub fn time(&self, idx: usize) -> f64 {
         self.t_i + (idx as f64) * self.dt
     }
 
-    /// Iterator over all grid times [s].
+    /// Iterator over all grid times `[s]`.
     pub fn times(&self) -> impl Iterator<Item = f64> + '_ {
         (0..self.len()).map(move |i| self.time(i))
     }
@@ -94,9 +94,6 @@ pub struct SolveParams {
     pub eps_cost: f64,
     /// Slack-removal tolerance `eps_remove` (Table III: 0.01).
     pub eps_remove: f64,
-    /// Positive-definite weight `Q` for the extraction QP (identity in the example).
-    /// (Reserved; unused by the Phase-5b min-fuel extractor.)
-    pub q: SMatrix<f64, N, N>,
 }
 
 impl Default for SolveParams {
@@ -106,7 +103,6 @@ impl Default for SolveParams {
             n_init: 6,
             eps_cost: 0.01,
             eps_remove: 0.01,
-            q: SMatrix::<f64, N, N>::identity(),
         }
     }
 }
@@ -120,7 +116,15 @@ pub struct Solution {
     pub total_dv: f64,
     /// Algorithm 2 iteration count.
     pub iterations: usize,
-    /// Relative residual ||w_err|| / ||w||.
+    /// Relative residual `||w_err|| / ||w||` of the **full, pre-prune** min-fuel
+    /// solution over `T^opt` — the true reachability metric (approximately 0
+    /// when `w` is reachable).
+    ///
+    /// Measured before interior-point dust is pruned from `maneuvers` (maneuvers
+    /// below `1e-3` of the largest are dropped). Recomputing the residual from
+    /// the returned, pruned `maneuvers` can therefore give a slightly larger
+    /// value; it is bounded by the pruned mass and stays small. Use this field
+    /// for the reachability check.
     pub residual: f64,
     /// Optimal dual lambda_opt.
     pub lambda: Dual,
@@ -129,7 +133,7 @@ pub struct Solution {
 /// Conic rows encoding `g_{U(1,t)}(Gamma^T(t) lambda) <= 1` for one candidate time.
 ///
 /// Linear rows encode `a^T lambda <= b`; SOC rows encode `||G lambda||_2 <= h`.
-/// [`crate::refine_socp`] assembles these into clarabel cones.
+/// [`crate::refine_socp()`] assembles these into clarabel cones.
 #[derive(Debug, Clone, Default)]
 pub struct ConicRows {
     /// Linear rows `(a, b)` with `a^T lambda <= b`.
@@ -176,7 +180,7 @@ pub enum PlannerError {
     /// The Kepler Newton iteration failed to converge.
     #[error("Kepler solve diverged for M = {m} rad, e = {e}")]
     KeplerDivergence {
-        /// Mean anomaly [rad].
+        /// Mean anomaly `[rad]`.
         m: f64,
         /// Eccentricity.
         e: f64,
@@ -219,7 +223,6 @@ mod tests {
         assert_eq!(p.n_init, 6);
         assert_abs_diff_eq!(p.eps_cost, 0.01, epsilon = 1e-12);
         assert_abs_diff_eq!(p.eps_remove, 0.01, epsilon = 1e-12);
-        assert_eq!(p.q, SMatrix::<f64, N, N>::identity());
     }
 
     #[test]

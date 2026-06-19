@@ -3,6 +3,8 @@
 //! support / cone-constraint forms, all expressed via `W = [0 | V_vertex]`
 //! (Table II); `V_face` itself is the cost definition and is not needed here.
 
+use std::sync::LazyLock;
+
 use super::SublevelSet;
 use crate::types::{ConicRows, FuelGenerator, M, N};
 use nalgebra::{SMatrix, SVector};
@@ -14,8 +16,8 @@ use nalgebra::{SMatrix, SVector};
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FaceMax;
 
-/// The four `V_vertex` columns (eq. 47): unit tetrahedral thruster directions.
-fn vertex_columns() -> [SVector<f64, M>; 4] {
+/// The four tetrahedral `V_vertex` support directions (eq. 48), computed once.
+static VERTEX_COLUMNS: LazyLock<[SVector<f64, M>; 4]> = LazyLock::new(|| {
     let a = (2.0_f64 / 3.0).sqrt();
     let b = (1.0_f64 / 3.0).sqrt();
     [
@@ -24,6 +26,10 @@ fn vertex_columns() -> [SVector<f64, M>; 4] {
         SVector::<f64, M>::new(0.0, a, b),
         SVector::<f64, M>::new(0.0, -a, b),
     ]
+});
+
+fn vertex_columns() -> [SVector<f64, M>; 4] {
+    *VERTEX_COLUMNS
 }
 
 impl SublevelSet for FaceMax {
