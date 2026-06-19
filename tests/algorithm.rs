@@ -2,7 +2,7 @@
 
 use koenig_planner::cost::Piecewise;
 use koenig_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
-use koenig_planner::{solve, PlannerError, SolveParams, TimeGrid};
+use koenig_planner::{solve, solve_from_initial_times, PlannerError, SolveParams, TimeGrid};
 use nalgebra::{SMatrix, SVector};
 use std::f64::consts::TAU;
 
@@ -136,4 +136,48 @@ fn refine_on_real_j2roe_runs_multiple_iterations() {
         "real J2Roe refinement should take >= 2 iterations, got {}",
         sol.iterations
     );
+}
+
+#[test]
+fn solve_from_initial_times_endpoints_seed_reconstructs_w() {
+    // The paper's worst-case Fig.8 seed (Koenig & D'Amico 2020, p.11) is ONLY the
+    // window endpoints {t_i, t_f} — not an Algorithm-1 largest-contact set. It must
+    // still converge and reconstruct w via refinement's drop/add.
+    const A_C: f64 = 25_000e3;
+    let chief = AbsoluteOrbit::new(
+        A_C,
+        0.7,
+        40.0_f64.to_radians(),
+        358.0_f64.to_radians(),
+        0.0,
+        180.0_f64.to_radians(),
+    );
+    let dynamics = J2Roe::new(chief, 0.0, 117_990.0);
+    let cost = Piecewise::new(TAU / chief.mean_motion());
+    let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
+    let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0);
+
+    let sol = solve_from_initial_times(
+        &dynamics,
+        &cost,
+        w,
+        grid,
+        &SolveParams::default(),
+        &[0.0, 117_990.0],
+    )
+    .expect("endpoints seed should solve");
+    assert!(sol.residual < 1e-3, "residual {}", sol.residual);
+    assert!(sol.iterations >= 1 && sol.iterations <= 50);
+    assert!(!sol.maneuvers.is_empty());
+}
+
+#[test]
+fn solve_from_initial_times_rejects_empty_seed() {
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0);
+    let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    let cost = Piecewise::new(1.0e12);
+    let err = solve_from_initial_times(&dynamics, &cost, w, grid, &SolveParams::default(), &[])
+        .unwrap_err();
+    assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
