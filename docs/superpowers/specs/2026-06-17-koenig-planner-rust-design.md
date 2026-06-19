@@ -11,10 +11,12 @@
   correctness + pipeline self-consistency** rather than bit-reproduction (see §6 Phase 5).
   Phase 5b (robust min-fuel extraction) replaced the support-direction QP with a direct
   min-fuel SOCP, closing the degenerate-contact residual (see §6 Phase 5b).
-  Phase 6 (Monte Carlo harness) reproduces Fig. 8 (iteration distributions) and Fig. 9
-  (compute-time vs `|T|`) via a feature-gated `monte_carlo` bin + a seeded CI invariant
-  test; observed mean iterations 4.20/3.64/3.35 for n_init 2/6/10 (paper 4.90/3.99/3.31),
-  all 600 solves ≤7 iters / residual ≤2.5e-10, Fig. 9 ≈constant-then-linear (see §6 Phase 6).
+  Phase 6 (Monte Carlo harness) reproduces Fig. 8 (iteration distributions over the paper's
+  three init seedings — n=2 endpoints / n=6 largest-g / n=10 evenly-spaced, via the new
+  public `solve_from_initial_times`) and Fig. 9 (compute-time vs `|T|`) via a feature-gated
+  `monte_carlo` bin + a seeded CI invariant test; observed mean iterations 4.29/3.64/2.95
+  (paper 4.90/3.99/3.31 — a uniform ~10% solver-convention offset, reported not asserted),
+  all 600 solves ≤7 iters / residual ≤3.2e-10, Fig. 9 ≈constant-then-linear (see §6 Phase 6).
   Earlier: Phase 1 dynamics confirmed across 5 routes (`docs/superpowers/phase1-dynamics-verification-report.md`,
   now superseded on the STM by the FD test); Phase 2 cost models (PR #1, `51ac590`);
   Phase 3 solver wrappers (PR #3, `cdaff18`); Phase 4 algorithms + `solve` (PR #5,
@@ -671,13 +673,16 @@ cost; `a_c=25 000 km`). Each of the 6 ROE components `~ Normal(0, σ=1000 m)` (t
 metre-scaled `w`, per Table III's display convention), then `w_nd = w_metres / a_c`.
 Gaussian norms are ~2.4 km a.s. ⇒ `w` is never near-zero (no degenerate `w=0`).
 
-**Fig. 8.** Pre-generate **200** paired `w` once; reuse across `n_init ∈ {2,6,10}`
-(`n_coarse=20` fixed, ≥ all three). Per `(n_init, w)`: `solve`, record
-`iterations`/`residual`/`total_dv`; count (don't panic on) any solver error (Phase 5b ⇒
-expect 0). Report per-`n_init` mean iterations / fraction-≤8 / max residual alongside the
-paper's 4.90/3.99/3.31 as **reference, not pass/fail**. CSV `target/fig8_iterations.csv`
-(`n_init,sample,iterations,residual,total_dv`); optional PNG of the three empirical
-iteration CDFs.
+**Fig. 8.** Pre-generate **200** paired `w` once; sweep the paper's **three distinct
+initialization schemes** (p.11), reusing the same `w`: `n=2` seeds only the window
+endpoints `{t_i,t_f}` (deliberate worst case), `n=6` is Algorithm 1 (the six
+largest-contact times), `n=10` is ten evenly-spaced times. These are *not* a single
+`n_init` count knob — the `n=2`/`n=10` seeds bypass Algorithm 1 via the public
+`solve_from_initial_times`. Per `(scheme, w)`: record `iterations`/`residual`/`total_dv`;
+count (don't panic on) any solver error (expect 0). Report per-scheme mean iterations /
+fraction-≤8 / max residual alongside the paper's 4.90/3.99/3.31 as **reference, not
+pass/fail**. CSV `target/fig8_iterations.csv` (`n_init,scheme,sample,iterations,residual,
+total_dv`); optional PNG of the three empirical iteration CDFs.
 
 **Fig. 9.** Grid sizes `[10,10²,10³,10⁴,10⁵,10⁶]`, `dt=(t_f−t_i)/(n−1)`; fixed Table III
 `w` (timing shape is `w`-independent; ties Fig. 9 to the canonical problem). Per size: one
@@ -688,12 +693,13 @@ selects one sweep (default both).
 
 **CI invariant test (validation stance).** `tests/monte_carlo.rs`, gated
 `#[cfg(feature="validation")]`, seeded, smaller `N≈64` (tunable for CI runtime), same
-problem, `n_init ∈ {2,6,10}`. Asserts **robust, paper-independent** invariants: every
-solve succeeds; **max iterations ≤ 8** (the paper's stated bound); **all residuals
-< 0.01%** (Phase 5b makes this easy); and the Fig. 8 shape gap **mean_iters(2) >
-mean_iters(10)**. Does **not** hard-assert 4.90/3.99/3.31 — consistent with the Phase 5
-reframing and risk #3 (bands, not bit-equality). Per the Phase-4/5 band methodology:
-implement, run to observe actual means/maxes, then lock bands with margin.
+problem, driving the same **three seedings**. Asserts **robust, paper-independent**
+invariants: every solve succeeds; **max iterations ≤ 8** (the paper's stated bound); **all
+residuals < 0.01%**; and the Fig. 8 shape gap **mean(n=2 endpoints) > mean(n=10
+evenly-spaced)** (a worse seed needs more refinement). Does **not** hard-assert
+4.90/3.99/3.31 — consistent with the Phase 5 reframing and risk #3 (bands, not
+bit-equality). Per the Phase-4/5 band methodology: implement, run to observe actual
+means/maxes, then lock bands with margin.
 
 **Determinism & performance.** `StdRng`+fixed seed ⇒ identical macOS ↔ CI results. Serial
 (no rayon — YAGNI). Rough cost: Fig. 8 ≈ 600 solves on the 3934-grid (~tens of s); Fig. 9
@@ -706,26 +712,35 @@ residual, the `mean(2)>mean(10)` ordering gap). Bit-reproduction of the paper's 
 explicitly **not** required (same rationale as Phase 5).
 
 **✅ Done (2026-06-19, branch `phase6-monte-carlo`).** Implemented subagent-driven over
-7 tasks (each spec+quality reviewed; final whole-branch opus review **"ready to merge"**,
-0 Critical/Important). `src/bin/monte_carlo.rs` (feature-gated harness — both sweeps + CSV
-+ plotters PNGs) and `tests/monte_carlo.rs` (the seeded CI invariant test) are committed;
-deps `rand 0.10` + `rand_distr 0.6` are `optional`, behind `validation`, using a portable
-`StdRng`. **Gate green at 111 tests** (`--all-features`: 87 lib + 5 bin-unit + 1 MC
-integration + 18 prior integration). **Observed Fig. 8** (200 samples/init, seed
-`0x6f656e6967`): mean iterations **4.20 / 3.64 / 3.35** for `n_init` 2/6/10 (paper
-4.90/3.99/3.31) — monotone ordering holds, `n_init=10` near-exact; **all 600 solves
-converged in ≤ 7 iterations** (frac≤8 = 1.000) with **max residual ≤ 2.5e-10** (≪ 0.01%).
-The means run slightly *below* the paper's — consistent with the Phase-5b min-fuel
-extractor finding tighter solutions on the FD-verified (typo-corrected) dynamics — and per
-the Phase-5 reframing they are **reported, not asserted**. **Observed Fig. 9** (10→10⁶):
-0.3 / 0.9 / 1.3 / 3.9 / 28.9 / 281.9 ms — ≈constant for `|T| ≤ 10⁴` then ~linear (the
-Fig. 9 shape), residuals 1e-16…1e-12 throughout. **CI invariant test** (seed `0xC0FFEE`,
-N=64, 192 solves) asserts only the paper-independent invariants — every solve succeeds,
-≤ 8 iters, residual < 0.01%, `mean(2) > mean(10)` — all hold (means 4.12/3.62/3.44).
-Artifacts (gitignored): `target/{fig8_iterations.csv (600 rows), fig9_timing.csv,
-fig8_cdf.png, fig9_timing.png}`. Two deferred **Minors** (the CI test inlines the
-window/grid constants rather than naming them; `plot_fig9_timing` log-scale robustness on a
-degenerate single-row input) — cosmetic, non-blocking.
+7 tasks (each spec+quality reviewed; whole-branch opus review **"ready to merge"**, 0
+Critical/Important), then a **post-merge scientific-correctness audit corrected the Fig. 8
+experiment.** `src/bin/monte_carlo.rs` (feature-gated harness — both sweeps + CSV +
+plotters PNGs) and `tests/monte_carlo.rs` (the seeded CI invariant test) are committed; deps
+`rand 0.10` + `rand_distr 0.6` are `optional`, behind `validation`, portable `StdRng`. The
+audit added a public **`solve_from_initial_times`** (bypasses Algorithm 1) so the harness
+can drive the paper's **three distinct Fig. 8 seedings** — the original implementation
+routed all three counts through Algorithm 1's largest-g picker, silently measuring a
+*stronger* seed than the paper's `n=2`/`n=10`. **Gate green at 115 tests** (`--all-features`).
+
+**Observed Fig. 8** (200 samples/scheme, seed `0x6f656e6967`): mean iterations
+**4.29 / 3.64 / 2.95** for n=2 endpoints / n=6 largest-g / n=10 evenly-spaced (paper
+4.90/3.99/3.31); **all 600 solves converged in ≤ 7 iterations** (frac≤8 = 1.000), **max
+residual ≤ 3.2e-10**, 0 failures. With the faithful seedings all three means sit a **uniform
+≈10–12 % below** the paper's — a *systematic* offset, not a per-scheme artifact —
+attributable to the **solver/convergence convention** (clarabel interior-point accepting
+`AlmostSolved`, plus the multi-add-per-round refinement, vs the paper's MATLAB+CVX): exactly
+the solver-dependence §9 Risk 8 anticipates. **CORRECTION:** the earlier claim that the
+lower means came from "the Phase-5b min-fuel extractor finding tighter solutions" was
+**wrong** — `Solution.iterations` is produced by Algorithm 2 and returned *before* Algorithm
+3 (the Phase-5b extractor) runs, so the extractor cannot affect it. Per the Phase-5
+reframing the means are **reported, not asserted**. **Observed Fig. 9** (10→10⁶):
+≈ 0.3 / 0.9 / 1.3 / 3.9 / 28.9 / 281.9 ms — ≈constant for `|T| ≤ 10⁴` then ~linear; residuals
+1e-16…1e-12. **CI invariant test** (seed `0xC0FFEE`, N=64, same three seedings) asserts only
+the paper-independent invariants — every solve succeeds, ≤ 8 iters, residual < 0.01%,
+`mean(n=2) > mean(n=10)` — all hold (means 4.36/3.62/2.94). Artifacts (gitignored):
+`target/{fig8_iterations.csv (600 rows), fig9_timing.csv, fig8_cdf.png, fig9_timing.png}`.
+Deferred cosmetic **Minor**: `plot_fig9_timing` log-scale robustness on a degenerate
+single-row input.
 
 ### Phase 7 — Polish
 Rustdoc cross-referencing code ↔ equation numbers; README; runnable examples; CI green.

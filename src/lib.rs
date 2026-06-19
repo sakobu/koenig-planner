@@ -10,7 +10,7 @@ pub mod dynamics;
 pub mod solver;
 pub mod types;
 
-pub use algorithm::solve;
+pub use algorithm::{solve, solve_from_initial_times};
 pub use cost::{CostModel, SublevelSet};
 pub use dynamics::Dynamics;
 pub use solver::{extract_qp, min_fuel_socp, refine_socp, MinFuelSolution, RefineSolution};

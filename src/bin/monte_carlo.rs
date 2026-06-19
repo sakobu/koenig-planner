@@ -8,10 +8,13 @@
 //!   cargo run --features validation --bin monte_carlo -- fig8    # Fig. 8 only
 //!   cargo run --features validation --bin monte_carlo -- fig9    # Fig. 9 only
 //!
-//! Validation stance (spec §6 Phase 6): we REPORT our iteration distributions and
-//! compare to the paper's 4.90/3.99/3.31 means as *reference*, not bit-reproduce the
-//! paper's (internally inconsistent) figures. See tests/monte_carlo.rs for the
-//! asserted, paper-independent invariants.
+//! Fig. 8 reproduces the paper's THREE initialization schemes (Koenig & D'Amico 2020,
+//! p.11): n=2 seeds only the window endpoints {t_i, t_f} (deliberate worst case), n=6
+//! is Algorithm 1 (the six largest-contact times), n=10 is ten evenly-spaced times —
+//! NOT a single `n_init` count knob. Validation stance (spec §6 Phase 6): we REPORT our
+//! iteration distributions and compare to the paper's 4.90/3.99/3.31 means as
+//! *reference*, not as a pass/fail target. See tests/monte_carlo.rs for the asserted,
+//! paper-independent invariants.
 
 #[cfg(not(feature = "validation"))]
 fn main() {
@@ -27,7 +30,10 @@ fn main() {
 mod harness {
     use koenig_planner::cost::Piecewise;
     use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
-    use koenig_planner::{solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
+    use koenig_planner::{
+        solve, solve_from_initial_times, CostModel, Dynamics, PlannerError, Pseudostate, Solution,
+        SolveParams, TimeGrid,
+    };
     use plotters::prelude::*;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
@@ -37,9 +43,17 @@ mod harness {
 
     /// Fig. 8 sample count (paper: 200).
     pub const N_MC: usize = 200;
-    /// Initialization candidate counts swept by Fig. 8.
-    pub const N_INITS: [usize; 3] = [2, 6, 10];
-    /// Paper's reported mean iteration counts for N_INITS (reference, not a target).
+    /// The three Fig. 8 initialization schemes (Koenig & D'Amico 2020, p.11),
+    /// labelled by candidate count. These are three DISTINCT seedings, not a single
+    /// `n_init` count knob — see [`InitScheme`]. Routing all three through Algorithm 1
+    /// would make the n=2/n=10 columns measure a different (stronger) seed than the
+    /// paper's, so each is dispatched to its own seeding.
+    pub const FIG8_SCHEMES: [(usize, InitScheme); 3] = [
+        (2, InitScheme::Endpoints),
+        (6, InitScheme::LargestG(6)),
+        (10, InitScheme::EvenlySpaced(10)),
+    ];
+    /// Paper's reported mean iterations for the three schemes (reference, not a target).
     pub const PAPER_MEANS: [f64; 3] = [4.90, 3.99, 3.31];
 
     /// Chief semimajor axis a_c [m] — the I/O scaling factor (spec §5.5).
@@ -119,10 +133,76 @@ mod harness {
             .collect()
     }
 
+    /// A Fig. 8 initialization scheme — the paper used three DISTINCT seedings for
+    /// the 2/6/10-candidate columns (Koenig & D'Amico 2020, "Sensitivity to Poor
+    /// Initialization", p.11), not one `n_init` knob.
+    #[derive(Clone, Copy)]
+    pub enum InitScheme {
+        /// Algorithm 1: the `n` largest-contact coarse times (the nominal 6-time seed).
+        LargestG(usize),
+        /// Only the window endpoints `{t_i, t_f}` — the paper's worst-case 2-time seed.
+        Endpoints,
+        /// `n` times evenly spaced over `[t_i, t_f]` — the paper's 10-time seed.
+        EvenlySpaced(usize),
+    }
+
+    /// Short label for the CSV / printout.
+    fn scheme_name(scheme: InitScheme) -> &'static str {
+        match scheme {
+            InitScheme::LargestG(_) => "largest_g",
+            InitScheme::Endpoints => "endpoints",
+            InitScheme::EvenlySpaced(_) => "evenly_spaced",
+        }
+    }
+
+    /// `n` times evenly spaced over `[t_i, t_f]`, inclusive of both endpoints.
+    fn evenly_spaced_times(t_i: f64, t_f: f64, n: usize) -> Vec<f64> {
+        if n <= 1 {
+            return vec![t_i];
+        }
+        (0..n)
+            .map(|k| t_i + (k as f64) * (t_f - t_i) / ((n - 1) as f64))
+            .collect()
+    }
+
+    /// Solve one Fig. 8 sample under a given initialization scheme on the fixed 30 s
+    /// grid. `LargestG` uses Algorithm 1 (`solve`); the other two seed refinement
+    /// directly with explicit times (`solve_from_initial_times`), as the paper does.
+    fn solve_scheme<D: Dynamics, C: CostModel>(
+        dynamics: &D,
+        cost: &C,
+        w: Pseudostate,
+        grid: TimeGrid,
+        scheme: InitScheme,
+    ) -> Result<Solution, PlannerError> {
+        match scheme {
+            InitScheme::LargestG(n) => {
+                let params = SolveParams {
+                    n_init: n,
+                    ..SolveParams::default()
+                };
+                solve(dynamics, cost, w, grid, &params)
+            }
+            InitScheme::Endpoints => solve_from_initial_times(
+                dynamics,
+                cost,
+                w,
+                grid,
+                &SolveParams::default(),
+                &[grid.t_i, grid.t_f],
+            ),
+            InitScheme::EvenlySpaced(n) => {
+                let times = evenly_spaced_times(grid.t_i, grid.t_f, n);
+                solve_from_initial_times(dynamics, cost, w, grid, &SolveParams::default(), &times)
+            }
+        }
+    }
+
     /// One Fig. 8 sample outcome.
     #[derive(Clone, Copy)]
     pub struct Fig8Row {
         pub n_init: usize,
+        pub scheme: &'static str,
         pub sample: usize,
         pub iterations: usize,
         pub residual: f64,
@@ -139,26 +219,26 @@ mod harness {
         pub max_residual: f64,
     }
 
-    /// Run `solve` for every `(n_init, w)` pair on the fixed 30 s grid; collect
-    /// per-sample outcomes and a count of solver failures (Phase 5b ⇒ expect 0).
+    /// Run every `(scheme, w)` pair on the fixed 30 s grid; collect per-sample
+    /// outcomes and a count of solver failures (expect 0). Each scheme uses the
+    /// paper's own seeding (endpoints / largest-g / evenly-spaced), so the columns
+    /// are comparable to Fig. 8.
     pub fn run_fig8<D: Dynamics, C: CostModel>(
         dynamics: &D,
         cost: &C,
         ws: &[Pseudostate],
-        n_inits: &[usize],
+        schemes: &[(usize, InitScheme)],
     ) -> (Vec<Fig8Row>, usize) {
         let grid = TimeGrid::uniform(T_I, T_F, GRID_DT);
-        let mut rows = Vec::with_capacity(ws.len() * n_inits.len());
+        let mut rows = Vec::with_capacity(ws.len() * schemes.len());
         let mut failures = 0usize;
-        for &n_init in n_inits {
-            let params = SolveParams {
-                n_init,
-                ..SolveParams::default()
-            };
+        for &(n_init, scheme) in schemes {
+            let name = scheme_name(scheme);
             for (sample, &w) in ws.iter().enumerate() {
-                match solve(dynamics, cost, w, grid, &params) {
+                match solve_scheme(dynamics, cost, w, grid, scheme) {
                     Ok(sol) => rows.push(Fig8Row {
                         n_init,
+                        scheme: name,
                         sample,
                         iterations: sol.iterations,
                         residual: sol.residual,
@@ -199,10 +279,18 @@ mod harness {
     /// Write the per-sample Fig. 8 rows to `path` as CSV.
     pub fn write_fig8_csv(path: &str, rows: &[Fig8Row]) -> csv::Result<()> {
         let mut w = csv::Writer::from_path(path)?;
-        w.write_record(["n_init", "sample", "iterations", "residual", "total_dv"])?;
+        w.write_record([
+            "n_init",
+            "scheme",
+            "sample",
+            "iterations",
+            "residual",
+            "total_dv",
+        ])?;
         for r in rows {
             w.write_record(&[
                 r.n_init.to_string(),
+                r.scheme.to_string(),
                 r.sample.to_string(),
                 r.iterations.to_string(),
                 format!("{:.6e}", r.residual),
@@ -216,18 +304,31 @@ mod harness {
     /// Fig. 8 driver: sample, sweep, summarize, print, and write the CSV.
     pub fn fig8<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
         let ws = sample_pseudostates(N_MC, SEED);
-        let (rows, failures) = run_fig8(dynamics, cost, &ws, &N_INITS);
-        let stats = summarize_fig8(&rows, &N_INITS);
+        let (rows, failures) = run_fig8(dynamics, cost, &ws, &FIG8_SCHEMES);
+        let counts: Vec<usize> = FIG8_SCHEMES.iter().map(|(n, _)| *n).collect();
+        let stats = summarize_fig8(&rows, &counts);
 
-        println!("\nFig. 8 — Algorithm-2 iteration distribution ({N_MC} samples/init)");
+        println!("\nFig. 8 — Algorithm-2 iteration distribution ({N_MC} samples/scheme)");
+        println!("  paper's three seedings: n=2 endpoints, n=6 largest-g, n=10 evenly-spaced");
         println!(
-            "  {:>6}  {:>5}  {:>10}  {:>8}  {:>11}  {:>12}",
-            "n_init", "n", "mean_iters", "frac<=8", "max_iters", "max_residual"
+            "  {:>6}  {:>14}  {:>5}  {:>10}  {:>8}  {:>11}  {:>12}",
+            "n_init", "scheme", "n", "mean_iters", "frac<=8", "max_iters", "max_residual"
         );
-        for (s, paper) in stats.iter().zip(PAPER_MEANS.iter()) {
+        for ((s, &(_, scheme)), paper) in stats
+            .iter()
+            .zip(FIG8_SCHEMES.iter())
+            .zip(PAPER_MEANS.iter())
+        {
             println!(
-                "  {:>6}  {:>5}  {:>10.3}  {:>8.3}  {:>11}  {:>12.2e}   (paper {:.2})",
-                s.n_init, s.n, s.mean_iters, s.frac_le8, s.max_iters, s.max_residual, paper
+                "  {:>6}  {:>14}  {:>5}  {:>10.3}  {:>8.3}  {:>11}  {:>12.2e}   (paper {:.2})",
+                s.n_init,
+                scheme_name(scheme),
+                s.n,
+                s.mean_iters,
+                s.frac_le8,
+                s.max_iters,
+                s.max_residual,
+                paper
             );
         }
         if failures > 0 {
@@ -240,9 +341,9 @@ mod harness {
             Err(e) => eprintln!("  CSV write failed     : {e}"),
         }
 
-        let cdf: Vec<(usize, Vec<(f64, f64)>)> = N_INITS
+        let cdf: Vec<(usize, Vec<(f64, f64)>)> = FIG8_SCHEMES
             .iter()
-            .map(|&n_init| {
+            .map(|&(n_init, _)| {
                 let counts: Vec<usize> = rows
                     .iter()
                     .filter(|r| r.n_init == n_init)
@@ -516,13 +617,18 @@ mod harness {
             let dynamics = worked_example_dynamics();
             let cost = worked_example_cost();
             let ws = sample_pseudostates(3, SEED);
-            let n_inits = [2usize, 6];
-            let (rows, failures) = run_fig8(&dynamics, &cost, &ws, &n_inits);
+            // One Algorithm-1 scheme and the explicit-seed endpoints scheme, so both
+            // solve paths (solve / solve_from_initial_times) are exercised.
+            let schemes = [
+                (2usize, InitScheme::Endpoints),
+                (6usize, InitScheme::LargestG(6)),
+            ];
+            let (rows, failures) = run_fig8(&dynamics, &cost, &ws, &schemes);
             assert_eq!(
                 failures, 0,
                 "no solve should fail on the worked-example problem"
             );
-            assert_eq!(rows.len(), 3 * 2, "one row per (n_init, sample)");
+            assert_eq!(rows.len(), 3 * 2, "one row per (scheme, sample)");
             for r in &rows {
                 assert!(
                     r.residual < 1e-3,
@@ -531,7 +637,8 @@ mod harness {
                 );
                 assert!((1..=50).contains(&r.iterations));
             }
-            let stats = summarize_fig8(&rows, &n_inits);
+            let counts = [2usize, 6];
+            let stats = summarize_fig8(&rows, &counts);
             assert_eq!(stats.len(), 2);
             assert!(stats.iter().all(|s| s.n == 3));
         }
