@@ -27,11 +27,18 @@ fn main() {
 mod harness {
     use koenig_planner::cost::Piecewise;
     use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
-    use koenig_planner::Pseudostate;
+    use koenig_planner::{solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
     use rand::rngs::StdRng;
     use rand::SeedableRng;
     use rand_distr::{Distribution, Normal};
     use std::f64::consts::TAU;
+
+    /// Fig. 8 sample count (paper: 200).
+    pub const N_MC: usize = 200;
+    /// Initialization candidate counts swept by Fig. 8.
+    pub const N_INITS: [usize; 3] = [2, 6, 10];
+    /// Paper's reported mean iteration counts for N_INITS (reference, not a target).
+    pub const PAPER_MEANS: [f64; 3] = [4.90, 3.99, 3.31];
 
     /// Chief semimajor axis a_c [m] — the I/O scaling factor (spec §5.5).
     pub const A_C: f64 = 25_000e3;
@@ -68,25 +75,28 @@ mod harness {
     }
 
     pub fn main() {
+        let which = std::env::args().nth(1);
+        if let Some(arg) = which.as_deref() {
+            if arg != "fig8" && arg != "fig9" {
+                eprintln!("usage: monte_carlo [fig8|fig9]   (default: both)");
+                std::process::exit(2);
+            }
+        }
+        std::fs::create_dir_all("target").ok();
         let dynamics = worked_example_dynamics();
         let cost = worked_example_cost();
-        let _ = (&dynamics, &cost); // wired into the sweeps in later tasks
-        println!("koenig-planner Monte Carlo harness (Phase 6)");
-        println!("  problem            : worked example (Table III chief, eq. 49 cost)");
-        println!("  window [s]         : [{T_I}, {T_F}]");
-        println!(
-            "  mean motion [rad/s]: {:.6e}",
-            worked_example_chief().mean_motion()
-        );
-        println!("  Fig. 8 grid        : dt = {GRID_DT} s");
-        println!("  seed               : {SEED:#x}");
+
+        println!("koenig-planner Monte Carlo harness (Phase 6)  seed={SEED:#x}");
+        let run_8 = matches!(which.as_deref(), None | Some("fig8"));
+        if run_8 {
+            fig8(&dynamics, &cost);
+        }
     }
 
     /// `n` random target pseudostates as dimensionless `w_nd`: each of the 6 ROE
     /// components `~ Normal(0, σ = SIGMA_M metres)`, then divided by `a_c`
     /// (spec §6 Phase 6 sampling convention). `StdRng` is portable, so a fixed
     /// `seed` yields identical samples on every platform.
-    #[allow(dead_code)]
     pub fn sample_pseudostates(n: usize, seed: u64) -> Vec<Pseudostate> {
         let mut rng = StdRng::seed_from_u64(seed);
         let normal = Normal::new(0.0_f64, SIGMA_M).expect("σ > 0 is a valid normal");
@@ -99,6 +109,128 @@ mod harness {
                 Pseudostate::from_row_slice(&comp) / A_C
             })
             .collect()
+    }
+
+    /// One Fig. 8 sample outcome.
+    #[derive(Clone, Copy)]
+    pub struct Fig8Row {
+        pub n_init: usize,
+        pub sample: usize,
+        pub iterations: usize,
+        pub residual: f64,
+        pub total_dv: f64,
+    }
+
+    /// Per-`n_init` summary statistics.
+    pub struct Fig8Stat {
+        pub n_init: usize,
+        pub n: usize,
+        pub mean_iters: f64,
+        pub frac_le8: f64,
+        pub max_iters: usize,
+        pub max_residual: f64,
+    }
+
+    /// Run `solve` for every `(n_init, w)` pair on the fixed 30 s grid; collect
+    /// per-sample outcomes and a count of solver failures (Phase 5b ⇒ expect 0).
+    pub fn run_fig8<D: Dynamics, C: CostModel>(
+        dynamics: &D,
+        cost: &C,
+        ws: &[Pseudostate],
+        n_inits: &[usize],
+    ) -> (Vec<Fig8Row>, usize) {
+        let grid = TimeGrid::uniform(T_I, T_F, GRID_DT);
+        let mut rows = Vec::with_capacity(ws.len() * n_inits.len());
+        let mut failures = 0usize;
+        for &n_init in n_inits {
+            let params = SolveParams {
+                n_init,
+                ..SolveParams::default()
+            };
+            for (sample, &w) in ws.iter().enumerate() {
+                match solve(dynamics, cost, w, grid, &params) {
+                    Ok(sol) => rows.push(Fig8Row {
+                        n_init,
+                        sample,
+                        iterations: sol.iterations,
+                        residual: sol.residual,
+                        total_dv: sol.total_dv,
+                    }),
+                    Err(_) => failures += 1,
+                }
+            }
+        }
+        (rows, failures)
+    }
+
+    /// Group rows by `n_init` and compute mean iterations, fraction ≤ 8 iterations,
+    /// max iterations, and max residual.
+    pub fn summarize_fig8(rows: &[Fig8Row], n_inits: &[usize]) -> Vec<Fig8Stat> {
+        n_inits
+            .iter()
+            .map(|&n_init| {
+                let group: Vec<&Fig8Row> = rows.iter().filter(|r| r.n_init == n_init).collect();
+                let n = group.len();
+                let denom = n.max(1) as f64;
+                let mean_iters = group.iter().map(|r| r.iterations as f64).sum::<f64>() / denom;
+                let frac_le8 = group.iter().filter(|r| r.iterations <= 8).count() as f64 / denom;
+                let max_iters = group.iter().map(|r| r.iterations).max().unwrap_or(0);
+                let max_residual = group.iter().map(|r| r.residual).fold(0.0, f64::max);
+                Fig8Stat {
+                    n_init,
+                    n,
+                    mean_iters,
+                    frac_le8,
+                    max_iters,
+                    max_residual,
+                }
+            })
+            .collect()
+    }
+
+    /// Write the per-sample Fig. 8 rows to `path` as CSV.
+    pub fn write_fig8_csv(path: &str, rows: &[Fig8Row]) -> csv::Result<()> {
+        let mut w = csv::Writer::from_path(path)?;
+        w.write_record(["n_init", "sample", "iterations", "residual", "total_dv"])?;
+        for r in rows {
+            w.write_record(&[
+                r.n_init.to_string(),
+                r.sample.to_string(),
+                r.iterations.to_string(),
+                format!("{:.6e}", r.residual),
+                format!("{:.9e}", r.total_dv),
+            ])?;
+        }
+        w.flush()?;
+        Ok(())
+    }
+
+    /// Fig. 8 driver: sample, sweep, summarize, print, and write the CSV.
+    pub fn fig8<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
+        let ws = sample_pseudostates(N_MC, SEED);
+        let (rows, failures) = run_fig8(dynamics, cost, &ws, &N_INITS);
+        let stats = summarize_fig8(&rows, &N_INITS);
+
+        println!("\nFig. 8 — Algorithm-2 iteration distribution ({N_MC} samples/init)");
+        println!(
+            "  {:>6}  {:>5}  {:>10}  {:>8}  {:>11}  {:>12}",
+            "n_init", "n", "mean_iters", "frac<=8", "max_iters", "max_residual"
+        );
+        for (s, paper) in stats.iter().zip(PAPER_MEANS.iter()) {
+            println!(
+                "  {:>6}  {:>5}  {:>10.3}  {:>8.3}  {:>11}  {:>12.2e}   (paper {:.2})",
+                s.n_init, s.n, s.mean_iters, s.frac_le8, s.max_iters, s.max_residual, paper
+            );
+        }
+        if failures > 0 {
+            println!("  WARNING: {failures} solve(s) failed (expected 0).");
+        }
+
+        let path = "target/fig8_iterations.csv";
+        match write_fig8_csv(path, &rows) {
+            Ok(()) => println!("  rows written         : {path} ({} rows)", rows.len()),
+            Err(e) => eprintln!("  CSV write failed     : {e}"),
+        }
     }
 
     #[cfg(test)]
@@ -130,6 +262,31 @@ mod harness {
             let a = sample_pseudostates(8, SEED);
             let b = sample_pseudostates(8, SEED + 1);
             assert!(a.iter().zip(&b).any(|(x, y)| x != y));
+        }
+
+        #[test]
+        fn fig8_sweep_produces_paired_rows_and_low_residual() {
+            let dynamics = worked_example_dynamics();
+            let cost = worked_example_cost();
+            let ws = sample_pseudostates(3, SEED);
+            let n_inits = [2usize, 6];
+            let (rows, failures) = run_fig8(&dynamics, &cost, &ws, &n_inits);
+            assert_eq!(
+                failures, 0,
+                "no solve should fail on the worked-example problem"
+            );
+            assert_eq!(rows.len(), 3 * 2, "one row per (n_init, sample)");
+            for r in &rows {
+                assert!(
+                    r.residual < 1e-3,
+                    "row residual {:.3e} too high",
+                    r.residual
+                );
+                assert!((1..=50).contains(&r.iterations));
+            }
+            let stats = summarize_fig8(&rows, &n_inits);
+            assert_eq!(stats.len(), 2);
+            assert!(stats.iter().all(|s| s.n == 3));
         }
     }
 }
