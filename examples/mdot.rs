@@ -16,7 +16,9 @@
 
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
-use koenig_damico_planner::{refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
+use koenig_damico_planner::{
+    refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid,
+};
 use std::f64::consts::TAU;
 
 /// Chief semimajor axis a_c [m] — the I/O scaling factor for nondimensionalization.

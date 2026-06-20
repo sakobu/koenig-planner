@@ -14,7 +14,9 @@
 
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
-use koenig_damico_planner::{refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
+use koenig_damico_planner::{
+    refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid,
+};
 use nalgebra::SVector;
 use std::f64::consts::TAU;
 
