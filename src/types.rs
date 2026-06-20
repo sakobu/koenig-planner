@@ -18,6 +18,7 @@ pub type Dual = SVector<f64, N>;
 
 /// An impulsive maneuver: a Delta-v `[m/s]` in the RTN frame applied at time `t` `[s]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Maneuver {
     /// Application time `[s]`, measured from `t_i`.
     pub t: f64,
@@ -31,6 +32,7 @@ pub struct Maneuver {
 /// candidate times; the Hunter cross-check uses a 10 s grid over `[0, 39000]`
 /// -> 3901 candidate times.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TimeGrid {
     /// Initial time `t_i` `[s]`.
     pub t_i: f64,
@@ -88,6 +90,7 @@ impl TimeGrid {
 
 /// Tunable parameters for the three-step algorithm (Table III defaults).
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SolveParams {
     /// Coarse-sample count `|T^d|` for Algorithm 1 initialization (Table III: 20).
     pub n_coarse: usize,
@@ -113,6 +116,7 @@ impl Default for SolveParams {
 
 /// The planner output: the maneuver set plus convergence diagnostics.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Solution {
     /// Maneuvers `{t, Delta-v}`, one per optimal time in `T^opt`.
     pub maneuvers: Vec<Maneuver>,
@@ -167,6 +171,7 @@ pub enum FuelGenerator {
 
 /// Errors surfaced by the planner.
 #[derive(Debug, Error)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum PlannerError {
     /// The convex (SOCP/QP) solver failed.
     #[error("convex solver failed: {0}")]

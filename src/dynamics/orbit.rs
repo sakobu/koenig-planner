@@ -7,6 +7,7 @@ use crate::types::PlannerError;
 
 /// A mean absolute Keplerian orbit `[a, e, i, Omega, omega, M]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AbsoluteOrbit {
     /// Semimajor axis `[m]`.
     pub a: f64,

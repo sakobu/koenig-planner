@@ -1,0 +1,14 @@
+[package]
+name = "koenig-planner-api"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+description = "Serde DTOs and a single dispatch entry point for the Koenig-D'Amico maneuver planner"
+
+[dependencies]
+koenig-damico-planner = { path = "../..", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0"

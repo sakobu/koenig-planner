@@ -1,3 +1,7 @@
+[workspace]
+members = ["crates/api"]
+resolver = "2"
+
 [package]
 name = "koenig-damico-planner"
 version = "0.1.0"
@@ -35,8 +39,15 @@ optional = true
 version = "0.6"
 optional = true
 
+[dependencies.serde]
+version = "1.0"
+optional = true
+features = ["derive"]
+
 [dev-dependencies]
 approx = "0.5"
+serde_json = "1.0"
 
 [features]
 validation = ["dep:csv", "dep:plotters", "dep:rand", "dep:rand_distr"]
+serde = ["dep:serde", "nalgebra/serde-serialize"]
