@@ -1,11 +1,18 @@
 [package]
-name = "koenig-planner"
-version = "0.0.0" # Unpublished research crate: bump and add crates.io metadata only when publishing.
+name = "koenig-damico-planner"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.92"
+authors = ["sakobu <smelkon@icloud.com>"]
 license = "MIT OR Apache-2.0"
 description = "Faithful Rust re-implementation of the Koenig-D'Amico fuel-optimal impulsive control algorithm (IEEE TAC 2020)"
 readme = "README.md"
+repository = "https://github.com/sakobu/koenig-planner"
+homepage = "https://github.com/sakobu/koenig-planner"
+documentation = "https://docs.rs/koenig-damico-planner"
+keywords = ["astrodynamics", "formation-flying", "spacecraft", "orbit", "optimization"]
+categories = ["aerospace", "science", "mathematics", "simulation"]
+exclude = ["assets/", "docs/", ".github/"]
 
 [dependencies]
 nalgebra = "0.35"
