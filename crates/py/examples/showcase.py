@@ -10,10 +10,10 @@
 import math
 from pathlib import Path
 
-import matplotlib
+import matplotlib  # pyright: ignore[reportMissingImports]  # optional viz dep, not a package requirement
 
 matplotlib.use("Agg")  # headless-safe; remove for interactive use
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # pyright: ignore[reportMissingImports]
 
 import koenig_planner as kp
 

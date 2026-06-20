@@ -54,7 +54,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install maturin + pytest
@@ -72,7 +72,7 @@ jobs:
           pip install "pyright<2"
           pyright
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: koenig-planner-wheels
           path: dist/*.whl
@@ -94,10 +94,10 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - name: Install wasm-pack
-        uses: jetli/wasm-pack-action@v0.4.0
+        uses: taiki-e/install-action@v2
         with:
-          version: latest
-      - uses: actions/setup-node@v4
+          tool: wasm-pack
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
       - name: Clippy (wasm)
@@ -113,7 +113,7 @@ jobs:
           npx tsc --noEmit
           npm run build
       - name: Upload demo artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: koenig-planner-wasm-demo
           path: |

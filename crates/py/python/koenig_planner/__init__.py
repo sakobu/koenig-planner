@@ -4,7 +4,7 @@ The public API is implemented in the compiled `_koenig_planner` extension and
 re-exported here so `import koenig_planner` exposes it directly.
 """
 
-from ._koenig_planner import (
+from ._koenig_planner import (  # pyright: ignore[reportMissingModuleSource]  # native ext: stub shipped, binary built at install time
     Maneuver,
     Orbit,
     Solution,
