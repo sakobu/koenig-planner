@@ -1,14 +1,16 @@
-//! Phase 5 worked-example validation, reframed around what is *provable* with the
+//! Worked-example validation, scoped to what is *provable* with the
 //! FD-verified J2 mean-ROE dynamics (tests/fd_stm.rs, tests/fd_b_matrix.rs).
 //!
 //! The paper (Koenig & D'Amico §7, Table III/IV) reports a 3-maneuver, 82.4 mm/s
-//! plan. We do NOT assert that, because the paper's published worked-example
-//! figures are internally inconsistent with its own dynamics model (its printed
-//! STM carries a delta-lambda dt^2 typo we corrected, and even after correcting
-//! it the paper's Table IV maneuvers do not reconstruct its Table III target — see
-//! `paper_table_iv_does_not_reconstruct`). Instead we assert the things the
-//! FD-verified pipeline genuinely guarantees: it converges, the refinement finds
-//! the true discretized dual optimum, and the optimum is self-consistent.
+//! plan. This test does not assert those figures, because the paper's published
+//! worked-example figures are internally inconsistent with its own dynamics model
+//! (its printed STM carries a delta-lambda dt^2 typo — this crate uses the
+//! corrected linear term — and even after correcting it the paper's Table IV
+//! maneuvers do not reconstruct its Table III target; see
+//! `paper_table_iv_does_not_reconstruct`). This test instead asserts the things
+//! the finite-difference-verified pipeline guarantees: it converges, the
+//! refinement finds the true discretized dual optimum, and the optimum is
+//! self-consistent.
 
 use koenig_planner::cost::Piecewise;
 use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
@@ -75,18 +77,16 @@ fn worked_example_is_self_consistent() {
         "refinement dual {refine_dual:.6} vs exact all-times {exact_dual:.6}"
     );
 
-    // The optimum sits where the FD-verified dynamics put it (~80.9 mm/s) — below
-    // the paper's reported 82.0 mm/s bound, which the paper's own solution cannot
-    // actually achieve in these (corrected) dynamics.
+    // The optimum (~80.9 mm/s) sits below the paper's reported 82.0 mm/s bound under
+    // the corrected dynamics used here.
     assert!(
         (0.078..=0.083).contains(&exact_dual),
         "exact dual = {:.4} mm/s",
         exact_dual * 1e3
     );
 
-    // Phase 5b: the direct min-fuel SOCP now recovers w to ~0 residual with a
-    // small maneuver set (the fixed-support QP previously left ~0.4% over ~9
-    // maneuvers). Bands set from the characterized run (Step 1).
+    // The direct min-fuel SOCP recovers w to ~0 residual with a small maneuver set.
+    // Tolerance bands set from the observed converged values.
     assert!(
         sol.total_dv > 0.078 && sol.total_dv < 0.083,
         "total_dv = {} (expected ~80.9 mm/s)",
@@ -94,7 +94,7 @@ fn worked_example_is_self_consistent() {
     );
     assert!(
         sol.residual < 1e-3,
-        "residual = {:.3e} (Phase 5b target: << 0.1%)",
+        "residual = {:.3e} (target: << 0.1%)",
         sol.residual
     );
     // <= N = 6: the R^6 dual needs at most N active contacts at the optimum
@@ -111,10 +111,10 @@ fn worked_example_is_self_consistent() {
 #[test]
 fn hunter_l2_cross_check_recovers_w() {
     // Hunter & D'Amico 2025 "Sequential Formulation Validation": identical J2 ROE
-    // dynamics, pure L2 cost. The dual lower bound is correct (~2.48e-4 m/s in our
-    // FD-verified dynamics; the paper's 2.294e-4 is not reproducible — opposite-
-    // sign discrepancy, a paper inconsistency). What we assert is that the Phase-5b
-    // min-fuel extractor recovers w to <0.01% residual at the self-consistent dual.
+    // dynamics, pure L2 cost. The dual lower bound is correct (~2.48e-4 m/s in the
+    // dynamics used here; the paper's 2.294e-4 is not reproduced). This test asserts
+    // that the min-fuel extractor recovers w to <0.01% residual at the
+    // self-consistent dual.
     let e_x: f64 = -0.658;
     let e_y: f64 = -0.239;
     let e = (e_x * e_x + e_y * e_y).sqrt();
@@ -153,9 +153,9 @@ fn hunter_l2_cross_check_recovers_w() {
         sol.lambda.dot(&w)
     );
 
-    // Phase 5b acceptance: extraction reconstructs w to < 0.01% residual.
+    // Extraction reconstructs w to < 0.01% residual.
     assert!(sol.residual < 1e-4, "residual = {:.3e}", sol.residual);
-    // Our FD-verified optimum (~2.487e-4 m/s), NOT the paper's 2.294e-4 bound.
+    // Optimum under these dynamics (~2.487e-4 m/s), not the paper's 2.294e-4 bound.
     assert!(
         (2.4e-4..=2.6e-4).contains(&sol.total_dv),
         "total_dv = {:.4e} m/s",
@@ -167,10 +167,10 @@ fn hunter_l2_cross_check_recovers_w() {
 
 #[test]
 fn paper_table_iv_does_not_reconstruct() {
-    // Evidence for the reframing: the paper's published Table IV maneuvers, fed
+    // Demonstrates that the paper's published Table IV maneuvers, fed
     // through the FD-verified dynamics, do NOT reconstruct the Table III target —
-    // the residual is enormous (dominated by delta-lambda). This is why we cannot
-    // assert the paper's numbers: they are inconsistent with the paper's own model.
+    // the residual is enormous (dominated by delta-lambda), so the paper's published
+    // figures are not reproduced by the paper's own model.
     let (dynamics, _cost, w, _grid) = worked_example();
     let table_iv = [
         (
@@ -193,7 +193,6 @@ fn paper_table_iv_does_not_reconstruct() {
     let residual = (w - recon).norm() / w.norm();
     assert!(
         residual > 0.5,
-        "paper Table IV residual = {residual:.3} (expected >> 0; if this drops near \
-         0, the paper became reproducible and the validation should be revisited)"
+        "paper Table IV residual = {residual:.3} (expected >> 0; the paper's figures are not reproduced by its own model)"
     );
 }

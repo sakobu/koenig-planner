@@ -1,4 +1,4 @@
-//! Control-input matrix `B(t)` (spec 5.4): GVE map from an RTN Delta-v [m/s] to
+//! Control-input matrix `B(t)`: GVE map from an RTN Delta-v [m/s] to
 //! a dimensionless mean-ROE change. Columns = R, T, N thrust on the deputy.
 //! `theta = omega + nu`; `nu` is the true anomaly from `M` via Kepler.
 
@@ -56,7 +56,7 @@ mod tests {
     }
 
     #[test]
-    fn zero_structure_matches_spec() {
+    fn zero_structure_is_correct() {
         let b = control_input_matrix(&fixture()).unwrap();
         assert_eq!(b[(0, 2)], 0.0);
         assert_eq!(b[(1, 1)], 0.0);

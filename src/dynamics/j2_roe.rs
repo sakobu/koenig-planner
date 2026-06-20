@@ -120,9 +120,9 @@ mod tests {
             -4.292240669143e-04,
             4.630275430939e-04,
             0.0,
-            // delta-lambda (row 2): regenerated after the Phi_21 dt^2 fix. The old
-            // anchors (~1e3) encoded the typo; the correct linear-drift values are
-            // ~1e-2. Cross-checked by tests/fd_stm.rs + fd_b_matrix.rs.
+            // delta-lambda (row 2): the dominant near-degenerate entries; values are
+            // of order ~1e-2 (linear-in-time drift). Cross-checked against the
+            // finite-difference oracles in tests/fd_stm.rs + fd_b_matrix.rs.
             1.009859094742e-02,
             -1.131471991149e-02,
             2.136815027274e-06,

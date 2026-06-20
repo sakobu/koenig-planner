@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn s2_face_max_lp_closed_form() {
-        // FaceMax (LP path, Risk R6: no published reference) at one time,
+        // FaceMax (LP path; no published closed-form reference) at one time,
         // Gamma=[I_3;0], w=(0,0,1,0,0,0). max l3 s.t. v_k.(l1,l2,l3) <= 1.
         // Binding v3,v4 give b*l3 <= 1 -> l3 = 1/b = sqrt(3); l2 pinned 0.
         let rows = vec![FaceMax.cone_constraints(&gamma_top_identity())];

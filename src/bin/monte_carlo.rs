@@ -11,7 +11,7 @@
 //! Fig. 8 reproduces the paper's THREE initialization schemes (Koenig & D'Amico 2020,
 //! p.11): n=2 seeds only the window endpoints {t_i, t_f} (deliberate worst case), n=6
 //! is Algorithm 1 (the six largest-contact times), n=10 is ten evenly-spaced times —
-//! NOT a single `n_init` count knob. Validation stance (spec §6 Phase 6): we REPORT our
+//! NOT a single `n_init` count knob. Validation stance: we REPORT our
 //! iteration distributions and compare to the paper's 4.90/3.99/3.31 means as
 //! *reference*, not as a pass/fail target. See tests/monte_carlo.rs for the asserted,
 //! paper-independent invariants.
@@ -56,9 +56,9 @@ mod harness {
     /// Paper's reported mean iterations for the three schemes (reference, not a target).
     pub const PAPER_MEANS: [f64; 3] = [4.90, 3.99, 3.31];
 
-    /// Chief semimajor axis a_c `[m]` — the I/O scaling factor (spec §5.5).
+    /// Chief semimajor axis a_c `[m]` — the I/O scaling factor.
     pub const A_C: f64 = 25_000e3;
-    /// Per-ROE Gaussian std, metre-scaled (σ = 1 km; spec §6 Phase 6).
+    /// Per-ROE Gaussian std, metre-scaled (σ = 1 km).
     pub const SIGMA_M: f64 = 1000.0;
     /// Documented constant seed (portable StdRng) — "koenig" in hex-ish.
     pub const SEED: u64 = 0x6F_656E_6967;
@@ -105,7 +105,7 @@ mod harness {
         let dynamics = worked_example_dynamics();
         let cost = worked_example_cost();
 
-        println!("koenig-planner Monte Carlo harness (Phase 6)  seed={SEED:#x}");
+        println!("koenig-planner Monte Carlo harness  seed={SEED:#x}");
         let run_8 = matches!(which.as_deref(), None | Some("fig8"));
         if run_8 {
             fig8(&dynamics, &cost);
@@ -118,7 +118,7 @@ mod harness {
 
     /// `n` random target pseudostates as dimensionless `w_nd`: each of the 6 ROE
     /// components `~ Normal(0, σ = SIGMA_M metres)`, then divided by `a_c`
-    /// (spec §6 Phase 6 sampling convention). `StdRng` is portable, so a fixed
+    /// (sampling convention). `StdRng` is portable, so a fixed
     /// `seed` yields identical samples on every platform.
     pub fn sample_pseudostates(n: usize, seed: u64) -> Vec<Pseudostate> {
         let mut rng = StdRng::seed_from_u64(seed);

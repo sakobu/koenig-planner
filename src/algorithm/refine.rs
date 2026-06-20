@@ -151,22 +151,22 @@ mod tests {
             Ok(SMatrix::<f64, N, M>::from_row_slice(&[
                 c,
                 -s,
-                0.0, //
+                0.0, // row 0
                 s,
                 c,
-                0.0, //
+                0.0, // row 1
                 0.0,
                 0.0,
-                1.0, //
+                1.0, // row 2
                 0.5 * c,
                 0.0,
-                0.5 * s, //
+                0.5 * s, // row 3
                 0.0,
                 0.5 * c,
-                -0.5 * s, //
+                -0.5 * s, // row 4
                 0.5 * s,
                 -0.5 * c,
-                0.0,
+                0.0, // row 5
             ]))
         }
     }
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn refine_handles_mixed_facemax_and_norm2_cones() {
-        // Risk R7: exercise the non-smooth FaceMax cost in the refine path.
+        // Exercise the non-smooth FaceMax cost in the refine path.
         // Realistic period so the perigee window is a thin band, giving a true
         // FaceMax/Norm2 mix across the grid.
         let dynamics = SpinDyn { rate: 1.0e-4 };
@@ -254,8 +254,8 @@ mod tests {
         let params = SolveParams::default();
 
         // Mixed-cone refine_socp must succeed and the trace must be sane; we do
-        // not hard-assert convergence-to-1 here (real conditioning is Phase 5's
-        // job) — only that the non-smooth path runs and the dual is finite.
+        // not hard-assert convergence-to-1 here (real conditioning is validated by
+        // the worked-example tests) — only that the non-smooth path runs and the dual is finite.
         let out = refine(&cost, &grid, &gammas, &w, &params, vec![5, 20], 50).unwrap();
         assert!(out.lambda.iter().all(|x| x.is_finite()));
         for pair in out.max_g_trace.windows(2) {
@@ -289,7 +289,7 @@ mod tests {
         let out = refine(&cost, &grid, &gammas, &w, &params, t_est, 50).unwrap();
 
         // The real ill-conditioned J2Roe contact takes several refinement rounds
-        // (the well-conditioned Phase-4 synthetic converges too fast to exercise
+        // (the well-conditioned synthetic SpinDyn fixture converges too fast to exercise
         // the loop body). Confirm >= 3 iterations.
         assert!(
             out.iterations >= 3,
@@ -299,10 +299,10 @@ mod tests {
 
         // The drop/add loop body genuinely integrates on real dynamics: across
         // iterations the active set BOTH loses a time (a drop) AND gains a time
-        // (an add). A literal drop-then-re-add of the SAME index is not observed
-        // on this fixture (checked across 15 seeds x 3 parameter variants) -- an
-        // instance-specific outcome (fast-converging dual plus the eps_remove
-        // hysteresis band), NOT a theorem: max_t g being non-increasing globally
+        // (an add). A literal drop-then-re-add of the SAME index is not guaranteed
+        // on this fixture: it is an instance-specific outcome (fast-converging dual
+        // plus the eps_remove hysteresis band), not a property the algorithm
+        // promises: max_t g being non-increasing globally
         // does not preclude a single dropped time's contact rebounding above 1
         // (column-generation methods can re-activate dropped columns). Re-add is
         // not a distinct code path anyway -- the add step's push/sort/dedup is

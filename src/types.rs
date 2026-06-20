@@ -143,7 +143,7 @@ pub struct ConicRows {
 }
 
 /// Primal fuel generator for one maneuver in the direct min-fuel SOCP
-/// (Phase 5b, Algorithm 3). Describes how a Δv at one candidate time is built
+/// (Algorithm 3). Describes how a Δv at one candidate time is built
 /// from solver variables and how it is charged, mirroring the cost's unit
 /// sublevel set:
 ///
@@ -196,7 +196,7 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     #[test]
-    fn dimensions_match_spec() {
+    fn dimensions_match_roe_and_rtn() {
         assert_eq!(N, 6);
         assert_eq!(M, 3);
     }

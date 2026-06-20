@@ -1,9 +1,9 @@
-//! Phase 6 CI invariant test: Monte Carlo behavior of the public solver API on the
+//! CI invariant test: Monte Carlo behavior of the public solver API on the
 //! worked-example problem, driving the paper's THREE Fig. 8 initialization schemes
 //! (n=2 endpoints, n=6 largest-g, n=10 evenly-spaced; Koenig & D'Amico 2020 p.11).
-//! Asserts paper-INDEPENDENT invariants (NOT the paper's 4.90/3.99/3.31 means — see
-//! spec §6 Phase 6 validation stance). Runs only under the `validation` feature (for
-//! rand/rand_distr); CI runs `--all-features`.
+//! Asserts paper-INDEPENDENT invariants (NOT the paper's 4.90/3.99/3.31 means,
+//! which depend on solver conventions not reproduced bit-for-bit here). Runs only
+//! under the `validation` feature (for rand/rand_distr); CI runs `--all-features`.
 #![cfg(feature = "validation")]
 
 use koenig_planner::cost::Piecewise;
@@ -45,7 +45,7 @@ fn sample_ws(n: usize, seed: u64) -> Vec<Pseudostate> {
 }
 
 /// Solve one sample under the paper's seeding for column `k` (0 = n=2 endpoints,
-/// 1 = n=6 largest-g, 2 = n=10 evenly-spaced) — mirroring the harness's `solve_scheme`.
+/// 1 = n=6 largest-g, 2 = n=10 evenly-spaced).
 fn solve_column(
     dynamics: &J2Roe,
     cost: &Piecewise,
@@ -105,7 +105,7 @@ fn monte_carlo_invariants_hold() {
         means[k] = sum as f64 / count as f64;
     }
 
-    // Invariant 1: every solve succeeds (Phase 5b robustness).
+    // Invariant 1: every solve succeeds (robust min-fuel extraction).
     assert_eq!(failures, 0, "{failures} solve(s) failed; expected 0");
     // Invariant 2: converges within the paper's stated 8-iteration bound.
     assert!(

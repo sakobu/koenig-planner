@@ -6,7 +6,7 @@
 //! Cartesian `r, v`; perturb the deputy's velocity by `±ε` along each RTN basis
 //! vector; convert back to elements; form the eq.-51 ROE state; central-
 //! difference. Agreement to ~1e-9 confirms `B` at the formula level (not merely
-//! that the Rust matches the spec's transcription).
+//! that the Rust matches the paper's transcribed formula).
 
 use koenig_planner::dynamics::b_matrix::control_input_matrix;
 use koenig_planner::dynamics::AbsoluteOrbit;

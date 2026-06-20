@@ -1,4 +1,4 @@
-//! Public-API integration tests for the Phase 3 solver wrappers.
+//! Public-API integration tests for the SOCP/QP solver wrappers.
 
 use approx::assert_relative_eq;
 use koenig_planner::cost::{FaceMax, Norm2, SublevelSet};

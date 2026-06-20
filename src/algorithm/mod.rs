@@ -39,12 +39,13 @@ fn contact_on_grid<C: CostModel>(
         .collect()
 }
 
-/// Safety backstop for Algorithm 2 (the paper guarantees convergence; the MC
-/// targets converge in ≤ 8 iterations). Not a Table III parameter.
+/// Safety backstop for Algorithm 2 (the paper guarantees convergence; in practice
+/// the algorithm converges in well under this many iterations). Not a Table III
+/// parameter.
 const MAX_REFINE_ITERS: usize = 50;
 
-/// Precompute `Γ(t)` over the grid once (`J2Roe` caches nothing — see Design
-/// Decision 2). Indexed by grid index.
+/// Precompute `Γ(t)` over the grid once (`J2Roe` caches nothing internally, so
+/// `gamma` is evaluated here and reused). Indexed by grid index.
 ///
 /// # Errors
 /// Propagates the first `Dynamics::gamma` failure (out-of-domain chief).
@@ -55,7 +56,7 @@ fn cache_gamma<D: Dynamics>(
     grid.times().map(|t| dynamics.gamma(t)).collect()
 }
 
-/// Shared `solve` preconditions (Design Decision 9): finite grid with `dt > 0`
+/// Shared `solve` preconditions: finite grid with `dt > 0`
 /// and `t_f > t_i`, `n_init`/`n_coarse ≥ 1`, and a nonzero finite target `w`.
 fn validate_inputs(
     w: &Pseudostate,
