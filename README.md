@@ -61,16 +61,35 @@ cargo run --example mdot
 
 ## Validation harness (Fig. 8 / Fig. 9)
 
-The Monte-Carlo reproductions of the paper's Fig. 8 (iteration counts under three
-seedings) and Fig. 9 (solve time vs. grid size) are gated behind the `validation`
-feature (which pulls in `rand`, `rand_distr`, `csv`, and `plotters`):
+A Monte-Carlo harness reproduces the paper's Fig. 8 (refinement-iteration counts
+under three seedings) and Fig. 9 (solve time vs. grid size). It is gated behind
+the `validation` feature (which pulls in `rand`, `rand_distr`, `csv`, and
+`plotters`); use `--release` for representative timings:
 
 ```sh
-cargo run --bin monte_carlo --features validation
+cargo run --release --bin monte_carlo --features validation
 ```
 
-This writes CSVs and PNGs under `target/`. The seeded CI invariant test runs
-without the feature flag (`tests/monte_carlo.rs`).
+This writes the CSVs and the PNGs below under `target/`. The seeded CI invariant
+test (`tests/monte_carlo.rs`) runs without the feature flag and asserts only
+paper-independent invariants — the paper's reported means are shown here as a
+*reference*, not a pass/fail target.
+
+**Fig. 8 — Algorithm-2 iteration distribution.** Empirical CDF of refinement
+iterations over 200 random targets per seeding scheme (red n=2 window endpoints;
+blue n=6 largest-contact times, i.e. Algorithm 1; green n=10 evenly spaced). Every
+solve converges in ≤ 7 iterations — well within the paper's stated 8-iteration
+bound — and mean iterations are 4.29 / 3.64 / 2.95 vs. the paper's 4.90 / 3.99 /
+3.31.
+
+![Fig. 8 — empirical CDF of Algorithm-2 refinement iterations for the three seeding schemes (n=2, n=6, n=10)](assets/fig8_cdf.png)
+
+**Fig. 9 — solve time vs. grid size.** Wall-clock solve time for the Table III
+target as the candidate-time grid grows from 10 to 10⁶ points (log–log, release
+build). Solve time grows slowly at small |T| (setup-dominated), then scales
+roughly linearly in |T| (~0.3 s at 10⁶ points).
+
+![Fig. 9 — log–log plot of solve time versus candidate-time grid size, from 10 to 1e6 points](assets/fig9_timing.png)
 
 ## Build & test
 
