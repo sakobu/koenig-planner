@@ -21,11 +21,11 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy (core + api)
-        run: cargo clippy --workspace --exclude koenig-damico-planner-py --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --exclude koenig-damico-planner-py --exclude koenig-damico-planner-wasm --all-targets --all-features -- -D warnings
       - name: Build (core + api)
-        run: cargo build --workspace --exclude koenig-damico-planner-py --all-targets --all-features
+        run: cargo build --workspace --exclude koenig-damico-planner-py --exclude koenig-damico-planner-wasm --all-targets --all-features
       - name: Test (core + api)
-        run: cargo test --workspace --exclude koenig-damico-planner-py --all-targets --all-features
+        run: cargo test --workspace --exclude koenig-damico-planner-py --exclude koenig-damico-planner-wasm --all-targets --all-features
       - name: Doc (core + api)
         run: cargo doc --no-deps --all-features -p koenig-damico-planner -p koenig-damico-planner-api
         env:
@@ -83,3 +83,39 @@ jobs:
       - uses: actions/checkout@v5
       - name: Build server image
         run: docker build -f crates/server/Dockerfile -t koenig-damico-planner-server .
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Clippy (wasm)
+        run: cargo clippy -p koenig-damico-planner-wasm --target wasm32-unknown-unknown --all-targets -- -D warnings
+      - name: Build wasm package
+        run: wasm-pack build crates/wasm --target web
+      - name: Wasm boundary tests
+        run: wasm-pack test --node crates/wasm
+      - name: Type-check + build demo
+        run: |
+          cd crates/wasm/www
+          npm ci
+          npx tsc --noEmit
+          npm run build
+      - name: Upload demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: koenig-planner-wasm-demo
+          path: |
+            crates/wasm/pkg
+            crates/wasm/www/dist

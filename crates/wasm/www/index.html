@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Koenig-D'Amico Maneuver Planner</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Koenig-D'Amico Maneuver Planner</h1>
+      <span id="version" class="version"></span>
+    </header>
+    <main>
+      <form id="planner">
+        <fieldset>
+          <legend>Chief orbit</legend>
+          <label>a [m] <input name="a" type="number" step="any" /></label>
+          <label>e <input name="e" type="number" step="any" /></label>
+          <label>i [deg] <input name="i" type="number" step="any" /></label>
+          <label>Ω [deg] <input name="raan" type="number" step="any" /></label>
+          <label>ω [deg] <input name="argp" type="number" step="any" /></label>
+          <label>M [deg] <input name="mean_anom" type="number" step="any" /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Window [s]</legend>
+          <label>t_i <input name="t_i" type="number" step="any" /></label>
+          <label>t_f <input name="t_f" type="number" step="any" /></label>
+          <label>dt <input name="dt" type="number" step="any" /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Target pseudostate w [m]</legend>
+          <label>δa <input name="w0" type="number" step="any" /></label>
+          <label>δλ <input name="w1" type="number" step="any" /></label>
+          <label>δe_x <input name="w2" type="number" step="any" /></label>
+          <label>δe_y <input name="w3" type="number" step="any" /></label>
+          <label>δi_x <input name="w4" type="number" step="any" /></label>
+          <label>δi_y <input name="w5" type="number" step="any" /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Cost model</legend>
+          <label>type
+            <select name="cost">
+              <option value="piecewise">piecewise</option>
+              <option value="norm2">norm2</option>
+              <option value="facemax">facemax</option>
+            </select>
+          </label>
+          <label class="pw">period [s] <input name="period" type="number" step="any" placeholder="auto" /></label>
+          <label class="pw">t_perigee0 [s] <input name="t_perigee0" type="number" step="any" placeholder="auto" /></label>
+        </fieldset>
+      </form>
+      <section id="output"></section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

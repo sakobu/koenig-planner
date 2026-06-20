@@ -5,4 +5,7 @@ docs/
 /.venv/
 /dist/
 /.superpowers/
+crates/wasm/pkg/
+crates/wasm/www/node_modules/
+crates/wasm/www/dist/
 

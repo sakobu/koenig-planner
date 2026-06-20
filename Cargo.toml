@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/api", "crates/py", "crates/server"]
+members = ["crates/api", "crates/py", "crates/server", "crates/wasm"]
 default-members = [".", "crates/api"]
 resolver = "2"
 
