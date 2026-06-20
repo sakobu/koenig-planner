@@ -18,13 +18,13 @@ function el(
   return node as SVGElement;
 }
 
-function svg(w: number, h: number): SVGSVGElement {
-  const s = el("svg", {
+function svg(w: number, h: number, cls: string): SVGSVGElement {
+  return el("svg", {
     viewBox: `0 0 ${w} ${h}`,
     width: "100%",
     preserveAspectRatio: "xMidYMid meet",
+    class: cls,
   }) as SVGSVGElement;
-  return s;
 }
 
 function kpis(r: SolveResponse): HTMLElement {
@@ -47,13 +47,16 @@ function kpis(r: SolveResponse): HTMLElement {
 
 function timeline(r: SolveResponse, t_i: number, t_f: number): SVGSVGElement {
   const W = 640,
-    H = 180,
+    H = 210,
     pad = 36;
-  const s = svg(W, H);
+  const s = svg(W, H, "chart chart-timeline");
   const mags = r.maneuvers.map((m) => Math.hypot(m.dv[0], m.dv[1], m.dv[2]));
   const maxMag = Math.max(1e-12, ...mags);
+  const inset = 14; // keep the first/last burns off the plot edges
   const x = (t: number) =>
-    pad + ((t - t_i) / Math.max(1e-9, t_f - t_i)) * (W - 2 * pad);
+    pad +
+    inset +
+    ((t - t_i) / Math.max(1e-9, t_f - t_i)) * (W - 2 * pad - 2 * inset);
   const y = (mag: number) => H - pad - (mag / maxMag) * (H - 2 * pad);
   // Horizontal gridlines + magnitude ticks (0, ½·max, max).
   for (const frac of [0, 0.5, 1]) {
@@ -139,7 +142,7 @@ function rtnBars(r: SolveResponse): SVGSVGElement {
     rowH = 28,
     pad = 90,
     H = r.maneuvers.length * rowH + 40;
-  const s = svg(W, H);
+  const s = svg(W, H, "chart chart-rtn");
   const maxComp = Math.max(
     1e-12,
     ...r.maneuvers.flatMap((m) => m.dv.map(Math.abs)),
@@ -201,7 +204,7 @@ function orbit(g: ChiefGeometry): SVGSVGElement {
     H = 360,
     cx = W / 2,
     cy = H / 2;
-  const s = svg(W, H);
+  const s = svg(W, H, "chart chart-orbit");
   const e = g.e,
     a = 1;
   const rOf = (nu: number) => (a * (1 - e * e)) / (1 + e * Math.cos(nu));

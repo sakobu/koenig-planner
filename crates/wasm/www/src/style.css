@@ -1,307 +1,336 @@
 /*
- * Koenig-D'Amico Maneuver Planner — mission-console instrument deck.
+ * Koenig-D'Amico Maneuver Planner — flight-console readout.
  *
- * Design direction: a GN&C telemetry console, not a web dashboard. Every panel
- * is framed as an instrument bezel (corner tick-brackets + a channel eyebrow);
- * status colors are functional (cyan = tangential / primary readout, amber =
- * caution / perigee window, red = radial / fault, green = nominal lock); numerics
- * are tabular monospace and treated as the hero. Brief-mandated: dark, high-
- * contrast, monospace, purposeful R/T/N color.
+ * Restraint over ornament: flat dark surfaces, ONE cyan accent, monospace
+ * tabular numerics treated as the hero, and functional R/T/N data color. The
+ * plots are the focus; the chrome stays quiet. Layout is a real console split —
+ * a command rail on the left, a telemetry readout on the right.
  */
 :root {
-  --bg: #070a0e;
-  --bg-2: #0a0f15;
-  --panel: #0e151d;
-  --panel-2: #0b1118;
-  --ink: #d7e3ee;
-  --muted: #6b7c8c;
-  --faint: #3b4a59;
-  --grid: #1b2733;
-  --rule: #14202b;
-  /* Functional telemetry channels. */
-  --cyan: #4dd2ff;   /* T component / primary readout */
-  --amber: #ffb454;  /* caution / perigee window / N component */
-  --red: #ff5c5c;    /* R component / fault */
-  --green: #5ef2a8;  /* nominal lock */
+  --bg: #0a0e13;
+  --panel: #0f151c;
+  --edge: #1d2935;
+  --ink: #dce6f0;
+  --muted: #7c8b9a;
+  --faint: #46566a;
 
-  --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  /* Functional channels — also the data-encoding colors in the plots. */
+  --cyan: #5cc8ff; /* primary accent + T (tangential) */
+  --amber: #ffb454; /* perigee / FaceMax window + N (normal) */
+  --red: #ff6b6b; /* fault + R (radial) */
+  --green: #5ef2a8; /* nominal */
+
+  --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas,
+    monospace;
+  --eyebrow: 0.62rem;
+
   font-family: var(--mono);
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   color: var(--ink);
-  /* Faint instrument grid bleeding through the deck. */
-  background:
-    linear-gradient(transparent 0, transparent 31px, var(--rule) 32px),
-    linear-gradient(90deg, transparent 0, transparent 31px, var(--rule) 32px),
-    radial-gradient(120% 80% at 50% -10%, var(--bg-2), var(--bg) 60%);
-  background-size: 32px 32px, 32px 32px, 100% 100%;
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Console header ─────────────────────────────────────────────── */
+/* Shared eyebrow label (section titles, KPI labels, status). */
+.kpi .k-label,
+.panel h2,
+legend,
+.status {
+  font-size: var(--eyebrow);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
 header {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.85rem 1.5rem;
-  border-bottom: 1px solid var(--grid);
-  background: linear-gradient(180deg, rgba(77, 210, 255, 0.04), transparent);
+  align-items: baseline;
+  gap: 0.85rem;
+  padding: 1.05rem 2rem;
+  border-bottom: 1px solid var(--edge);
 }
 header h1 {
-  font-size: 0.82rem;
   margin: 0;
+  font-size: 0.88rem;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: var(--ink);
-}
-/* Status lamp: NOMINAL by default; goes amber when the deck shows a fault. */
-header::before {
-  content: "";
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 0 1px rgba(94, 242, 168, 0.35), 0 0 10px 1px rgba(94, 242, 168, 0.55);
-  animation: pulse 2.6s ease-in-out infinite;
-}
-header::after {
-  content: "STATUS // PLAN NOMINAL";
-  margin-left: auto;
-  font-size: 0.62rem;
-  letter-spacing: 0.3em;
-  color: var(--green);
-  text-transform: uppercase;
-}
-/* Fault state: lamp + status text flip to red when the solve errors. */
-body.fault header::before {
-  background: var(--red);
-  box-shadow: 0 0 0 1px rgba(255, 92, 92, 0.35), 0 0 10px 1px rgba(255, 92, 92, 0.6);
-}
-body.fault header::after {
-  content: "STATUS // SOLVE FAULT";
-  color: var(--red);
 }
 .version {
-  color: var(--cyan);
   font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  padding: 0.15rem 0.5rem;
-  border: 1px solid var(--grid);
-  border-radius: 3px;
-  background: var(--panel-2);
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+/* Status indicator (CSS-driven by body.fault) — a quiet dot + label, no pulse. */
+header::after {
+  content: "● plan nominal";
+  margin-left: auto;
+  align-self: center;
+  font-size: var(--eyebrow);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+body.fault header::after {
+  content: "● solve fault";
+  color: var(--red);
 }
 
-/* ── Deck layout ────────────────────────────────────────────────── */
+/* ── Deck ────────────────────────────────────────────────────────── */
 main {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 290px minmax(0, 1fr);
   gap: 1.5rem;
-  padding: 1.5rem;
-  max-width: 1200px;
+  align-items: start;
+  max-width: 1180px;
+  padding: 1.5rem 2rem 2.5rem;
 }
 
-/* ── Command form (left rail) ───────────────────────────────────── */
-form { display: grid; gap: 0.9rem; align-content: start; }
-fieldset {
-  position: relative;
-  border: 1px solid var(--grid);
-  border-radius: 6px;
+/* ── Command rail (form) ─────────────────────────────────────────── */
+form {
   display: grid;
-  gap: 0.35rem;
-  padding: 0.85rem 0.75rem 0.7rem;
-  background:
-    linear-gradient(180deg, var(--panel), var(--panel-2));
+  gap: 1rem;
+  align-content: start;
+}
+fieldset {
+  margin: 0;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 0.9rem 0.85rem;
+  display: grid;
+  gap: 0.45rem;
 }
 legend {
   color: var(--cyan);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
   padding: 0 0.4rem;
+  margin-left: -0.2rem;
 }
 label {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.74rem;
   color: var(--muted);
 }
-input, select {
-  width: 8.5rem;
+input,
+select {
+  width: 7.5rem;
+  flex: none;
   background: var(--bg);
   color: var(--ink);
-  border: 1px solid var(--grid);
-  border-radius: 3px;
-  padding: 0.22rem 0.45rem;
-  font-family: var(--mono);
-  font-size: 0.74rem;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 0.26rem 0.5rem;
+  font: inherit;
+  font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
-input:focus-visible, select:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: none;
   border-color: var(--cyan);
-  box-shadow: 0 0 0 1px rgba(77, 210, 255, 0.35);
+  box-shadow: 0 0 0 2px rgba(92, 200, 255, 0.25);
 }
-input::placeholder { color: var(--faint); }
+input::placeholder {
+  color: var(--faint);
+}
 
-/* ── Readout column (right) ─────────────────────────────────────── */
-#output { display: grid; gap: 1.25rem; align-content: start; }
+/* ── Readout ─────────────────────────────────────────────────────── */
+#output {
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-areas:
+    "kpis     kpis"
+    "timeline orbit"
+    "rtn      rtn";
+  align-content: start;
+}
+.kpis {
+  grid-area: kpis;
+}
+.panel:has(.chart-timeline) {
+  grid-area: timeline;
+}
+.panel:has(.chart-orbit) {
+  grid-area: orbit;
+}
+.panel:has(.chart-rtn) {
+  grid-area: rtn;
+}
 
-/* KPI telemetry strip. */
+/* KPI telemetry strip — the numbers are the hero. */
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
-  background: var(--grid);
-  border: 1px solid var(--grid);
-  border-radius: 6px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
   overflow: hidden;
 }
 .kpi {
-  position: relative;
-  background: linear-gradient(180deg, var(--panel), var(--panel-2));
-  padding: 0.85rem 0.9rem;
+  padding: 0.85rem 1rem;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  border-left: 1px solid var(--edge);
 }
-/* Channel tick on every readout cell. */
-.kpi::before {
-  content: "";
-  position: absolute;
-  top: 0.85rem;
-  left: 0;
-  width: 2px;
-  height: 0.7rem;
-  background: var(--cyan);
+.kpi:first-child {
+  border-left: none;
 }
 .k-label {
   color: var(--muted);
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
 }
 .k-value {
-  font-size: 1.4rem;
+  font-size: 1.55rem;
   font-weight: 500;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+  line-height: 1;
 }
-
-/* ── Instrument panels ──────────────────────────────────────────── */
-.panel {
-  position: relative;
-  background: linear-gradient(180deg, var(--panel), var(--panel-2));
-  border: 1px solid var(--grid);
-  border-radius: 6px;
-  padding: 1.6rem 1.1rem 1rem;
-}
-/* Corner tick-brackets — the instrument-bezel signature. */
-.panel::before,
-.panel::after {
-  content: "";
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border: 1px solid var(--cyan);
-  opacity: 0.55;
-}
-.panel::before { top: 6px; left: 6px; border-right: none; border-bottom: none; }
-.panel::after { bottom: 6px; right: 6px; border-left: none; border-top: none; }
-.panel h2 {
-  margin: 0 0 0.75rem;
-  font-size: 0.64rem;
+/* Primary readout (total Δv) gets the accent. */
+.kpi:first-child .k-value {
   color: var(--cyan);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.panel h2::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 6px rgba(77, 210, 255, 0.7);
 }
 
-/* ── Plot primitives (consumed by render.ts) ────────────────────── */
-.axis { stroke: var(--muted); stroke-width: 1; }
-.grid { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 2 4; }
-.axis-label, .row-label, .mnvr-label, .stem-label, .legend-label {
+/* ── Instrument panels ───────────────────────────────────────────── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+}
+.panel h2 {
+  flex: none;
+  margin: 0 0 0.9rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--edge);
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+/* Charts fill their panel width and center in any spare height; the square
+   orbit is capped so it can't dominate the deck. */
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: auto;
+}
+.chart-orbit {
+  max-width: 320px;
+}
+
+/* ── Plot primitives (consumed by render.ts) ─────────────────────── */
+.axis {
+  stroke: var(--faint);
+  stroke-width: 1;
+}
+.grid {
+  stroke: var(--edge);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.axis-label,
+.row-label,
+.mnvr-label,
+.stem-label,
+.legend-label {
   fill: var(--muted);
-  font-size: 11px;
-  font-family: var(--mono);
+  font: 11px var(--mono);
   letter-spacing: 0.03em;
 }
-.legend-label { fill: var(--ink); }
-.stem { stroke: var(--cyan); stroke-width: 2; }
-.stem-dot, .mnvr-marker { fill: var(--cyan); }
-.stem-dot, .stem { filter: drop-shadow(0 0 3px rgba(77, 210, 255, 0.45)); }
-.mnvr-marker {
-  stroke: var(--bg);
-  stroke-width: 1.5;
-  filter: drop-shadow(0 0 4px rgba(77, 210, 255, 0.6));
+.legend-label {
+  fill: var(--ink);
 }
-.mnvr-label { fill: var(--ink); font-weight: 600; }
-.stem-label { fill: var(--muted); }
+.stem {
+  stroke: var(--cyan);
+  stroke-width: 2;
+}
+.stem-dot {
+  fill: var(--cyan);
+}
+.mnvr-marker {
+  fill: var(--cyan);
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+.mnvr-label {
+  fill: var(--ink);
+  font-weight: 600;
+}
 
 /* Orbit instrument. */
-.orbit { fill: none; stroke: var(--faint); stroke-width: 1.5; }
+.orbit {
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 1.5;
+}
 .perigee-window {
-  fill: rgba(255, 180, 84, 0.16);
+  fill: rgba(255, 180, 84, 0.14);
   stroke: var(--amber);
   stroke-width: 1;
 }
-.chief { fill: var(--ink); }
-.perigee { fill: var(--amber); filter: drop-shadow(0 0 4px rgba(255, 180, 84, 0.6)); }
+.chief {
+  fill: var(--ink);
+}
+.perigee {
+  fill: var(--amber);
+}
 
-/* ── Fault arm ──────────────────────────────────────────────────── */
+/* ── Fault arm ───────────────────────────────────────────────────── */
 .error {
-  position: relative;
-  background:
-    repeating-linear-gradient(45deg, rgba(255, 92, 92, 0.06) 0 8px, transparent 8px 16px),
-    var(--panel);
+  grid-column: 1 / -1;
+  background: var(--panel);
   border: 1px solid var(--red);
   border-left: 3px solid var(--red);
-  color: #ffb3b3;
-  border-radius: 6px;
-  padding: 1rem 1rem 1rem 1.1rem;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  color: #ffc4c4;
   white-space: pre-wrap;
   font-size: 0.8rem;
-  letter-spacing: 0.02em;
 }
 .error::before {
-  content: "FAULT";
+  content: "fault";
   display: block;
-  font-size: 0.6rem;
-  letter-spacing: 0.3em;
+  margin-bottom: 0.45rem;
+  font-size: var(--eyebrow);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
   color: var(--red);
-  margin-bottom: 0.4rem;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  header::before { animation: none; }
-}
-
-@media (max-width: 760px) {
-  main { grid-template-columns: 1fr; }
-  .kpis { grid-template-columns: repeat(2, 1fr); }
-  header::after { display: none; }
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 880px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+  #output {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "kpis"
+      "timeline"
+      "orbit"
+      "rtn";
+  }
+  .kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .kpi:nth-child(3) {
+    border-left: none;
+  }
+  header::after {
+    display: none;
+  }
 }
