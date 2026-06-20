@@ -27,6 +27,14 @@ function svg(w: number, h: number, cls: string): SVGSVGElement {
   }) as SVGSVGElement;
 }
 
+// Round a raw step up to a 1/2/5 ×10ⁿ "nice" increment for axis ticks.
+function niceStep(raw: number): number {
+  const exp = Math.floor(Math.log10(raw));
+  const f = raw / 10 ** exp;
+  const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+  return nf * 10 ** exp;
+}
+
 function kpis(r: SolveResponse): HTMLElement {
   const box = document.createElement("div");
   box.className = "kpis";
@@ -46,174 +54,280 @@ function kpis(r: SolveResponse): HTMLElement {
 }
 
 function timeline(r: SolveResponse, t_i: number, t_f: number): SVGSVGElement {
-  const W = 640,
-    H = 210,
-    pad = 36;
+  // Wide, short aspect — natural for a time series and keeps the panel from
+  // ballooning when the column stretches to full width.
+  const W = 760,
+    H = 300;
+  const padL = 58,
+    padR = 30,
+    padT = 46, // headroom for the stacked "mnvr N" + value labels over a stem
+    padB = 44;
+  const yBase = H - padB,
+    yTop = padT;
+  const plotH = yBase - yTop,
+    plotW = W - padL - padR;
   const s = svg(W, H, "chart chart-timeline");
   const mags = r.maneuvers.map((m) => Math.hypot(m.dv[0], m.dv[1], m.dv[2]));
   const maxMag = Math.max(1e-12, ...mags);
-  const inset = 14; // keep the first/last burns off the plot edges
+  // Round the y-axis to human-friendly increments (0.01, 0.02, …) instead of
+  // raw fractions of the data max.
+  const step = niceStep(maxMag / 4);
+  const domainMax = Math.max(step, Math.ceil(maxMag / step) * step);
+  const inset = 0.1 * plotW; // keep first/last burns (and their tags) inset
+  const span = Math.max(1e-9, t_f - t_i);
   const x = (t: number) =>
-    pad +
-    inset +
-    ((t - t_i) / Math.max(1e-9, t_f - t_i)) * (W - 2 * pad - 2 * inset);
-  const y = (mag: number) => H - pad - (mag / maxMag) * (H - 2 * pad);
-  // Horizontal gridlines + magnitude ticks (0, ½·max, max).
-  for (const frac of [0, 0.5, 1]) {
-    const gy = y(frac * maxMag);
+    padL + inset + ((t - t_i) / span) * (plotW - 2 * inset);
+  const y = (mag: number) => yBase - (mag / domainMax) * plotH;
+
+  // Horizontal gridlines + magnitude ticks (rounded, fixed-decimal).
+  for (let v = 0; v <= domainMax + step / 2; v += step) {
+    const gy = y(v);
     s.appendChild(
-      el("line", { x1: pad, y1: gy, x2: W - pad, y2: gy, class: "grid" }),
+      el("line", {
+        x1: padL,
+        y1: gy,
+        x2: W - padR,
+        y2: gy,
+        class: v === 0 ? "axis" : "grid",
+      }),
     );
     s.appendChild(
       el(
         "text",
-        { x: pad - 6, y: gy + 3, class: "axis-label", "text-anchor": "end" },
-        (frac * maxMag).toExponential(1),
+        { x: padL - 10, y: gy + 3.5, class: "axis-label", "text-anchor": "end" },
+        v.toFixed(4),
       ),
     );
   }
-  s.appendChild(
-    el("line", {
-      x1: pad,
-      y1: H - pad,
-      x2: W - pad,
-      y2: H - pad,
-      class: "axis",
-    }),
-  );
+  // Horizontal y-axis caption in the top-left margin — readable, never
+  // perpendicular, and clear of the tick column below it.
   s.appendChild(
     el(
       "text",
-      {
-        x: W - pad,
-        y: H - pad + 16,
-        class: "axis-label",
-        "text-anchor": "end",
-      },
-      "t [s]",
+      { x: 6, y: 15, class: "axis-title", "text-anchor": "start" },
+      "|Δv|  [m/s]",
     ),
   );
+  // X-axis endpoints (the first/last burn times) + centered title.
   s.appendChild(
     el(
       "text",
-      { x: pad, y: H - pad + 16, class: "axis-label", "text-anchor": "start" },
+      { x: x(t_i), y: yBase + 18, class: "axis-label", "text-anchor": "middle" },
       t_i.toFixed(0),
     ),
   );
   s.appendChild(
     el(
       "text",
-      { x: pad - 6, y: 12, class: "axis-label", "text-anchor": "end" },
-      "|Δv| [m/s]",
+      { x: x(t_f), y: yBase + 18, class: "axis-label", "text-anchor": "middle" },
+      t_f.toFixed(0),
+    ),
+  );
+  s.appendChild(
+    el(
+      "text",
+      {
+        x: padL + plotW / 2,
+        y: yBase + 35,
+        class: "axis-title",
+        "text-anchor": "middle",
+      },
+      "burn time  [s]",
     ),
   );
   r.maneuvers.forEach((m, j) => {
     const mag = mags[j];
+    const mx = x(m.t),
+      my = y(mag);
     s.appendChild(
-      el("line", {
-        x1: x(m.t),
-        y1: H - pad,
-        x2: x(m.t),
-        y2: y(mag),
-        class: "stem",
-      }),
+      el("line", { x1: mx, y1: yBase, x2: mx, y2: my, class: "stem" }),
     );
+    s.appendChild(el("circle", { cx: mx, cy: my, r: 4, class: "stem-dot" }));
+    // Value over each dot, with the maneuver index above it — the same index
+    // the R/T/N panel uses, so the two charts read together.
     s.appendChild(
-      el("circle", { cx: x(m.t), cy: y(mag), r: 4, class: "stem-dot" }),
+      el(
+        "text",
+        { x: mx, y: my - 11, class: "stem-label", "text-anchor": "middle" },
+        mag.toFixed(4),
+      ),
     );
     s.appendChild(
       el(
         "text",
-        {
-          x: x(m.t),
-          y: y(mag) - 8,
-          class: "stem-label",
-          "text-anchor": "middle",
-        },
-        mag.toExponential(1),
+        { x: mx, y: my - 25, class: "mnvr-tag", "text-anchor": "middle" },
+        `mnvr ${j + 1}`,
       ),
     );
   });
   return s;
 }
 
+const RTN_NAME = { R: "radial", T: "tangential", N: "normal" } as const;
+
 function rtnBars(r: SolveResponse): SVGSVGElement {
-  const W = 640,
-    rowH = 28,
-    pad = 90,
-    H = r.maneuvers.length * rowH + 40;
+  // Diverging bars about a centered zero axis. A left gutter holds the maneuver
+  // labels and the value (channel + signed magnitude) rides at each bar tip, so
+  // every bar is legible without leaning on the color key alone.
+  const n = r.maneuvers.length;
+  const W = 760,
+    rowH = 54,
+    padL = 84,
+    padR = 104,
+    padT = 42,
+    padB = 26;
+  const H = padT + n * rowH + padB;
   const s = svg(W, H, "chart chart-rtn");
   const maxComp = Math.max(
     1e-12,
     ...r.maneuvers.flatMap((m) => m.dv.map(Math.abs)),
   );
-  const mid = (W + pad) / 2;
-  const scale = (W - pad - 16 - (mid - pad)) / maxComp;
-  // Zero axis spanning all rows.
-  s.appendChild(
-    el("line", {
-      x1: mid,
-      y1: 12,
-      x2: mid,
-      y2: 12 + r.maneuvers.length * rowH,
-      class: "axis",
-    }),
-  );
-  r.maneuvers.forEach((m, j) => {
-    const yc = 12 + j * rowH + rowH / 2;
-    s.appendChild(
-      el("text", { x: 8, y: yc + 4, class: "row-label" }, `mnvr ${j + 1}`),
-    );
-    (["R", "T", "N"] as const).forEach((comp, k) => {
-      const v = m.dv[k];
-      const by = 12 + j * rowH + 3 + k * ((rowH - 6) / 3);
-      const len = Math.abs(v) * scale;
-      s.appendChild(
-        el("rect", {
-          x: v >= 0 ? mid : mid - len,
-          y: by,
-          width: len,
-          height: (rowH - 6) / 3 - 2,
-          fill: RTN_COLORS[comp],
-        }),
-      );
-    });
-  });
-  // Component legend (R/T/N color key) along the bottom.
+  const plotW = W - padL - padR;
+  const cx = padL + plotW / 2; // shared zero axis
+  const labelRoom = 72; // reserve space at the bar tips for the value text
+  // Round the half-range so the gridlines land on human-friendly values.
+  const tickStep = niceStep(maxComp / 3);
+  const domainMax = Math.max(tickStep, Math.ceil(maxComp / tickStep) * tickStep);
+  const scale = (plotW / 2 - labelRoom) / domainMax;
+  const bh = 11,
+    gap = 5,
+    blockH = 3 * bh + 2 * gap;
+  const axisTop = padT - 6,
+    axisBot = padT + n * rowH + 2;
+
+  // Color key (radial / tangential / normal), spread evenly across the width
+  // with the unit tucked into the right corner.
+  const lstep = (W - padR - 120 - padL) / 2;
   (["R", "T", "N"] as const).forEach((comp, k) => {
-    const lx = pad + k * 60;
-    const ly = H - 14;
+    const lx = padL + k * lstep;
     s.appendChild(
       el("rect", {
         x: lx,
-        y: ly - 8,
-        width: 10,
-        height: 10,
+        y: padT - 30,
+        width: 11,
+        height: 11,
+        rx: 2,
         fill: RTN_COLORS[comp],
       }),
     );
     s.appendChild(
-      el("text", { x: lx + 15, y: ly, class: "legend-label" }, comp),
+      el("text", { x: lx + 17, y: padT - 20, class: "legend-label" }, RTN_NAME[comp]),
     );
+  });
+  s.appendChild(
+    el(
+      "text",
+      { x: W - padR, y: padT - 20, class: "axis-label", "text-anchor": "end" },
+      "[m/s]",
+    ),
+  );
+
+  // Quantitative scale — faint signed gridlines so bar lengths read true.
+  for (let v = -domainMax; v <= domainMax + tickStep / 2; v += tickStep) {
+    const gx2 = cx + v * scale;
+    s.appendChild(
+      el("line", {
+        x1: gx2,
+        y1: axisTop,
+        x2: gx2,
+        y2: axisBot,
+        class: Math.abs(v) < tickStep / 2 ? "zero-axis" : "grid",
+      }),
+    );
+    s.appendChild(
+      el(
+        "text",
+        { x: gx2, y: axisBot + 16, class: "axis-label", "text-anchor": "middle" },
+        Math.abs(v) < tickStep / 2 ? "0" : v.toFixed(3),
+      ),
+    );
+  }
+
+  r.maneuvers.forEach((m, j) => {
+    const yc = padT + j * rowH + rowH / 2;
+    const top = yc - blockH / 2;
+    s.appendChild(
+      el(
+        "text",
+        { x: padL - 16, y: yc + 4, class: "row-label", "text-anchor": "end" },
+        `mnvr ${j + 1}`,
+      ),
+    );
+    (["R", "T", "N"] as const).forEach((comp, k) => {
+      const v = m.dv[k];
+      const by = top + k * (bh + gap);
+      const len = Math.abs(v) * scale;
+      const pos = v >= 0;
+      s.appendChild(
+        el("rect", {
+          x: pos ? cx : cx - len,
+          y: by,
+          width: Math.max(len, 0.75),
+          height: bh,
+          rx: 1.5,
+          fill: RTN_COLORS[comp],
+        }),
+      );
+      s.appendChild(
+        el(
+          "text",
+          {
+            x: pos ? cx + len + 7 : cx - len - 7,
+            y: by + bh - 1.5,
+            class: "val-label",
+            "text-anchor": pos ? "start" : "end",
+          },
+          `${comp} ${pos ? "+" : "−"}${Math.abs(v).toFixed(4)}`,
+        ),
+      );
+    });
   });
   return s;
 }
 
 function orbit(g: ChiefGeometry): SVGSVGElement {
-  const W = 360,
-    H = 360,
-    cx = W / 2,
-    cy = H / 2;
+  const W = 320,
+    H = 300;
   const s = svg(W, H, "chart chart-orbit");
   const e = g.e,
     a = 1;
   const rOf = (nu: number) => (a * (1 - e * e)) / (1 + e * Math.cos(nu));
-  // Fit: max radius is at apoapsis (ν = π).
-  const rMax = rOf(Math.PI);
-  const k = (Math.min(W, H) / 2 - 28) / rMax;
-  const px = (nu: number) => cx + k * rOf(nu) * Math.cos(nu);
-  const py = (nu: number) => cy - k * rOf(nu) * Math.sin(nu);
-  // Orbit ellipse (sampled, focus-centered on the chief).
+  const gx = (nu: number) => rOf(nu) * Math.cos(nu); // focus at the origin
+  const gy = (nu: number) => rOf(nu) * Math.sin(nu);
+
+  // An e=0.7 ellipse is wide, short, and offset from its focus, so a
+  // focus-centered fit wastes most of the panel. Measure the ellipse's true
+  // bounding box and fit *that* — then the figure fills the frame and centers.
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
+  const N = 240;
+  for (let i = 0; i <= N; i++) {
+    const nu = -Math.PI + (i / N) * 2 * Math.PI;
+    const X = gx(nu),
+      Y = gy(nu);
+    minX = Math.min(minX, X);
+    maxX = Math.max(maxX, X);
+    minY = Math.min(minY, Y);
+    maxY = Math.max(maxY, Y);
+  }
+  const mL = 26, // room for the "chief" label
+    mR = 66, // room for the "perigee" label
+    mT = 22,
+    mB = g.perigee_window ? 34 : 24; // room for the caption
+  const availW = W - mL - mR,
+    availH = H - mT - mB;
+  const k = Math.min(availW / (maxX - minX), availH / (maxY - minY));
+  const figW = k * (maxX - minX),
+    figH = k * (maxY - minY);
+  const ox = mL + (availW - figW) / 2 - k * minX;
+  const oy = mT + (availH - figH) / 2 + k * maxY;
+  const px = (nu: number) => ox + k * gx(nu);
+  const py = (nu: number) => oy - k * gy(nu);
+  const figMidX = mL + availW / 2;
+
+  // Orbit ellipse (sampled, focus on the chief).
   let d = "";
   for (let i = 0; i <= 180; i++) {
     const nu = (i / 180) * 2 * Math.PI - Math.PI;
@@ -223,7 +337,7 @@ function orbit(g: ChiefGeometry): SVGSVGElement {
   // Perigee-window wedge (piecewise only).
   if (g.perigee_window) {
     const [lo, hi] = g.perigee_window;
-    let wd = `M ${cx} ${cy} L ${px(lo).toFixed(2)} ${py(lo).toFixed(2)} `;
+    let wd = `M ${ox.toFixed(2)} ${oy.toFixed(2)} L ${px(lo).toFixed(2)} ${py(lo).toFixed(2)} `;
     const steps = 24;
     for (let i = 1; i <= steps; i++) {
       const nu = lo + ((hi - lo) * i) / steps;
@@ -231,25 +345,44 @@ function orbit(g: ChiefGeometry): SVGSVGElement {
     }
     s.appendChild(el("path", { d: wd + "Z", class: "perigee-window" }));
   }
-  // Chief (focus) + perigee marker.
-  s.appendChild(el("circle", { cx, cy, r: 4, class: "chief" }));
-  s.appendChild(el("circle", { cx: px(0), cy: py(0), r: 3, class: "perigee" }));
+  // Chief (focus) + perigee marker, both labeled.
+  s.appendChild(el("circle", { cx: ox, cy: oy, r: 4, class: "chief" }));
   s.appendChild(
-    el("text", { x: px(0) + 6, y: py(0) + 4, class: "axis-label" }, "perigee"),
+    el("text", { x: ox - 8, y: oy + 4, class: "axis-label", "text-anchor": "end" }, "chief"),
   );
-  // Maneuver markers.
+  s.appendChild(el("circle", { cx: px(0), cy: py(0), r: 3.5, class: "perigee" }));
+  s.appendChild(
+    el("text", { x: px(0) + 9, y: py(0) + 4, class: "axis-label" }, "perigee"),
+  );
+  // Maneuver markers — labels nudged radially outward so near-coincident burns
+  // (and the markers themselves) don't collide.
   g.maneuver_nu.forEach((nu, j) => {
-    s.appendChild(
-      el("circle", { cx: px(nu), cy: py(nu), r: 5, class: "mnvr-marker" }),
-    );
+    const mx = px(nu),
+      my = py(nu);
+    s.appendChild(el("circle", { cx: mx, cy: my, r: 5, class: "mnvr-marker" }));
     s.appendChild(
       el(
         "text",
-        { x: px(nu) + 7, y: py(nu) + 4, class: "mnvr-label" },
+        {
+          x: mx + Math.cos(nu) * 15,
+          y: my - Math.sin(nu) * 15 + 4,
+          class: "mnvr-label",
+          "text-anchor": "middle",
+        },
         String(j + 1),
       ),
     );
   });
+  // Caption for the shaded wedge (piecewise perigee burn window).
+  if (g.perigee_window) {
+    s.appendChild(
+      el(
+        "text",
+        { x: figMidX, y: H - 8, class: "axis-label", "text-anchor": "middle" },
+        "shaded · perigee burn window",
+      ),
+    );
+  }
   return s;
 }
 

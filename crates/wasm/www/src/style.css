@@ -90,8 +90,9 @@ main {
   display: grid;
   grid-template-columns: 290px minmax(0, 1fr);
   gap: 1.5rem;
-  align-items: start;
-  max-width: 1180px;
+  /* Columns stretch to the deck height so the command rail's bottom lands
+     level with the last telemetry panel. */
+  align-items: stretch;
   padding: 1.5rem 2rem 2.5rem;
 }
 
@@ -99,7 +100,10 @@ main {
 form {
   display: grid;
   gap: 1rem;
-  align-content: start;
+  /* Distribute the cards over the full column height so the rail bottom
+     aligns with the readout — but never let a tall readout pull them apart
+     past a comfortable rhythm. */
+  align-content: space-between;
 }
 fieldset {
   margin: 0;
@@ -231,6 +235,14 @@ input::placeholder {
 .chart-orbit {
   max-width: 320px;
 }
+/* Caps so the panels don't balloon on ultra-wide displays; the charts center
+   in any spare width. */
+.chart-timeline {
+  max-width: 900px;
+}
+.chart-rtn {
+  max-width: 1180px;
+}
 
 /* ── Plot primitives (consumed by render.ts) ─────────────────────── */
 .axis {
@@ -242,17 +254,43 @@ input::placeholder {
   stroke-width: 1;
   stroke-dasharray: 2 4;
 }
+.zero-axis {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
 .axis-label,
+.axis-title,
 .row-label,
 .mnvr-label,
 .stem-label,
+.val-label,
 .legend-label {
   fill: var(--muted);
-  font: 11px var(--mono);
+  font: 12px var(--mono);
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
 }
+/* Section-title eyebrows for the chart axes. */
+.axis-title {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+/* Numeric readouts inside the plots — brighter than their axes. */
+.stem-label,
+.val-label,
 .legend-label {
   fill: var(--ink);
+}
+.val-label {
+  font-size: 11px;
+}
+/* Per-stem maneuver tag on the timeline — an eyebrow over the value. */
+.mnvr-tag {
+  fill: var(--muted);
+  font: 10px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .stem {
   stroke: var(--cyan);
