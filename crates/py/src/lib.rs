@@ -202,7 +202,7 @@ fn solve_json(input: &str) -> PyResult<String> {
 
 /// The `koenig_planner` Python module.
 #[pymodule]
-fn koenig_planner(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _koenig_planner(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_class::<Orbit>()?;
     m.add_class::<Maneuver>()?;

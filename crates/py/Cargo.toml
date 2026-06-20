@@ -8,7 +8,7 @@ description = "Python bindings for the Koenig-D'Amico fuel-optimal impulsive man
 publish = false
 
 [lib]
-name = "koenig_planner"
+name = "_koenig_planner"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

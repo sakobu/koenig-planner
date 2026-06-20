@@ -39,3 +39,11 @@ contract from `koenig-planner-api`. Invalid input raises `ValueError`; solver
 failures raise `RuntimeError`.
 
 See `examples/showcase.py` for a plotting walkthrough.
+
+## Types & editor setup
+
+The package ships PEP 561 type stubs (`py.typed` + `.pyi`), so editors and type
+checkers (Pylance/pyright, mypy) get full autocomplete and checking for
+`koenig_planner`. In VS Code, select the interpreter where you ran
+`maturin develop` (Command Palette → "Python: Select Interpreter" → your `.venv`)
+so imports resolve.

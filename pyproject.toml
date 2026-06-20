@@ -21,3 +21,5 @@ classifiers = [
 manifest-path = "crates/py/Cargo.toml"
 # Enable PyO3's extension-module feature only for the wheel build.
 features = ["pyo3/extension-module"]
+python-source = "crates/py/python"
+module-name = "koenig_planner._koenig_planner"
