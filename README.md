@@ -113,6 +113,24 @@ A `cargo-chef` → distroless **Dockerfile** is included for containerised self-
 [`crates/server/README.md`](crates/server/README.md) for the endpoints, the `{kind, message}` error
 contract, and Docker usage.
 
+## WASM browser demo
+
+The solver also runs **entirely in the browser** via WebAssembly — the same native code compiled to
+`wasm32`, solving client-side with nothing sent anywhere. The bindings are fully typed: generated
+TypeScript types ([tsify](https://github.com/madonoharu/tsify)) give a `solve(req: SolveRequest): SolveOutcome`
+that never throws — the error is returned as a value, so it stays typed in TypeScript — plus a
+`solve_json(json): string` escape hatch.
+
+```bash
+wasm-pack build crates/wasm --target web     # → crates/wasm/pkg/ (wasm + generated .d.ts)
+cd crates/wasm/www && npm install && npm run dev
+```
+
+The included demo (TypeScript + Vite) takes a chief orbit, target ROEs, and a cost model and visualizes
+the plan client-side: a Δv timeline, per-maneuver RTN components, and an orbit-geometry panel (maneuvers
+placed at their true anomaly via the core's own Kepler solver). See
+[`crates/wasm/README.md`](crates/wasm/README.md).
+
 ## Workspace layout
 
 This repository is a Cargo workspace. The core solver is the root crate; the others are thin
@@ -124,8 +142,7 @@ frontends over a shared serde/JSON facade:
 | `koenig-damico-planner-api`    | `crates/api`    | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
 | `koenig-damico-planner-py`     | `crates/py`     | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
 | `koenig-damico-planner-server` | `crates/server` | internal (`publish = false`)                                | self-hostable HTTP service (axum) — `POST /solve`, `GET /health`      |
-
-> A WASM browser demo is planned as a further frontend over the same facade.
+| `koenig-damico-planner-wasm`   | `crates/wasm`   | internal (`publish = false`)                                | WASM bindings + in-browser demo — `tsify`-typed `solve` / `solve_json` |
 
 ## Validation harness (Fig. 8 / Fig. 9)
 
