@@ -14,8 +14,8 @@ cargo add koenig-damico-planner
 
 A faithful Rust re-implementation of Koenig & D'Amico's fuel-optimal impulsive
 control algorithm for linear systems with time-varying cost
-(*"Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with
-Time-Varying Cost,"* IEEE Transactions on Automatic Control, 2020).
+(_"Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with
+Time-Varying Cost,"_ IEEE Transactions on Automatic Control, 2020).
 
 It computes a minimum-Δv impulsive maneuver plan that drives a deputy spacecraft
 to a target set of quasi-nonsingular relative orbital elements (ROEs) under J2
@@ -38,7 +38,7 @@ secular dynamics, via the paper's three-step reachable-set method:
 - **The worked-example figures are not bit-reproducible.** Under the corrected
   dynamics the paper's §VIII Table IV maneuvers do not reconstruct the Table III
   target, which is consistent with transcription errors in the published example. The crate validates
-  the *math* and *self-consistency*, not the printed numbers — see
+  the _math_ and _self-consistency_, not the printed numbers — see
   `tests/worked_example.rs`.
 
 ## Usage
@@ -71,6 +71,44 @@ A runnable version is `examples/mdot.rs`:
 cargo run --example mdot
 ```
 
+## Python bindings
+
+The solver is also callable from Python (via [PyO3](https://pyo3.rs)), running the same native Rust
+code locally — nothing is sent anywhere:
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install maturin
+maturin develop -m crates/py/Cargo.toml      # build + install into the venv
+```
+
+```python
+import koenig_planner as kp
+
+chief = kp.Orbit(a=25_000e3, e=0.7, i=40.0, raan=358.0, argp=0.0, mean_anom=180.0)
+#   a [m]; i, raan, argp, mean_anom in DEGREES.
+sol = kp.solve(chief, t_i=0.0, t_f=117_990.0, dt=30.0,
+               w_metres=[50, 5000, 100, 100, 0, 400], cost="piecewise")
+print(sol.total_dv, "m/s in", len(sol.maneuvers), "maneuvers")
+```
+
+The package ships PEP 561 type stubs (`py.typed` + `.pyi`) for full editor/`mypy` support. See
+[`crates/py/README.md`](crates/py/README.md) for details.
+
+## Workspace layout
+
+This repository is a Cargo workspace. The core solver is the root crate; the others are thin
+frontends over a shared serde/JSON facade:
+
+| Crate                       | Path         | Distribution                                                | Purpose                                                               |
+| --------------------------- | ------------ | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| `koenig-damico-planner`     | `.` (root)   | [crates.io](https://crates.io/crates/koenig-damico-planner) | the core solver (this README)                                         |
+| `koenig-damico-planner-api` | `crates/api` | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
+| `koenig-damico-planner-py`  | `crates/py`  | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
+
+> A self-hostable HTTP service (axum) and a WASM browser demo are planned as further frontends over
+> the same facade.
+
 ## Validation harness (Fig. 8 / Fig. 9)
 
 A Monte-Carlo harness reproduces the paper's Fig. 8 (refinement-iteration counts
@@ -85,7 +123,7 @@ cargo run --release --bin monte_carlo --features validation
 This writes the CSVs and the PNGs below under `target/`. The seeded CI invariant
 test (`tests/monte_carlo.rs`) runs without the feature flag and asserts only
 paper-independent invariants — the paper's reported means are shown here as a
-*reference*, not a pass/fail target.
+_reference_, not a pass/fail target.
 
 **Fig. 8 — Algorithm-2 iteration distribution.** Empirical CDF of refinement
 iterations over 200 random targets per seeding scheme (red n=2 window endpoints;

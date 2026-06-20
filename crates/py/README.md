@@ -35,7 +35,7 @@ print(sol.lambda_)          # optimal dual (6-vector)
 ```
 
 `solve_json(str) -> str` accepts/returns the JSON `SolveRequest`/`SolveResponse`
-contract from `koenig-planner-api`. Invalid input raises `ValueError`; solver
+contract from `koenig-damico-planner-api`. Invalid input raises `ValueError`; solver
 failures raise `RuntimeError`.
 
 See `examples/showcase.py` for a plotting walkthrough.

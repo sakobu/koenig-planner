@@ -5,6 +5,11 @@ edition = "2021"
 rust-version = "1.92"
 license = "MIT OR Apache-2.0"
 description = "Serde DTOs and a single dispatch entry point for the Koenig-D'Amico maneuver planner"
+readme = "README.md"
+# Workspace-internal facade: consumed by the Python (and planned HTTP/WASM) frontends
+# via path dependency, not published to crates.io. Use `koenig-damico-planner` directly
+# for the solver. (Staying internal means the core path dep needs no `version` pin.)
+publish = false
 
 [dependencies]
 koenig-damico-planner = { path = "../..", features = ["serde"] }
