@@ -634,7 +634,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "koenig-planner-api"
+name = "koenig-damico-planner-api"
 version = "0.1.0"
 dependencies = [
  "koenig-damico-planner",
@@ -644,10 +644,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "koenig-planner-py"
+name = "koenig-damico-planner-py"
 version = "0.1.0"
 dependencies = [
- "koenig-planner-api",
+ "koenig-damico-planner-api",
  "pyo3",
 ]
 

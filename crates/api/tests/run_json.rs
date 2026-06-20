@@ -1,4 +1,4 @@
-use koenig_planner_api::run_json;
+use koenig_damico_planner_api::run_json;
 use serde_json::Value;
 
 const WORKED_EXAMPLE_JSON: &str = r#"{

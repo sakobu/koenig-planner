@@ -1,6 +1,6 @@
 //! Serde round-trip and shape tests for the API DTOs.
 
-use koenig_planner_api::{run, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
+use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
 
 fn minimal_chief() -> OrbitDto {
     OrbitDto {

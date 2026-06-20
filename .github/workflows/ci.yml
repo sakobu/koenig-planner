@@ -21,13 +21,13 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy (core + api)
-        run: cargo clippy --workspace --exclude koenig-planner-py --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --exclude koenig-damico-planner-py --all-targets --all-features -- -D warnings
       - name: Build (core + api)
-        run: cargo build --workspace --exclude koenig-planner-py --all-targets --all-features
+        run: cargo build --workspace --exclude koenig-damico-planner-py --all-targets --all-features
       - name: Test (core + api)
-        run: cargo test --workspace --exclude koenig-planner-py --all-targets --all-features
+        run: cargo test --workspace --exclude koenig-damico-planner-py --all-targets --all-features
       - name: Doc (core + api)
-        run: cargo doc --no-deps --all-features -p koenig-damico-planner -p koenig-planner-api
+        run: cargo doc --no-deps --all-features -p koenig-damico-planner -p koenig-damico-planner-api
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -60,7 +60,7 @@ jobs:
       - name: Install maturin + pytest
         run: pip install "maturin>=1.14,<2.0" pytest
       - name: Clippy (py)
-        run: cargo clippy -p koenig-planner-py --all-targets -- -D warnings
+        run: cargo clippy -p koenig-damico-planner-py --all-targets -- -D warnings
       - name: Build wheel
         run: maturin build --release -m crates/py/Cargo.toml --out dist
       - name: Install wheel + pytest

@@ -1,9 +1,9 @@
 //! # koenig_planner (Python bindings)
 //!
-//! Thin PyO3 wrapper over [`koenig_planner_api`]. See `crates/py/tests` for the
+//! Thin PyO3 wrapper over [`koenig_damico_planner_api`]. See `crates/py/tests` for the
 //! golden worked-example checks and `crates/py/examples` for a plotting showcase.
 
-use koenig_planner_api::{run, ApiError, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
+use koenig_damico_planner_api::{run, ApiError, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 
@@ -197,7 +197,7 @@ fn solve(
 /// solver failures.
 #[pyfunction]
 fn solve_json(input: &str) -> PyResult<String> {
-    koenig_planner_api::run_json(input).map_err(api_err_to_py)
+    koenig_damico_planner_api::run_json(input).map_err(api_err_to_py)
 }
 
 /// The `koenig_planner` Python module.

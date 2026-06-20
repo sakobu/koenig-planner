@@ -1,4 +1,4 @@
-//! # koenig-planner-api
+//! # koenig-damico-planner-api
 //!
 //! Serde request/response DTOs and the single [`run`] dispatch entry point for
 //! the Koenig-D'Amico maneuver planner.
@@ -9,7 +9,7 @@
 //!
 //! ## Usage
 //! ```no_run
-//! use koenig_planner_api::{run, CostSpec, OrbitDto, SolveRequest};
+//! use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveRequest};
 //!
 //! let req = SolveRequest {
 //!     chief: OrbitDto { a: 25_000e3, e: 0.7, i: 40.0, raan: 358.0, argp: 0.0, mean_anom: 180.0 },

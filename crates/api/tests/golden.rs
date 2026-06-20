@@ -3,7 +3,7 @@
 //! Asserts the same bands as `tests/worked_example.rs` in the core crate —
 //! these are FD-verified, solver-dependent ranges rather than exact bytes.
 
-use koenig_planner_api::{run, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
+use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
 
 /// Canonical Koenig & D'Amico (2020) worked example (Table III).
 ///
