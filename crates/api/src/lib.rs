@@ -195,7 +195,10 @@ pub struct SolveResponse {
 /// `kind` is the status class for HTTP frontends:
 /// - `"bad_request"` — invalid input (the caller should fix the request).
 /// - `"solver"` — well-formed input but numerically unsolvable / failed.
-#[derive(Debug, thiserror::Error)]
+///
+/// Serializes to `{"kind": …, "message": …}` so the WASM/HTTP frontends can
+/// return it directly as a JSON error body.
+#[derive(Debug, thiserror::Error, Serialize)]
 #[error("{kind}: {message}")]
 pub struct ApiError {
     /// Status class: `"bad_request"` or `"solver"`.
@@ -367,5 +370,26 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
         iterations: sol.iterations,
         residual: sol.residual,
         lambda,
+    })
+}
+
+/// Parse a JSON [`SolveRequest`], run it, and serialize the [`SolveResponse`] to JSON.
+///
+/// The shared string-in / string-out entry point reused by the WASM and Python
+/// frontends so the serde glue lives in exactly one place.
+///
+/// # Errors
+/// Returns [`ApiError`] with `kind = "bad_request"` for malformed request JSON
+/// or invalid inputs, or `kind = "solver"` for numerically unsolvable / failed
+/// problems (including an internal response-serialization failure).
+pub fn run_json(input: &str) -> Result<String, ApiError> {
+    let req: SolveRequest = serde_json::from_str(input).map_err(|e| ApiError {
+        kind: "bad_request",
+        message: format!("invalid request JSON: {e}"),
+    })?;
+    let resp = run(req)?;
+    serde_json::to_string(&resp).map_err(|e| ApiError {
+        kind: "solver",
+        message: format!("failed to serialize response: {e}"),
     })
 }

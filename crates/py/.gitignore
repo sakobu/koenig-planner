@@ -1,0 +1,6 @@
+# Local maturin/venv artifacts
+.venv/
+*.so
+__pycache__/
+.pytest_cache/
+*.png

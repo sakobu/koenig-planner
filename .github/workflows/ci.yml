@@ -20,14 +20,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all -- --check
-      - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-      - name: Build
-        run: cargo build --all-targets --all-features
-      - name: Test
-        run: cargo test --all-targets --all-features
-      - name: Doc
-        run: cargo doc --no-deps --all-features
+      - name: Clippy (core + api)
+        run: cargo clippy --workspace --exclude koenig-planner-py --all-targets --all-features -- -D warnings
+      - name: Build (core + api)
+        run: cargo build --workspace --exclude koenig-planner-py --all-targets --all-features
+      - name: Test (core + api)
+        run: cargo test --workspace --exclude koenig-planner-py --all-targets --all-features
+      - name: Doc (core + api)
+        run: cargo doc --no-deps --all-features -p koenig-damico-planner -p koenig-planner-api
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -41,7 +41,34 @@ jobs:
         with:
           toolchain: "1.92"
       - uses: Swatinem/rust-cache@v2
-      - name: Build (MSRV 1.92)
-        run: cargo build --all-targets --all-features
-      - name: Test (MSRV 1.92)
-        run: cargo test --all-targets --all-features
+      - name: Build (MSRV 1.92, core)
+        run: cargo build -p koenig-damico-planner --all-targets --all-features
+      - name: Test (MSRV 1.92, core)
+        run: cargo test -p koenig-damico-planner --all-targets --all-features
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install maturin + pytest
+        run: pip install "maturin>=1.14,<2.0" pytest
+      - name: Clippy (py)
+        run: cargo clippy -p koenig-planner-py --all-targets -- -D warnings
+      - name: Build wheel
+        run: maturin build --release -m crates/py/Cargo.toml --out dist
+      - name: Install wheel + pytest
+        run: |
+          pip install dist/*.whl
+          pytest crates/py/tests/ -q
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: koenig-planner-wheels
+          path: dist/*.whl

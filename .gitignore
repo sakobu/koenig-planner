@@ -2,4 +2,7 @@
 .DS_Store
 .vscode/
 docs/
+/.venv/
+/dist/
+/.superpowers/
 

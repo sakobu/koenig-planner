@@ -1,0 +1,23 @@
+[build-system]
+requires = ["maturin>=1.14,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "koenig-planner"
+version = "0.1.0"
+description = "Python bindings for the Koenig-D'Amico fuel-optimal impulsive maneuver planner"
+readme = "crates/py/README.md"
+requires-python = ">=3.9"
+license = { text = "MIT OR Apache-2.0" }
+keywords = ["astrodynamics", "formation-flying", "spacecraft", "orbit", "optimization"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+
+[tool.maturin]
+# REQUIRED for a workspace-member binding crate (maturin issue #241).
+manifest-path = "crates/py/Cargo.toml"
+# Enable PyO3's extension-module feature only for the wheel build.
+features = ["pyo3/extension-module"]
