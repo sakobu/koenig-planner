@@ -195,21 +195,14 @@ pub struct SolveResponse {
 /// `kind` is the status class for HTTP frontends:
 /// - `"bad_request"` — invalid input (the caller should fix the request).
 /// - `"solver"` — well-formed input but numerically unsolvable / failed.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[error("{kind}: {message}")]
 pub struct ApiError {
     /// Status class: `"bad_request"` or `"solver"`.
     pub kind: &'static str,
     /// Human-readable description of what went wrong.
     pub message: String,
 }
-
-impl std::fmt::Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.kind, self.message)
-    }
-}
-
-impl std::error::Error for ApiError {}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Internal helpers

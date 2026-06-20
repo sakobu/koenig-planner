@@ -9,6 +9,7 @@ description = "Serde DTOs and a single dispatch entry point for the Koenig-D'Ami
 [dependencies]
 koenig-damico-planner = { path = "../..", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
 
 [dev-dependencies]
 serde_json = "1.0"
