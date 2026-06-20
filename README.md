@@ -1,5 +1,17 @@
 # koenig-damico-planner
 
+[![crates.io](https://img.shields.io/crates/v/koenig-damico-planner.svg)](https://crates.io/crates/koenig-damico-planner)
+[![docs.rs](https://img.shields.io/docsrs/koenig-damico-planner)](https://docs.rs/koenig-damico-planner)
+[![License: MIT OR Apache-2.0](https://img.shields.io/crates/l/koenig-damico-planner.svg)](#license)
+
+> Minimum-Δv impulsive maneuver planning for spacecraft relative orbits — a
+> finite-difference-verified Rust port of the Koenig & D'Amico (IEEE TAC 2020)
+> fuel-optimal impulsive control algorithm.
+
+```sh
+cargo add koenig-damico-planner
+```
+
 A faithful Rust re-implementation of Koenig & D'Amico's fuel-optimal impulsive
 control algorithm for linear systems with time-varying cost
 (*"Fast Algorithm for Fuel-Optimal Impulsive Control of Linear Systems with
@@ -82,14 +94,14 @@ solve converges in ≤ 7 iterations — well within the paper's stated 8-iterati
 bound — and mean iterations are 4.29 / 3.64 / 2.95 vs. the paper's 4.90 / 3.99 /
 3.31.
 
-![Fig. 8 — empirical CDF of Algorithm-2 refinement iterations for the three seeding schemes (n=2, n=6, n=10)](assets/fig8_cdf.png)
+![Fig. 8 — empirical CDF of Algorithm-2 refinement iterations for the three seeding schemes (n=2, n=6, n=10)](https://raw.githubusercontent.com/sakobu/koenig-planner/main/assets/fig8_cdf.png)
 
 **Fig. 9 — solve time vs. grid size.** Wall-clock solve time for the Table III
 target as the candidate-time grid grows from 10 to 10⁶ points (log–log, release
 build). Solve time grows slowly at small |T| (setup-dominated), then scales
 roughly linearly in |T| (~0.3 s at 10⁶ points).
 
-![Fig. 9 — log–log plot of solve time versus candidate-time grid size, from 10 to 1e6 points](assets/fig9_timing.png)
+![Fig. 9 — log–log plot of solve time versus candidate-time grid size, from 10 to 1e6 points](https://raw.githubusercontent.com/sakobu/koenig-planner/main/assets/fig9_timing.png)
 
 ## Build & test
 
