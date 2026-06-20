@@ -18,6 +18,8 @@ use clarabel::solver::{
 use nalgebra::{SMatrix, SVector};
 
 /// Result of the direct min-fuel SOCP.
+///
+/// Ref: \[KD20\] eq. 42 (the recovered per-time maneuvers reaching `w`).
 #[derive(Debug, Clone)]
 pub struct MinFuelSolution {
     /// Recovered Δv per input candidate time (aligned to `gammas`/`generators`;
@@ -34,6 +36,9 @@ pub struct MinFuelSolution {
 /// (`Norm` → one second-order cone) or a polytopic gauge (`Polytope` →
 /// nonnegative-cone LP over the vertex directions). Returns one Δv per candidate
 /// time plus the optimal fuel.
+///
+/// Ref: \[KD20\] eq. 4 (master min-fuel objective); eq. 33; eq. 9; \[CD18\] eq. 2
+/// (sum-of-norms).
 pub fn min_fuel_socp(
     w: &Pseudostate,
     gammas: &[SMatrix<f64, N, M>],
@@ -197,6 +202,7 @@ mod tests {
     }
 
     // The four FaceMax V_vertex columns (must match src/cost/facemax.rs).
+    // Ref: [KD20] eq. 47.
     fn vertex_dirs() -> Vec<SVector<f64, M>> {
         let a = (2.0_f64 / 3.0).sqrt();
         let b = (1.0_f64 / 3.0).sqrt();
@@ -212,6 +218,7 @@ mod tests {
         Pseudostate::from_row_slice(&v)
     }
 
+    // Ref: [KD20] eq. 4.
     fn residual(w: &Pseudostate, gammas: &[SMatrix<f64, N, M>], dvs: &[SVector<f64, M>]) -> f64 {
         let mut acc = SVector::<f64, N>::zeros();
         for (g, dv) in gammas.iter().zip(dvs) {
@@ -233,6 +240,7 @@ mod tests {
         ));
     }
 
+    // Ref: [KD20] eq. 4.
     #[test]
     fn single_norm_time_recovers_exact_dv() {
         // w = (3,4,12,0,0,0), Γ = [I;0]: Δv = (3,4,12), fuel = ‖Δv‖ = 13.
@@ -248,6 +256,7 @@ mod tests {
         assert!(residual(&w, &gammas, &sol.dvs) < 1e-5);
     }
 
+    // Ref: [KD20] eq. 4.
     #[test]
     fn degenerate_collinear_support_still_spans_w() {
         // The degenerate-collinear scenario in miniature. Two times whose Γ map
@@ -278,6 +287,7 @@ mod tests {
         assert_relative_eq!(sol.objective, 13.0, epsilon = 1e-3);
     }
 
+    // Ref: [KD20] eq. 9; eq. 47.
     #[test]
     fn facemax_single_vertex_costs_unit() {
         // w = Γ·v0 with Γ = [I;0], v0 the first vertex direction (a unit vector).
@@ -294,6 +304,7 @@ mod tests {
         assert_relative_eq!(sol.dvs[0], dirs[0], epsilon = 1e-3);
     }
 
+    // Ref: [KD20] eq. 49.
     #[test]
     fn mixed_norm_and_facemax_times() {
         // One Norm time (coords 0..2) + one FaceMax time (coords 3..5). Both used.
@@ -320,6 +331,7 @@ mod tests {
         assert_relative_eq!(sol.objective, 2.0, epsilon = 1e-3);
     }
 
+    // Ref: [KD20] eq. 9; eq. 48.
     #[test]
     fn facemax_two_vertex_combination_charges_sum() {
         // Target on a FACE, not a vertex: w = Gamma . (v0 + v2). The gauge must

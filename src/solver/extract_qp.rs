@@ -21,6 +21,8 @@ use nalgebra::{SMatrix, SVector};
 /// min-fuel SOCP, which is robust on the degenerate flat contacts where this
 /// magnitude QP under-spans `w`. This primitive is provided for direct use and
 /// for comparison against the SOCP.
+///
+/// Ref: \[KD20\] Algorithm 3 (fixed-direction magnitude QP); eq. 42; eq. 32.
 pub fn extract_qp(
     w: &Pseudostate,
     ys: &[SVector<f64, N>],
@@ -98,6 +100,7 @@ mod tests {
         SVector::<f64, N>::from_row_slice(&v)
     }
     // Weighted residual (w - Y alpha)^T Q (w - Y alpha).
+    // Ref: [KD20] Algorithm 3.
     fn weighted_obj(
         w: &SVector<f64, N>,
         ys: &[SVector<f64, N>],
@@ -119,6 +122,7 @@ mod tests {
         assert!(matches!(err, crate::types::PlannerError::InvalidInput(_)));
     }
 
+    // Ref: [KD20] Algorithm 3.
     #[test]
     fn qp_a_interior_optimum_exact_fit() {
         // y1=e1, w=2 e1, budget slack -> alpha=2, residual 0.
@@ -128,6 +132,7 @@ mod tests {
         assert_relative_eq!(a[0], 2.0, epsilon = 1e-6);
     }
 
+    // Ref: [KD20] Algorithm 3.
     #[test]
     fn qp_b_budget_binds() {
         // Same as A but budget=1 -> alpha=1, residual 1.
@@ -138,6 +143,7 @@ mod tests {
         assert_relative_eq!(weighted_obj(&w, &[e(0)], &q, &a), 1.0, epsilon = 1e-6);
     }
 
+    // Ref: [KD20] Algorithm 3.
     #[test]
     fn qp_c_nonneg_binds() {
         // w = -3 e1, only nonneg direction available -> alpha=0, residual 3.
@@ -146,6 +152,7 @@ mod tests {
         assert!(a[0].abs() < 1e-6);
     }
 
+    // Ref: [KD20] Algorithm 3.
     #[test]
     fn qp_d_two_orthonormal_budget_binds() {
         // y1=e1,y2=e2, w=(2,3,..), budget=4 (sum unconstrained = 5).
@@ -159,6 +166,7 @@ mod tests {
         assert_relative_eq!(weighted_obj(&w, &ys, &q, &a), 0.5, epsilon = 1e-6);
     }
 
+    // Ref: [KD20] Algorithm 3.
     #[test]
     fn qp_e_weighted_q_budget_binds() {
         // Q = diag(1,4,1,1,1,1), y1=e1,y2=e2, w=(2,3,..), budget=4.
@@ -173,6 +181,7 @@ mod tests {
         assert_relative_eq!(weighted_obj(&w, &ys, &q, &a), 0.8, epsilon = 1e-6);
     }
 
+    // Ref: [KD20] Algorithm 3.
     #[test]
     fn qp_f_non_orthogonal_directions_exercise_off_diagonal_p() {
         // y1=e1, y2=e1+e2 (non-orthogonal -> P has off-diagonal terms).
@@ -192,6 +201,7 @@ mod tests {
         assert_relative_eq!(weighted_obj(&w, &ys, &q, &a), 0.5, epsilon = 1e-6);
     }
 
+    // Ref: [KD20] Algorithm 3.
     #[test]
     fn qp_residual_unique_when_p_singular() {
         // Duplicate directions -> Y^T Q Y singular -> alpha non-unique, but the

@@ -10,6 +10,9 @@ use nalgebra::SMatrix;
 /// `B(t)` evaluated at `orbit`, including the `sqrt(a/mu)` scaling. The `[B_ij]`
 /// block depends only on `e, i, omega, nu`; `a` enters solely through the scale.
 ///
+/// Ref: \[CD18\] eq. 38 (eccentric GVE control-input matrix; near-circular form
+/// is eq. 36). Displayed in \[KD20\] p. 13; cross-checked against \[H25\] eq. 78.
+///
 /// # Errors
 /// Propagates [`AbsoluteOrbit::true_anomaly`]'s errors (non-elliptic `e`).
 pub fn control_input_matrix(orbit: &AbsoluteOrbit) -> Result<SMatrix<f64, N, M>, PlannerError> {
@@ -55,6 +58,7 @@ mod tests {
         )
     }
 
+    // Ref: [KD20] B(t) display sparsity pattern (p. 13).
     #[test]
     fn zero_structure_is_correct() {
         let b = control_input_matrix(&fixture()).unwrap();
@@ -67,6 +71,8 @@ mod tests {
         assert_eq!(b[(5, 1)], 0.0);
     }
 
+    // Ref: [CD18] eq. 38 (eccentric Gamma_k); displayed in [KD20] p. 13;
+    // cross-checked against [H25] eq. 78.
     #[test]
     fn entrywise_matches_oracle() {
         let b = control_input_matrix(&fixture()).unwrap();
@@ -93,6 +99,7 @@ mod tests {
         assert_relative_eq!(b, expected, epsilon = 1e-12, max_relative = 1e-9);
     }
 
+    // Ref: [KD20] B(t) sqrt(a/mu) scaling (p. 13).
     #[test]
     fn b_scales_as_sqrt_a_over_mu() {
         // [B_ij] is a-independent; only the sqrt(a/mu) scale carries a.

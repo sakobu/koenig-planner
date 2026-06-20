@@ -23,6 +23,7 @@ fn gamma_bottom_identity() -> SMatrix<f64, N, M> {
     g
 }
 
+// Ref: [KD20] eq. 40; Algorithm 3; Table II / eq. 48.
 #[test]
 fn refine_then_extract_hands_off_through_public_api() {
     // Mixed problem: FaceMax on l1..3 + Norm2 (SOC) on l4..6, w=(0,0,1,0,0,1).

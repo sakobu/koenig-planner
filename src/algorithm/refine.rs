@@ -17,6 +17,8 @@ const PLATEAU_EPS: f64 = 1e-12;
 /// boundary rule (compared only against their one in-bounds neighbor). The
 /// global maximum is always a local maximum, so a violated global max is always
 /// returned — guaranteeing Algorithm 2 makes progress.
+///
+/// Ref: \[KD20\] Algorithm 2 add step (local maxima of `g > 1`).
 pub(super) fn violated_local_maxima(g: &[f64], threshold: f64) -> Vec<usize> {
     let n = g.len();
     let mut out = Vec::new();
@@ -59,6 +61,8 @@ pub(super) struct RefineOutcome {
 }
 
 /// Algorithm 2 — iteratively refine `T^est` until `max_t g ≤ 1 + ε_cost`.
+///
+/// Ref: \[KD20\] Algorithm 2 (Iterative Refinement); eq. 40; eq. 30.
 pub(super) fn refine<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,
@@ -175,6 +179,7 @@ mod tests {
         grid.times().map(|t| dynamics.gamma(t).unwrap()).collect()
     }
 
+    // Ref: [KD20] Algorithm 2 (convergence property).
     #[test]
     fn refine_converges_and_trace_is_non_increasing() {
         let dynamics = SpinDyn { rate: 0.05 };
@@ -234,6 +239,7 @@ mod tests {
         }
     }
 
+    // Ref: [KD20] eq. 49 (piecewise cost); eq. 47-48 (FaceMax).
     #[test]
     fn refine_handles_mixed_facemax_and_norm2_cones() {
         // Exercise the non-smooth FaceMax cost in the refine path.
@@ -263,6 +269,7 @@ mod tests {
         }
     }
 
+    // Ref: [KD20] Table III; Algorithm 2 (drop/add behavior).
     #[test]
     fn real_j2roe_refine_exercises_drop_and_add() {
         use crate::dynamics::{AbsoluteOrbit, J2Roe};

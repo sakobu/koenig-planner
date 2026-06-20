@@ -24,6 +24,8 @@ const A_C: f64 = 25_000e3;
 /// Table III target pseudostate in metres (= a_c * w_nd).
 const W_METRES: [f64; 6] = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0];
 
+// Ref: [KD20] Table III; eq. 49; eq. 40 (dual lower bound); Fig. 7 (contact curve);
+// Table IV (paper maneuver plan).
 fn main() {
     // --- Table III inputs. ---
     let chief = AbsoluteOrbit::new(

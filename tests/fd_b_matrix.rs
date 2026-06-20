@@ -75,6 +75,7 @@ fn rv_to_coe(r: &Vector3<f64>, v: &Vector3<f64>) -> (f64, f64, f64, f64, f64, f6
 }
 
 // eq.-51 ROE state of `dep` relative to `chief`, each = (a, e, i, Om, w, M).
+// Ref: [KD20] eq. 51; [KGD17] eq. 2.
 fn roe(chief: &[f64; 6], dep: &[f64; 6]) -> SVector<f64, 6> {
     let (ac, ec, ic, omc, wc, mc) = (chief[0], chief[1], chief[2], chief[3], chief[4], chief[5]);
     let (ad, ed, id, omd, wd, md) = (dep[0], dep[1], dep[2], dep[3], dep[4], dep[5]);
@@ -90,6 +91,7 @@ fn roe(chief: &[f64; 6], dep: &[f64; 6]) -> SVector<f64, 6> {
 }
 
 // B(t) reconstructed by central-differencing the ROE response to an RTN dv.
+// Ref: [H25] eq. 78 (p. 18); [CD18] eq. 4 / 36 / 38; [KD20] B(t) display p. 13.
 fn fd_b(orbit: &AbsoluteOrbit) -> SMatrix<f64, 6, 3> {
     let (a, e, i, om, w, m) = (
         orbit.a,
@@ -127,6 +129,7 @@ fn frob_rel_err(got: &SMatrix<f64, 6, 3>, expected: &SMatrix<f64, 6, 3>) -> f64 
     (got - expected).norm() / expected.norm()
 }
 
+// Ref: [H25] eq. 78 (p. 18); [KD20] Table III; [H25] Table 2.
 #[test]
 fn b_matrix_matches_independent_finite_difference() {
     // Well-conditioned fixture (e=0.3) and the worked-example chief at t=16050.

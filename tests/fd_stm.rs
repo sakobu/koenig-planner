@@ -24,6 +24,7 @@ fn wrap(x: f64) -> f64 {
 }
 
 /// eq.51 ROE map: x = [da, dlam, dex, dey, dix, diy] from chief & deputy mean elems.
+// Ref: [KD20] eq. 51 (ROE state); [KGD17] eq. 2.
 fn roe(c: &AbsoluteOrbit, d: &AbsoluteOrbit) -> SVector<f64, 6> {
     let eta_c = (1.0 - c.e * c.e).sqrt();
     let dm = wrap(d.mean_anom - c.mean_anom);
@@ -78,16 +79,19 @@ fn jacobian(
 }
 
 /// d roe(chief, deputy) / d deputy at deputy = `dep`.
+// Ref: [KD20] eq. 51 (FD Jacobian of the ROE map).
 fn jac_roe(chief: &AbsoluteOrbit, dep: &AbsoluteOrbit) -> Matrix6<f64> {
     jacobian(&to_vec(dep), &|v| roe(chief, &from_vec(v)))
 }
 
 /// d propagate(oe, dt) / d oe at `oe`.
+// Ref: [KD20] eq. 50; [KGD17] eq. 13 (secular propagation Jacobian).
 fn jac_propagate(oe: &AbsoluteOrbit, dt: f64) -> Matrix6<f64> {
     jacobian(&to_vec(oe), &|v| to_vec(&from_vec(v).propagate(dt)))
 }
 
 /// Independent FD reconstruction of Phi(t, t_f) about the chief (zero ROE).
+// Ref: [KGD17] eq. 25 / A6 / A8; [H25] eq. 76/77 (independent STM via FD).
 fn fd_phi(chief_t: &AbsoluteOrbit, dt: f64) -> Matrix6<f64> {
     let chief_tf = chief_t.propagate(dt);
     let j_t = jac_roe(chief_t, chief_t); // d x(t)/d dep_t
@@ -96,6 +100,7 @@ fn fd_phi(chief_t: &AbsoluteOrbit, dt: f64) -> Matrix6<f64> {
     j_f * p * j_t.try_inverse().expect("J_t invertible")
 }
 
+// Ref: [KGD17] eq. A6/A8; [KD20] STM display p. 13.
 fn report(name: &str, chief: &AbsoluteOrbit, dt: f64) -> f64 {
     let analytic = state_transition(chief, &chief.propagate(dt), dt);
     let fd = fd_phi(chief, dt);
@@ -129,6 +134,7 @@ fn report(name: &str, chief: &AbsoluteOrbit, dt: f64) -> f64 {
     worst
 }
 
+// Ref: [KGD17] eq. 25/A6; [KD20] Table III; [H25] Table 2 / eq. 76.
 #[test]
 fn stm_matches_independent_finite_difference() {
     // Worked-example chief at t=16050, dt = t_f - t.

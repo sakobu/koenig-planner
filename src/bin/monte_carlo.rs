@@ -71,6 +71,8 @@ mod harness {
     pub const FIG9_SIZES: [usize; 6] = [10, 100, 1_000, 10_000, 100_000, 1_000_000];
 
     /// Table III chief mean absolute orbit (angles in radians).
+    ///
+    /// Ref: \[KD20\] Table III.
     pub fn worked_example_chief() -> AbsoluteOrbit {
         AbsoluteOrbit::new(
             A_C,
@@ -83,12 +85,16 @@ mod harness {
     }
 
     /// J2 mean-ROE dynamics for the worked-example window.
+    ///
+    /// Ref: \[KGD17\] eq. A6 / eq. 25 (J2 STM); \[KD20\] Table III.
     pub fn worked_example_dynamics() -> J2Roe {
         J2Roe::new(worked_example_chief(), T_I, T_F)
             .expect("worked-example chief is a valid elliptic, inclined orbit")
     }
 
     /// eq. 49 piecewise cost (FaceMax in 2-hr perigee windows, Norm2 elsewhere).
+    ///
+    /// Ref: \[KD20\] eq. 49 (piecewise cost).
     pub fn worked_example_cost() -> Piecewise {
         Piecewise::new(TAU / worked_example_chief().mean_motion())
     }
@@ -120,6 +126,8 @@ mod harness {
     /// components `~ Normal(0, σ = SIGMA_M metres)`, then divided by `a_c`
     /// (sampling convention). `StdRng` is portable, so a fixed
     /// `seed` yields identical samples on every platform.
+    ///
+    /// Ref: \[KD20\] Monte Carlo sampling spec (Table V / Fig. 8 prose), p. 11.
     pub fn sample_pseudostates(n: usize, seed: u64) -> Vec<Pseudostate> {
         let mut rng = StdRng::seed_from_u64(seed);
         let normal = Normal::new(0.0_f64, SIGMA_M).expect("σ > 0 is a valid normal");
@@ -137,6 +145,8 @@ mod harness {
     /// A Fig. 8 initialization scheme — the paper used three DISTINCT seedings for
     /// the 2/6/10-candidate columns (Koenig & D'Amico 2020, "Sensitivity to Poor
     /// Initialization", p.11), not one `n_init` knob.
+    ///
+    /// Ref: \[KD20\] Fig. 8 (Sensitivity to Poor Initialization).
     #[derive(Clone, Copy)]
     pub enum InitScheme {
         /// Algorithm 1: the `n` largest-contact coarse times (the nominal 6-time seed).
@@ -157,6 +167,7 @@ mod harness {
     }
 
     /// `n` times evenly spaced over `[t_i, t_f]`, inclusive of both endpoints.
+    // Ref: [KD20] Fig. 8 (10-time evenly-spaced init scheme).
     fn evenly_spaced_times(t_i: f64, t_f: f64, n: usize) -> Vec<f64> {
         if n <= 1 {
             return vec![t_i];
@@ -169,6 +180,7 @@ mod harness {
     /// Solve one Fig. 8 sample under a given initialization scheme on the fixed 30 s
     /// grid. `LargestG` uses Algorithm 1 (`solve`); the other two seed refinement
     /// directly with explicit times (`solve_from_initial_times`), as the paper does.
+    // Ref: [KD20] Algorithm 1 / Algorithm 2 (per init scheme).
     fn solve_scheme<D: Dynamics, C: CostModel>(
         dynamics: &D,
         cost: &C,
@@ -224,6 +236,8 @@ mod harness {
     /// outcomes and a count of solver failures (expect 0). Each scheme uses the
     /// paper's own seeding (endpoints / largest-g / evenly-spaced), so the columns
     /// are comparable to Fig. 8.
+    ///
+    /// Ref: \[KD20\] Fig. 8; Algorithm 2 (iteration counts).
     pub fn run_fig8<D: Dynamics, C: CostModel>(
         dynamics: &D,
         cost: &C,
@@ -255,6 +269,8 @@ mod harness {
     /// Group rows by scheme label (not the `n_init` count, which could collide
     /// across future schemes) and compute mean iterations, fraction ≤ 8
     /// iterations, max iterations, and max residual.
+    ///
+    /// Ref: \[KD20\] Fig. 8.
     pub fn summarize_fig8(rows: &[Fig8Row], schemes: &[(usize, InitScheme)]) -> Vec<Fig8Stat> {
         debug_assert!(
             {
@@ -314,6 +330,8 @@ mod harness {
     }
 
     /// Fig. 8 driver: sample, sweep, summarize, print, and write the CSV.
+    ///
+    /// Ref: \[KD20\] Fig. 8.
     pub fn fig8<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
         let ws = sample_pseudostates(N_MC, SEED);
         let (rows, failures) = run_fig8(dynamics, cost, &ws, &FIG8_SCHEMES);
@@ -384,6 +402,8 @@ mod harness {
     /// `dt = (t_f - t_i)/(n-1)`, one warmup solve (discarded), one timed solve. The
     /// actual `grid.len()` is recorded (it may differ from `n` by ±1 due to rounding
     /// in `TimeGrid::len`). Timing shape is `w`-independent; use a single fixed `w`.
+    ///
+    /// Ref: \[KD20\] Fig. 9 (timing study).
     pub fn run_fig9<D: Dynamics, C: CostModel>(
         dynamics: &D,
         cost: &C,
@@ -438,6 +458,8 @@ mod harness {
     }
 
     /// Fig. 9 driver: time the Table III `w` across `FIG9_SIZES`, print, write CSV.
+    ///
+    /// Ref: \[KD20\] Fig. 9.
     pub fn fig9<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
         let w = sample_pseudostates(1, SEED)[0];
         println!("\nFig. 9 — solve time vs |T| (10⁶ is multi-second / ~150 MB)");
@@ -466,6 +488,8 @@ mod harness {
 
     /// Empirical CDF of iteration counts as `(value, fraction ≤ value)` over the
     /// distinct sorted values, anchored at `(min-1, 0)` so the curve starts at 0.
+    ///
+    /// Ref: \[KD20\] Fig. 8 (CDF of iteration counts).
     pub fn empirical_cdf(counts: &[usize]) -> Vec<(f64, f64)> {
         assert!(
             !counts.is_empty(),
@@ -489,6 +513,8 @@ mod harness {
     }
 
     /// Plot one step-CDF per `n_init` to a PNG.
+    ///
+    /// Ref: \[KD20\] Fig. 8.
     pub fn plot_fig8_cdf(
         path: &str,
         series: &[(usize, Vec<(f64, f64)>)],
@@ -528,6 +554,8 @@ mod harness {
     }
 
     /// Plot solve-time vs |T| on log-log axes to a PNG.
+    ///
+    /// Ref: \[KD20\] Fig. 9.
     pub fn plot_fig9_timing(
         path: &str,
         rows: &[Fig9Row],

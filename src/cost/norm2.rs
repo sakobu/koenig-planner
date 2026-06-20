@@ -10,10 +10,12 @@ use nalgebra::{SMatrix, SVector};
 pub struct Norm2;
 
 impl SublevelSet for Norm2 {
+    // Ref: [KD20] Table II; eq. 46 (q-norm primer vector, q=2).
     fn contact(&self, y: SVector<f64, M>) -> f64 {
         y.norm()
     }
 
+    // Ref: [KD20] eq. 23; Table II.
     fn support(&self, y: SVector<f64, M>) -> SVector<f64, M> {
         let n = y.norm();
         if n > 0.0 {
@@ -23,6 +25,7 @@ impl SublevelSet for Norm2 {
         }
     }
 
+    // Ref: [KD20] eq. 40 (single SOC row); eq. 46.
     fn cone_constraints(&self, gamma_t: &SMatrix<f64, N, M>) -> ConicRows {
         // g(Gamma^T lambda) <= 1  <=>  one SOC row with G = Gamma^T, h = 1.
         ConicRows {
@@ -31,6 +34,7 @@ impl SublevelSet for Norm2 {
         }
     }
 
+    // Ref: [KD20] Algorithm 3.
     fn fuel_generator(&self) -> FuelGenerator {
         FuelGenerator::Norm
     }
@@ -41,6 +45,7 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
 
+    // Ref: [KD20] Table II.
     #[test]
     fn contact_is_the_l2_norm() {
         // (3,4,12) has the clean norm 13 (avoids any constant-like literal).
@@ -56,6 +61,7 @@ mod tests {
         );
     }
 
+    // Ref: [KD20] Table II.
     #[test]
     fn support_is_the_unit_direction() {
         let y = SVector::<f64, M>::new(-0.6, 0.2, -0.9);
@@ -81,6 +87,7 @@ mod tests {
         );
     }
 
+    // Ref: [KD20] eq. 23.
     #[test]
     fn contact_support_identity_eq23() {
         // eq. 23: lambda . s(lambda) = g(lambda).
@@ -92,6 +99,7 @@ mod tests {
         }
     }
 
+    // Ref: [KD20] eq. 8.
     #[test]
     fn positive_homogeneity() {
         // g(a y) = a g(y) for a >= 0 (eq. 8 / Property 3).
@@ -109,6 +117,7 @@ mod tests {
         assert_eq!(Norm2.fuel_generator(), FuelGenerator::Norm);
     }
 
+    // Ref: [KD20] eq. 40.
     #[test]
     fn cone_row_matches_contact() {
         let gamma = SMatrix::<f64, N, M>::from_row_slice(&[

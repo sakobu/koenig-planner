@@ -13,6 +13,8 @@ use nalgebra::SMatrix;
 ///
 /// `gammas[k] = Γ(grid.time(k))` is the 6×3 dynamics matrix; the cost methods
 /// operate on the control-space projection `Γᵀ(t)·lambda ∈ ℝ³`.
+///
+/// Ref: \[KD20\] eq. 30 / eq. 27 (contact `g_{U(1,t)}(Γᵀ(t) lambda)`).
 fn contact_at<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,
@@ -28,6 +30,8 @@ fn contact_at<C: CostModel>(
 ///
 /// `refine_socp` deliberately omits the per-time slack, so Algorithm 2 recomputes
 /// `g` here for the drop / add / converge logic.
+///
+/// Ref: \[KD20\] eq. 30 (max over the candidate grid).
 fn contact_on_grid<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,
@@ -88,6 +92,8 @@ fn validate_inputs(
 }
 
 /// Run Algorithm 2 (refine) → Algorithm 3 (extract) from a prepared candidate set.
+///
+/// Ref: \[KD20\] Algorithm 2 -> Algorithm 3.
 fn run_pipeline<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,
@@ -125,6 +131,8 @@ fn nearest_grid_indices(grid: &TimeGrid, times: &[f64]) -> Vec<usize> {
 ///
 /// Wires Algorithm 1 (init) → Algorithm 2 (refine) → Algorithm 3 (extract) with
 /// `Γ(t)` caching.
+///
+/// Ref: \[KD20\] Algorithms 1/2/3 (full pipeline); eq. 4 (master problem).
 pub fn solve<D: Dynamics, C: CostModel>(
     dynamics: &D,
     cost: &C,
@@ -147,6 +155,8 @@ pub fn solve<D: Dynamics, C: CostModel>(
 /// snapped to the nearest grid points and deduplicated; refinement (Algorithm 2)
 /// then drops/adds times exactly as in [`solve`]. `params.n_init` / `params.n_coarse`
 /// are unused on this path (the seed is explicit) but must still be ≥ 1.
+///
+/// Ref: \[KD20\] Fig. 8 (initialization-sensitivity study; bypasses Algorithm 1).
 ///
 /// Returns [`PlannerError::InvalidInput`] if no finite initial time lands in range.
 pub fn solve_from_initial_times<D: Dynamics, C: CostModel>(

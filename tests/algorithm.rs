@@ -121,6 +121,7 @@ fn solve_rejects_nan_target() {
     assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
 
+// Ref: [KD20] Algorithm 2; Table III.
 #[test]
 fn refine_on_real_j2roe_runs_multiple_iterations() {
     // The well-conditioned synthetic problem converges too fast to exercise the
@@ -150,6 +151,7 @@ fn refine_on_real_j2roe_runs_multiple_iterations() {
     );
 }
 
+// Ref: [KD20] Fig. 8; Table III.
 #[test]
 fn solve_from_initial_times_endpoints_seed_reconstructs_w() {
     // The paper's worst-case Fig.8 seed (Koenig & D'Amico 2020, p.11) is ONLY the
@@ -243,6 +245,7 @@ fn solution_residual_is_unpruned_and_kept_set_residual_is_bounded() {
     assert!(kept_residual < 1e-2, "kept-set residual {kept_residual}");
 }
 
+// Ref: [KD20] Algorithm 2.
 #[test]
 fn solve_reports_not_converged_through_public_api() {
     // eps_cost = -0.5 => convergence target max_t g <= 0.5, which a binding
@@ -274,6 +277,7 @@ fn solve_reports_not_converged_through_public_api() {
     }
 }
 
+// Ref: [KD20] eq. 40.
 #[test]
 fn solve_reports_solver_failed_on_unreachable_target() {
     // A constant rank-deficient Gamma (top 3x3 identity; ROE rows 4-6 always

@@ -1,5 +1,5 @@
-//! Mean absolute Keplerian orbit, its J2 secular rates (eq. 50), and linear
-//! secular propagation. Mean elements in, mean elements out.
+//! Mean absolute Keplerian orbit, its J2 secular rates (\[KD20\] eq. 50), and
+//! linear secular propagation. Mean elements in, mean elements out.
 
 use super::constants::{J2, MU, R_E};
 use super::kepler::mean_to_true;
@@ -22,8 +22,8 @@ pub struct AbsoluteOrbit {
     pub mean_anom: f64,
 }
 
-/// Secular rates of the slowly-varying angles under J2 (eq. 50). `a`, `e`, `i`
-/// are secularly constant and so have no rate.
+/// Secular rates of the slowly-varying angles under J2 (\[KD20\] eq. 50). `a`,
+/// `e`, `i` are secularly constant and so have no rate.
 #[derive(Debug, Clone, Copy)]
 pub struct SecularRates {
     /// dOmega/dt [rad/s].
@@ -36,6 +36,9 @@ pub struct SecularRates {
 
 impl AbsoluteOrbit {
     /// Construct from the six mean elements (angles in radians).
+    ///
+    /// Ref: \[KD20\] mean absolute element vector `oe = [a, e, i, Omega, omega, M]`
+    /// (p. 12, defined above eq. 50).
     pub fn new(a: f64, e: f64, i: f64, raan: f64, argp: f64, mean_anom: f64) -> Self {
         Self {
             a,
@@ -48,11 +51,15 @@ impl AbsoluteOrbit {
     }
 
     /// Keplerian mean motion `n = sqrt(mu / a^3)` [rad/s].
+    ///
+    /// Ref: \[KGD17\] eq. 9; \[KD20\] eq. 50 (the leading Keplerian term of `Mdot`).
     pub fn mean_motion(&self) -> f64 {
         (MU / self.a.powi(3)).sqrt()
     }
 
     /// `eta = sqrt(1 - e^2)`.
+    ///
+    /// Ref: \[KGD17\] eq. 14 (the `eta` substitution).
     pub fn eta(&self) -> f64 {
         (1.0 - self.e * self.e).sqrt()
     }
@@ -65,7 +72,9 @@ impl AbsoluteOrbit {
         mean_to_true(self.mean_anom, self.e)
     }
 
-    /// J2 secular rates (eq. 50).
+    /// J2 secular rates.
+    ///
+    /// Ref: \[KD20\] eq. 50 (p. 12); \[KGD17\] eq. 13 (Brouwer J2 secular rates).
     pub fn secular_rates(&self) -> SecularRates {
         let n = self.mean_motion();
         let eta = self.eta();
@@ -80,6 +89,9 @@ impl AbsoluteOrbit {
 
     /// Propagate `dt` seconds: `a, e, i` constant; `Omega, omega, M` advance at
     /// their secular rates. `oe(t) = oe(t_i) + (t - t_i) * oe_dot`.
+    ///
+    /// Ref: \[KD20\] eq. 50 integrated (a, e, i secularly constant; angles linear
+    /// in `dt`); \[KGD17\] eq. A1.
     pub fn propagate(&self, dt: f64) -> AbsoluteOrbit {
         let r = self.secular_rates();
         AbsoluteOrbit {
@@ -98,6 +110,7 @@ mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
 
+    // Ref: [KD20] Table III (worked-example chief mean absolute orbit).
     fn worked_example_chief() -> AbsoluteOrbit {
         AbsoluteOrbit::new(
             25_000e3,
@@ -109,6 +122,7 @@ mod tests {
         )
     }
 
+    // Ref: [KD20] Table III (chief a, e -> n, eta).
     #[test]
     fn mean_motion_and_eta_match_anchors() {
         let o = worked_example_chief();
@@ -116,6 +130,7 @@ mod tests {
         assert_abs_diff_eq!(o.eta(), 0.7141428429, epsilon = 1e-9);
     }
 
+    // Ref: [KD20] eq. 50 (evaluated at the Table III chief).
     #[test]
     fn secular_rates_match_anchors() {
         let r = worked_example_chief().secular_rates();
@@ -124,6 +139,7 @@ mod tests {
         assert_abs_diff_eq!(r.mean_anom_dot, 1.5973736883e-04, epsilon = 1e-13);
     }
 
+    // Ref: [KD20] eq. 50 (a, e, i secularly constant; angles linear in dt).
     #[test]
     fn propagation_is_linear_and_fixes_a_e_i() {
         let o = worked_example_chief();

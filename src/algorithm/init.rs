@@ -8,6 +8,8 @@ use nalgebra::SMatrix;
 
 /// Up to `n_coarse` evenly spaced grid indices (the coarse set `T^d`),
 /// inclusive of both endpoints, clamped to `[1, grid_len]` and deduped.
+///
+/// Ref: \[KD20\] Algorithm 1 (builds the coarse candidate set `T^d`).
 pub(super) fn coarse_indices(grid_len: usize, n_coarse: usize) -> Vec<usize> {
     debug_assert!(grid_len >= 1);
     let n = n_coarse.clamp(1, grid_len);
@@ -23,6 +25,8 @@ pub(super) fn coarse_indices(grid_len: usize, n_coarse: usize) -> Vec<usize> {
 
 /// The `n_init` coarse times with the largest contact `g_{U(1,t)}(Γᵀ(t)·lambda)`,
 /// returned as sorted grid indices (`T^est`). `lambda` is the initial dual `∥ w`.
+///
+/// Ref: \[KD20\] Algorithm 1 (Initialization); eq. 30 / eq. 27 (contact g).
 pub(super) fn initialize<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,

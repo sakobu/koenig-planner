@@ -43,6 +43,9 @@ pub struct TimeGrid {
 impl TimeGrid {
     /// Build a uniform grid with step `dt` over `[t_i, t_f]`.
     ///
+    /// Ref: \[KD20\] worked-example control domain (uniform discretization of
+    /// `[t_i, t_f]`), p. 10.
+    ///
     /// # Errors
     /// Returns [`PlannerError::InvalidInput`] unless `t_i`, `t_f`, `dt` are all
     /// finite, `dt > 0`, and `t_f >= t_i`. This is the only validating entry
@@ -97,6 +100,7 @@ pub struct SolveParams {
 }
 
 impl Default for SolveParams {
+    // Ref: [KD20] Table III default params (T^d=20, T^est=6, eps=0.01), p. 10 prose.
     fn default() -> Self {
         Self {
             n_coarse: 20,
@@ -195,12 +199,15 @@ mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
 
+    // Ref: [KD20] eq. 51 (ROE state x = [da, dlambda, dex, dey, dix, diy]).
     #[test]
     fn dimensions_match_roe_and_rtn() {
         assert_eq!(N, 6);
         assert_eq!(M, 3);
     }
 
+    // Ref: [KD20] worked-example control domain (30 s grid, 3934 times, t_f=117990 s),
+    // p. 10.
     #[test]
     fn worked_example_grid_has_3934_times() {
         let g = TimeGrid::uniform(0.0, 117990.0, 30.0).unwrap();
@@ -210,12 +217,14 @@ mod tests {
         assert_eq!(g.times().count(), 3934);
     }
 
+    // Ref: [H25] eq. 69 (10 s grid over [0, 39000]: 3901 times).
     #[test]
     fn hunter_grid_has_3901_times() {
         let g = TimeGrid::uniform(0.0, 39000.0, 10.0).unwrap();
         assert_eq!(g.len(), 3901);
     }
 
+    // Ref: [KD20] Table III default params (20, 6, 0.01, 0.01).
     #[test]
     fn default_params_match_table_iii() {
         let p = SolveParams::default();

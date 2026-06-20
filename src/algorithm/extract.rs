@@ -26,6 +26,9 @@ pub(super) struct ExtractOutcome {
 /// `budget` is the dual optimum `c*` from refinement; it is used only as a
 /// self-consistency sanity reference (the SOCP objective should match it to
 /// solver tolerance), not as a constraint.
+///
+/// Ref: \[KD20\] Algorithm 3 (Control Input Extraction); eq. 4 / eq. 7;
+/// \[CD18\] eq. 2 / eq. 1.
 pub(super) fn extract<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,

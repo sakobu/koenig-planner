@@ -4,6 +4,7 @@ use approx::assert_abs_diff_eq;
 use koenig_planner::{Maneuver, PlannerError, SolveParams, TimeGrid, M, N};
 use nalgebra::SVector;
 
+// Ref: [KD20] eq. 51 (N=6, M=3).
 #[test]
 fn reexports_are_reachable() {
     assert_eq!(N, 6);
@@ -20,6 +21,7 @@ fn maneuver_constructs_and_exposes_fields() {
     assert_eq!(m.dv.len(), 3);
 }
 
+// Ref: [KD20] Table III; Algorithm 1.
 #[test]
 fn default_params_are_table_iii() {
     let p = SolveParams::default();
@@ -33,6 +35,7 @@ fn error_displays_message() {
     assert!(e.to_string().contains("bad w"));
 }
 
+// Ref: [KD20] Table III (30 s grid); [H25] eq. 69.
 #[test]
 fn worked_and_hunter_grid_counts() {
     assert_eq!(TimeGrid::uniform(0.0, 117990.0, 30.0).unwrap().len(), 3934);

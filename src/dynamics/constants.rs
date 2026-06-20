@@ -1,4 +1,4 @@
-//! Physical constants used by the J2 mean-ROE dynamics (Appendix, eq. 50).
+//! Physical constants used by the J2 mean-ROE dynamics (\[KD20\] Appendix, eq. 50).
 
 /// Earth gravitational parameter [m^3/s^2].
 pub const MU: f64 = 3.986e14;

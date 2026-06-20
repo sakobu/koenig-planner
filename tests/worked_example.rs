@@ -21,6 +21,7 @@ use std::f64::consts::TAU;
 const A_C: f64 = 25_000e3;
 const W_METRES: [f64; 6] = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0];
 
+// Ref: [KD20] Table III; eq. 49.
 fn worked_example() -> (J2Roe, Piecewise, Pseudostate, TimeGrid) {
     let chief = AbsoluteOrbit::new(
         A_C,
@@ -37,6 +38,7 @@ fn worked_example() -> (J2Roe, Piecewise, Pseudostate, TimeGrid) {
     (dynamics, cost, w, grid)
 }
 
+// Ref: [KD20] Table III; eq. 40; eq. 30 / 27; eq. 42.
 #[test]
 fn worked_example_is_self_consistent() {
     let (dynamics, cost, w, grid) = worked_example();
@@ -108,6 +110,7 @@ fn worked_example_is_self_consistent() {
     assert!(sol.lambda.iter().all(|x| x.is_finite()));
 }
 
+// Ref: [H25] Table 2/3 / eq. 69; eq. 19; [KD20] eq. 40.
 #[test]
 fn hunter_l2_cross_check_recovers_w() {
     // Hunter & D'Amico 2025 "Sequential Formulation Validation": identical J2 ROE
@@ -165,6 +168,7 @@ fn hunter_l2_cross_check_recovers_w() {
     assert!(sol.lambda.iter().all(|x| x.is_finite()));
 }
 
+// Ref: [KD20] Table IV vs Table III; eq. 11.
 #[test]
 fn paper_table_iv_does_not_reconstruct() {
     // Demonstrates that the paper's published Table IV maneuvers, fed

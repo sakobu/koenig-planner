@@ -21,6 +21,9 @@ impl J2Roe {
     /// Build from the chief's mean absolute orbit at `t_i` and the window
     /// endpoints `[t_i, t_f]` `[s]`.
     ///
+    /// Ref: \[CD18\] eq. 38 / \[KD20\] B(t), p. 13 — the `1/tan(i)` term in `B(t)`
+    /// is what makes the near-equatorial chief guard necessary.
+    ///
     /// # Errors
     /// Returns [`PlannerError::InvalidInput`] if the chief is non-elliptic
     /// (`e ∉ [0,1)`), equatorial (`i` within `1e-9` rad of `0` or `π`, where the
@@ -50,6 +53,8 @@ impl J2Roe {
 }
 
 impl Dynamics for J2Roe {
+    // Ref: [H25] eq. 2 (Gamma(t) = Phi(t, t_f) B(t)); [KD20] eq. 11 (impulsive
+    // state evolution); [CD18] eq. 1 (Phi(t_f, t_k) Gamma(t_k) propagation).
     fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
         let orb_t = self.chief_ti.propagate(t - self.t_i);
         let orb_tf = self.chief_ti.propagate(self.t_f - self.t_i);
@@ -64,6 +69,7 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
 
+    // Ref: [KD20] Table III + worked-example window [0, 117990] s.
     fn worked_example() -> J2Roe {
         let chief = AbsoluteOrbit::new(
             25_000e3,
@@ -100,6 +106,7 @@ mod tests {
         let _d: &dyn Dynamics = &j;
     }
 
+    // Ref: [H25] eq. 2 (Gamma = Phi*B) with Phi(t_f, t_f) = I.
     #[test]
     fn gamma_at_tf_equals_b_since_phi_is_identity() {
         // At t = t_f, Phi(t_f, t_f) = I, so Gamma(t_f) = B(t_f).
@@ -113,6 +120,8 @@ mod tests {
         );
     }
 
+    // Ref: [KD20] Gamma(t) = Phi(t, t_f) B(t) (STM + B(t) displays, p. 13);
+    // [H25] eq. 2 (Gamma=Phi*B), eq. 76/77 (Phi), eq. 78 (B).
     #[test]
     fn gamma_entrywise_matches_oracle() {
         let g = worked_example().gamma(16_050.0).unwrap();

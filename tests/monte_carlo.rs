@@ -19,6 +19,7 @@ use std::f64::consts::TAU;
 const A_C: f64 = 25_000e3;
 const N_SAMPLES: usize = 64; // tunable for CI runtime (192 solves total)
 
+// Ref: [KD20] Table III.
 fn chief() -> AbsoluteOrbit {
     AbsoluteOrbit::new(
         A_C,
@@ -30,6 +31,7 @@ fn chief() -> AbsoluteOrbit {
     )
 }
 
+// Ref: [KD20] Fig. 8 (Gaussian pseudostate sampling).
 fn sample_ws(n: usize, seed: u64) -> Vec<Pseudostate> {
     let mut rng = StdRng::seed_from_u64(seed);
     let normal = Normal::new(0.0_f64, 1000.0).expect("σ > 0");
@@ -46,6 +48,7 @@ fn sample_ws(n: usize, seed: u64) -> Vec<Pseudostate> {
 
 /// Solve one sample under the paper's seeding for column `k` (0 = n=2 endpoints,
 /// 1 = n=6 largest-g, 2 = n=10 evenly-spaced).
+// Ref: [KD20] Fig. 8; Algorithm 1.
 fn solve_column(
     dynamics: &J2Roe,
     cost: &Piecewise,
@@ -75,6 +78,7 @@ fn solve_column(
     }
 }
 
+// Ref: [KD20] Fig. 8; Algorithm 2.
 #[test]
 fn monte_carlo_invariants_hold() {
     let dynamics = J2Roe::new(chief(), 0.0, 117_990.0).unwrap();

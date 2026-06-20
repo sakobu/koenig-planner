@@ -15,6 +15,8 @@ use clarabel::solver::{
 /// Algorithm 2 thresholds against is **not** returned here: it is recomputed by
 /// the caller via [`crate::SublevelSet::contact`] (the caller scans `g` over the
 /// full grid `T` anyway). Do not confuse it with clarabel's raw cone slack.
+///
+/// Ref: \[KD20\] eq. 40 (the optimum: dual `lambda*` and `c* = lambda*^T w`).
 #[derive(Debug, Clone)]
 pub struct RefineSolution {
     /// Optimal dual `lambda*` in R^6 (outward reachable-set normal).
@@ -29,6 +31,8 @@ pub struct RefineSolution {
 /// `lambda` is a free (sign-unconstrained) variable: there is no cone on it.
 /// Maps `maximize` to clarabel's `minimize` via `q = -w`; recovers
 /// `c* = w . lambda` directly from the primal solution.
+///
+/// Ref: \[KD20\] eq. 40 (the refinement SOCP); Algorithm 2; eq. 30.
 pub fn refine_socp(w: &Pseudostate, rows: &[ConicRows]) -> Result<RefineSolution, PlannerError> {
     let n_linear: usize = rows.iter().map(|r| r.linear.len()).sum();
     let n_soc: usize = rows.iter().map(|r| r.soc.len()).sum();
@@ -116,6 +120,7 @@ mod tests {
 
     // max_t g_{U(1,t)}(Gamma^T(t) lambda) recomputed straight from the rows,
     // normalized by each bound: dual feasibility requires this be <= 1 (+tol).
+    // Ref: [KD20] eq. 30.
     fn max_contact(rows: &[ConicRows], lam: &SVector<f64, N>) -> f64 {
         let mut g = f64::NEG_INFINITY;
         for cr in rows {
@@ -136,6 +141,7 @@ mod tests {
         assert!(matches!(err, crate::types::PlannerError::InvalidInput(_)));
     }
 
+    // Ref: [KD20] eq. 40; Table II.
     #[test]
     fn s1_single_soc_pins_three_coords() {
         // Norm2 at one time with Gamma^T = [I_3|0]; w hits only those 3 coords.
@@ -159,6 +165,7 @@ mod tests {
         assert!(max_contact(&rows, &sol.lambda) <= 1.0 + 1e-6);
     }
 
+    // Ref: [KD20] eq. 40; eq. 48.
     #[test]
     fn s2_face_max_lp_closed_form() {
         // FaceMax (LP path; no published closed-form reference) at one time,
@@ -174,6 +181,7 @@ mod tests {
         assert!(max_contact(&rows, &sol.lambda) <= 1.0 + 1e-6);
     }
 
+    // Ref: [KD20] eq. 40; eq. 49.
     #[test]
     fn s3_mixed_soc_and_lp_validates_cone_ordering() {
         // The realistic Piecewise case: one FaceMax time (4 linear rows on
@@ -195,6 +203,7 @@ mod tests {
         assert!(max_contact(&rows, &sol.lambda) <= 1.0 + 1e-6);
     }
 
+    // Ref: [KD20] eq. 37 (degree-1 homogeneity of c* in w).
     #[test]
     fn objective_is_scale_equivariant() {
         // Scaling w by k>0 scales c* by k and leaves the lambda direction fixed.

@@ -28,11 +28,13 @@ static VERTEX_COLUMNS: LazyLock<[SVector<f64, M>; 4]> = LazyLock::new(|| {
     ]
 });
 
+// Ref: [KD20] eq. 47 (the four tetrahedral V_vertex directions); Table II.
 fn vertex_columns() -> [SVector<f64, M>; 4] {
     *VERTEX_COLUMNS
 }
 
 impl SublevelSet for FaceMax {
+    // Ref: [KD20] eq. 22 (contact function g); Table II.
     fn contact(&self, y: SVector<f64, M>) -> f64 {
         // g(y) = max over W = [0, V_vertex]; the origin column contributes 0.0,
         // so g(y) >= 0 always (and g(0) = 0).
@@ -42,6 +44,7 @@ impl SublevelSet for FaceMax {
             .fold(0.0, f64::max)
     }
 
+    // Ref: [KD20] eq. 23 (support direction s); Table II.
     fn support(&self, y: SVector<f64, M>) -> SVector<f64, M> {
         // argmax column of W; ties resolve to the lowest index; the origin
         // column (zero vector, value 0) wins when every y . v_k <= 0.
@@ -57,6 +60,7 @@ impl SublevelSet for FaceMax {
         best
     }
 
+    // Ref: [KD20] eq. 40 (encodes g(Gamma^T lambda) <= 1); eq. 30.
     fn cone_constraints(&self, gamma_t: &SMatrix<f64, N, M>) -> ConicRows {
         // g(Gamma^T lambda) <= 1  <=>  (Gamma v_k)^T lambda <= 1 for each vertex
         // column (the origin column gives the vacuous 0 <= 1 and is omitted).
@@ -70,6 +74,7 @@ impl SublevelSet for FaceMax {
         }
     }
 
+    // Ref: [KD20] eq. 9 (polytope gauge for min-fuel); Algorithm 3.
     fn fuel_generator(&self) -> FuelGenerator {
         // Unit ball U(1) = conv{0, V_vertex columns}; its gauge is
         //   f(v) = min{ Σₖ θₖ : Σₖ θₖ vₖ = v, θ ≥ 0 }.
@@ -84,6 +89,7 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
 
+    // Ref: [KD20] eq. 47.
     #[test]
     fn vertices_are_unit_and_tetrahedral() {
         let cols = vertex_columns();
@@ -99,6 +105,7 @@ mod tests {
         }
     }
 
+    // Ref: [KD20] Table II.
     #[test]
     fn contact_known_directions() {
         let s23 = (2.0_f64 / 3.0).sqrt();
@@ -115,6 +122,7 @@ mod tests {
         );
     }
 
+    // Ref: [KD20] eq. 8.
     #[test]
     fn contact_of_zero_is_zero() {
         assert_relative_eq!(
@@ -124,6 +132,7 @@ mod tests {
         );
     }
 
+    // Ref: [KD20] Table II.
     #[test]
     fn support_is_argmax_vertex() {
         let cols = vertex_columns();
@@ -156,6 +165,7 @@ mod tests {
         );
     }
 
+    // Ref: [KD20] eq. 23.
     #[test]
     fn contact_support_identity_eq23() {
         // eq. 23: lambda . s(lambda) = g(lambda).
@@ -171,6 +181,7 @@ mod tests {
         }
     }
 
+    // Ref: [KD20] eq. 8.
     #[test]
     fn positive_homogeneity() {
         // g(a y) = a g(y) for a >= 0 (eq. 8 / Property 3).
@@ -182,6 +193,7 @@ mod tests {
         );
     }
 
+    // Ref: [KD20] eq. 48 (V_face) vs eq. 47 (V_vertex).
     #[test]
     fn vertex_face_transcription_cross_check() {
         // V_face (eq. 48), 4x3. Used only to cross-check the transcription of
@@ -198,6 +210,7 @@ mod tests {
         }
     }
 
+    // Ref: [KD20] eq. 9.
     #[test]
     fn fuel_generator_is_polytope_of_unit_vertices() {
         use crate::types::FuelGenerator;
@@ -214,6 +227,7 @@ mod tests {
         }
     }
 
+    // Ref: [KD20] eq. 40.
     #[test]
     fn cone_rows_match_contact() {
         let gamma = SMatrix::<f64, N, M>::from_row_slice(&[

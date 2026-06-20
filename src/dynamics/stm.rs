@@ -11,6 +11,12 @@ use nalgebra::SMatrix;
 
 /// `Phi(t, t_f)` with `dt = t_f - t`. `orb_t` supplies `a, e, i, omega(t)` and
 /// the mean motion / secular `omega_dot`; `orb_tf` supplies `omega(t_f)`.
+///
+/// Ref: \[KD20\] p. 13 — the assembled quasi-nonsingular J2 STM whose modified
+/// delta-lambda row 2 (the `/eta` on `Phi_23`/`Phi_24` and the `Phi_21` drift) is
+/// unique to \[KD20\] and matches neither \[KGD17\] eq. A6/A8 nor the other base
+/// forms. The unmodified base STM (rows 1, 3-6) is \[KGD17\] eq. 25 / eq. A6,
+/// \[CD18\] eq. 32, and \[H25\] eq. 76-77.
 pub fn state_transition(
     orb_t: &AbsoluteOrbit,
     orb_tf: &AbsoluteOrbit,
@@ -86,6 +92,7 @@ mod tests {
         )
     }
 
+    // Ref: [KGD17] eq. 25 (Phi = I + A*tau, so Phi(tau=0) = I); [KD20] p. 13 display.
     #[test]
     fn phi_tends_to_identity_as_dt_zero() {
         let o = fixture_t();
@@ -93,6 +100,7 @@ mod tests {
         assert_relative_eq!(phi, SMatrix::<f64, N, N>::identity(), epsilon = 1e-12);
     }
 
+    // Ref: [KD20] Phi_24 = 7 kappa e_y1 P dt / eta (the modified row 2, p. 13).
     #[test]
     fn phi_2_4_is_nonzero() {
         // Documented: under J2 the delta-lambda row couples to delta-e_y.
@@ -102,6 +110,8 @@ mod tests {
         assert!(phi[(1, 3)].abs() > 1e-6);
     }
 
+    // Ref: [KD20] p. 13 STM display (Phi_11..Phi_66, modified row 2); base STM
+    // [KGD17] eq. 25 / eq. A6, [H25] eq. 76/77.
     #[test]
     fn entrywise_matches_oracle() {
         let o = fixture_t();

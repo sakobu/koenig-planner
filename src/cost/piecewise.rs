@@ -27,12 +27,16 @@ impl Piecewise {
     /// at apogee at `t = 0` (first perigee at `period/2`). Equivalent to
     /// `with_perigee_epoch(period, period / 2.0)`. The perigee window half-width
     /// is `1 hr = 3600 s`.
+    ///
+    /// Ref: \[KD20\] eq. 49 (time-varying piecewise cost); Table III.
     pub fn new(period: f64) -> Self {
         Self::with_perigee_epoch(period, period / 2.0)
     }
 
     /// Build the eq.-49 selector with an explicit perigee-passage epoch
     /// `t_perigee0` `[s]`; window centers are `t_perigee0 + k·period`.
+    ///
+    /// Ref: \[KD20\] eq. 49.
     pub fn with_perigee_epoch(period: f64, t_perigee0: f64) -> Self {
         debug_assert!(
             period.is_finite() && period > 0.0,
@@ -49,6 +53,8 @@ impl Piecewise {
 
     /// `true` iff `t` lies within `half_width` of a perigee center
     /// `t_perigee0 + k·period`, i.e. `t` is in the eq.-49 set `T1`.
+    ///
+    /// Ref: \[KD20\] eq. 49 (the T1 perigee-window set).
     pub fn in_perigee_window(&self, t: f64) -> bool {
         let phase = ((t - self.t_perigee0) / self.period).rem_euclid(1.0);
         let dist_frac = phase.min(1.0 - phase);
@@ -57,6 +63,7 @@ impl Piecewise {
 }
 
 impl CostModel for Piecewise {
+    // Ref: [KD20] eq. 49 (FaceMax in T1, Norm2 in T2).
     fn at(&self, t: f64) -> &dyn SublevelSet {
         if self.in_perigee_window(t) {
             &self.facemax
@@ -73,6 +80,7 @@ mod tests {
     use approx::assert_relative_eq;
     use nalgebra::SVector;
 
+    // Ref: [KD20] eq. 49.
     #[test]
     fn perigee_window_boundaries() {
         // period 40000 s: first perigee center at 20000, half_width 3600, so
@@ -94,6 +102,7 @@ mod tests {
         assert!(pw.in_perigee_window(60000.0));
     }
 
+    // Ref: [KD20] eq. 49.
     #[test]
     fn at_selects_facemax_in_window_norm2_outside() {
         let pw = Piecewise::new(40000.0);
@@ -108,6 +117,7 @@ mod tests {
         assert_relative_eq!(pw.at(0.0).contact(ex), 1.0, epsilon = 1e-12);
     }
 
+    // Ref: [KD20] eq. 49.
     #[test]
     fn explicit_epoch_shifts_windows_off_the_apogee_default() {
         // With perigee at t=0 (not the apogee-at-0 default), the perigee passages
