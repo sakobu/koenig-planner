@@ -1,0 +1,17 @@
+target/
+.git/
+.github/
+.venv/
+dist/
+docs/
+assets/
+.pytest_cache/
+.vscode/
+.claude/
+**/__pycache__/
+*.so
+.DS_Store
+.superpowers/
+*.py
+*.pyi
+.mypy_cache/

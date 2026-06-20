@@ -22,10 +22,8 @@ to a target set of quasi-nonsingular relative orbital elements (ROEs) under J2
 secular dynamics, via the paper's three-step reachable-set method:
 
 1. **Initialize** a candidate time grid (Algorithm 1),
-2. **Refine** it by solving the dual reachability SOCP and adding/dropping
-   contact times until convergence (Algorithm 2),
-3. **Extract** the maneuvers by a direct gauge-aware minimum-fuel SOCP over the
-   converged active set (Algorithm 3).
+2. **Refine** it by solving the dual reachability SOCP and adding/dropping contact times until convergence (Algorithm 2),
+3. **Extract** the maneuvers by a direct gauge-aware minimum-fuel SOCP over the converged active set (Algorithm 3).
 
 ## Status & fidelity
 
@@ -95,19 +93,39 @@ print(sol.total_dv, "m/s in", len(sol.maneuvers), "maneuvers")
 The package ships PEP 561 type stubs (`py.typed` + `.pyi`) for full editor/`mypy` support. See
 [`crates/py/README.md`](crates/py/README.md) for details.
 
+## HTTP service
+
+The solver is also exposed as a self-hostable HTTP service (axum) — the same native code, running on
+your own machine, nothing sent anywhere:
+
+```bash
+cargo run -p koenig-damico-planner-server   # listens on 0.0.0.0:8080 (override with KOENIG_PLANNER_ADDR)
+```
+
+```bash
+curl -s localhost:8080/health               # {"status":"ok"}
+curl -s -H 'content-type: application/json' \
+     -d @crates/server/golden.json \
+     localhost:8080/solve                    # POST a SolveRequest, get a SolveResponse
+```
+
+A `cargo-chef` → distroless **Dockerfile** is included for containerised self-hosting. See
+[`crates/server/README.md`](crates/server/README.md) for the endpoints, the `{kind, message}` error
+contract, and Docker usage.
+
 ## Workspace layout
 
 This repository is a Cargo workspace. The core solver is the root crate; the others are thin
 frontends over a shared serde/JSON facade:
 
-| Crate                       | Path         | Distribution                                                | Purpose                                                               |
-| --------------------------- | ------------ | ----------------------------------------------------------- | --------------------------------------------------------------------- |
-| `koenig-damico-planner`     | `.` (root)   | [crates.io](https://crates.io/crates/koenig-damico-planner) | the core solver (this README)                                         |
-| `koenig-damico-planner-api` | `crates/api` | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
-| `koenig-damico-planner-py`  | `crates/py`  | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
+| Crate                          | Path            | Distribution                                                | Purpose                                                               |
+| ------------------------------ | --------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| `koenig-damico-planner`        | `.` (root)      | [crates.io](https://crates.io/crates/koenig-damico-planner) | the core solver (this README)                                         |
+| `koenig-damico-planner-api`    | `crates/api`    | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
+| `koenig-damico-planner-py`     | `crates/py`     | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
+| `koenig-damico-planner-server` | `crates/server` | internal (`publish = false`)                                | self-hostable HTTP service (axum) — `POST /solve`, `GET /health`      |
 
-> A self-hostable HTTP service (axum) and a WASM browser demo are planned as further frontends over
-> the same facade.
+> A WASM browser demo is planned as a further frontend over the same facade.
 
 ## Validation harness (Fig. 8 / Fig. 9)
 

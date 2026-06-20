@@ -76,3 +76,10 @@ jobs:
         with:
           name: koenig-planner-wheels
           path: dist/*.whl
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build server image
+        run: docker build -f crates/server/Dockerfile -t koenig-damico-planner-server .
