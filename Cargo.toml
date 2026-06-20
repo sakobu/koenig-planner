@@ -12,7 +12,7 @@ homepage = "https://github.com/sakobu/koenig-planner"
 documentation = "https://docs.rs/koenig-damico-planner"
 keywords = ["astrodynamics", "formation-flying", "spacecraft", "orbit", "optimization"]
 categories = ["aerospace", "science", "mathematics", "simulation"]
-exclude = ["assets/", "docs/", ".github/", "audit.md"]
+exclude = ["assets/", "docs/", ".github/"]
 
 [dependencies]
 nalgebra = "0.35"
