@@ -6,9 +6,9 @@
 //! under the `validation` feature (for rand/rand_distr); CI runs `--all-features`.
 #![cfg(feature = "validation")]
 
-use koenig_planner::cost::Piecewise;
-use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
-use koenig_planner::{
+use koenig_damico_planner::cost::Piecewise;
+use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
+use koenig_damico_planner::{
     solve, solve_from_initial_times, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid,
 };
 use rand::rngs::StdRng;

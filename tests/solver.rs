@@ -1,8 +1,8 @@
 //! Public-API integration tests for the SOCP/QP solver wrappers.
 
 use approx::assert_relative_eq;
-use koenig_planner::cost::{FaceMax, Norm2, SublevelSet};
-use koenig_planner::{refine_socp, solver::extract_qp};
+use koenig_damico_planner::cost::{FaceMax, Norm2, SublevelSet};
+use koenig_damico_planner::{refine_socp, solver::extract_qp};
 use nalgebra::{SMatrix, SVector};
 
 const N: usize = 6;

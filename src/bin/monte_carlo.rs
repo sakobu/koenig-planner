@@ -28,9 +28,9 @@ fn main() {
 
 #[cfg(feature = "validation")]
 mod harness {
-    use koenig_planner::cost::Piecewise;
-    use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
-    use koenig_planner::{
+    use koenig_damico_planner::cost::Piecewise;
+    use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
+    use koenig_damico_planner::{
         solve, solve_from_initial_times, CostModel, Dynamics, PlannerError, Pseudostate, Solution,
         SolveParams, TimeGrid,
     };
@@ -111,7 +111,7 @@ mod harness {
         let dynamics = worked_example_dynamics();
         let cost = worked_example_cost();
 
-        println!("koenig-planner Monte Carlo harness  seed={SEED:#x}");
+        println!("koenig-damico-planner Monte Carlo harness  seed={SEED:#x}");
         let run_8 = matches!(which.as_deref(), None | Some("fig8"));
         if run_8 {
             fig8(&dynamics, &cost);

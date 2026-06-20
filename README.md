@@ -1,4 +1,4 @@
-# koenig-planner
+# koenig-damico-planner
 
 A faithful Rust re-implementation of Koenig & D'Amico's fuel-optimal impulsive
 control algorithm for linear systems with time-varying cost
@@ -32,10 +32,10 @@ secular dynamics, via the paper's three-step reachable-set method:
 ## Usage
 
 ```rust,ignore
-use koenig_planner::{solve, SolveParams, TimeGrid};
-use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
-use koenig_planner::cost::Piecewise;
-use koenig_planner::Pseudostate;
+use koenig_damico_planner::{solve, SolveParams, TimeGrid};
+use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
+use koenig_damico_planner::cost::Piecewise;
+use koenig_damico_planner::Pseudostate;
 use std::f64::consts::TAU;
 
 let a_c = 25_000e3; // chief semimajor axis [m], the I/O scale factor
@@ -50,7 +50,7 @@ let w = Pseudostate::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) /
 let solution = solve(&dynamics, &cost, w, grid, &SolveParams::default())?;
 println!("{} maneuvers, total dv = {:.4} mm/s",
     solution.maneuvers.len(), solution.total_dv * 1e3);
-# Ok::<(), koenig_planner::PlannerError>(())
+# Ok::<(), koenig_damico_planner::PlannerError>(())
 ```
 
 A runnable version is `examples/mdot.rs`:

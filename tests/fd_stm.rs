@@ -7,8 +7,8 @@
 //! Jacobians and P = d propagate / d oe is the secular-propagation Jacobian. Both
 //! factors are finite-differenced, so the whole Phi is independent of stm.rs.
 
-use koenig_planner::dynamics::stm::state_transition;
-use koenig_planner::dynamics::AbsoluteOrbit;
+use koenig_damico_planner::dynamics::stm::state_transition;
+use koenig_damico_planner::dynamics::AbsoluteOrbit;
 use nalgebra::{Matrix6, SVector};
 use std::f64::consts::PI;
 

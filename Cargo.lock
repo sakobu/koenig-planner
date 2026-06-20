@@ -612,7 +612,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "koenig-planner"
+name = "koenig-damico-planner"
 version = "0.0.0"
 dependencies = [
  "approx",

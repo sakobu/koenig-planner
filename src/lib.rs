@@ -1,4 +1,4 @@
-//! # koenig-planner
+//! # koenig-damico-planner
 //!
 //! Faithful Rust re-implementation of Koenig & D'Amico's fuel-optimal impulsive
 //! control algorithm (IEEE TAC 2020; see the References below).

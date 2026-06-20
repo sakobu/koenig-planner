@@ -8,8 +8,8 @@
 //! difference. Agreement to ~1e-9 confirms `B` at the formula level (not merely
 //! that the Rust matches the paper's transcribed formula).
 
-use koenig_planner::dynamics::b_matrix::control_input_matrix;
-use koenig_planner::dynamics::AbsoluteOrbit;
+use koenig_damico_planner::dynamics::b_matrix::control_input_matrix;
+use koenig_damico_planner::dynamics::AbsoluteOrbit;
 use nalgebra::{Matrix3, SMatrix, SVector, Vector3};
 
 const MU: f64 = 3.986e14;

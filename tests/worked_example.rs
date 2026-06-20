@@ -12,9 +12,9 @@
 //! refinement finds the true discretized dual optimum, and the optimum is
 //! self-consistent.
 
-use koenig_planner::cost::Piecewise;
-use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
-use koenig_planner::{refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
+use koenig_damico_planner::cost::Piecewise;
+use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
+use koenig_damico_planner::{refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
 use nalgebra::SVector;
 use std::f64::consts::TAU;
 

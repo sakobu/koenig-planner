@@ -1,7 +1,7 @@
 //! Public-API smoke tests for the crate's exported types and constants.
 
 use approx::assert_abs_diff_eq;
-use koenig_planner::{Maneuver, PlannerError, SolveParams, TimeGrid, M, N};
+use koenig_damico_planner::{Maneuver, PlannerError, SolveParams, TimeGrid, M, N};
 use nalgebra::SVector;
 
 // Ref: [KD20] eq. 51 (N=6, M=3).

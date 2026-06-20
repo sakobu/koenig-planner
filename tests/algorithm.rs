@@ -1,8 +1,8 @@
 //! Public-API integration tests for the three-step planner.
 
-use koenig_planner::cost::Piecewise;
-use koenig_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
-use koenig_planner::{solve, solve_from_initial_times, PlannerError, SolveParams, TimeGrid};
+use koenig_damico_planner::cost::Piecewise;
+use koenig_damico_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
+use koenig_damico_planner::{solve, solve_from_initial_times, PlannerError, SolveParams, TimeGrid};
 use nalgebra::{SMatrix, SVector};
 use std::f64::consts::TAU;
 
