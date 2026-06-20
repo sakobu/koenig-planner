@@ -99,7 +99,7 @@ jobs:
           version: latest
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Clippy (wasm)
         run: cargo clippy -p koenig-damico-planner-wasm --target wasm32-unknown-unknown --all-targets -- -D warnings
       - name: Build wasm package
