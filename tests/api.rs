@@ -1,4 +1,4 @@
-//! Public-API smoke tests for the Phase 0 scaffold.
+//! Public-API smoke tests for the crate's exported types and constants.
 
 use approx::assert_abs_diff_eq;
 use koenig_planner::{Maneuver, PlannerError, SolveParams, TimeGrid, M, N};

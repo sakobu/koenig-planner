@@ -1,4 +1,4 @@
-//! State-transition matrix `Phi(t, t_f)` (spec 5.4): 6x6 quasi-nonsingular ROE
+//! State-transition matrix `Phi(t, t_f)`: 6x6 quasi-nonsingular ROE
 //! STM with Koenig's modified delta-lambda row 2. `dt = t_f - t`. The row-2
 //! modification lives here only (the `/eta` on Phi_23/Phi_24 and the modified
 //! Phi_21); `B` is unchanged. `Phi_24 = 7 kappa e_{y1} P dt / eta` is
@@ -113,9 +113,9 @@ mod tests {
             0.0,
             0.0,
             0.0,
-            // delta-lambda secular drift: linear -1.5 n dt (NOT the paper's printed
-            // dt^2 typo). Regenerated after the Phi_21 fix; independently checked by
-            // tests/fd_stm.rs and a sympy first-principles derivation.
+            // delta-lambda secular drift is linear in dt (-1.5 n dt); this element
+            // is intentionally first-order in dt. Verified entrywise by
+            // tests/fd_stm.rs.
             -9.344241108678e+00,
             1.0,
             1.604820130377e-04,

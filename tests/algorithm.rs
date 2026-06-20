@@ -1,4 +1,4 @@
-//! Public-API integration tests for the Phase 4 three-step planner.
+//! Public-API integration tests for the three-step planner.
 
 use koenig_planner::cost::Piecewise;
 use koenig_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
@@ -123,7 +123,7 @@ fn solve_rejects_nan_target() {
 
 #[test]
 fn refine_on_real_j2roe_runs_multiple_iterations() {
-    // The Phase-4 well-conditioned synthetic converges too fast to exercise the
+    // The well-conditioned synthetic problem converges too fast to exercise the
     // drop/add loop body. The real worked-example J2Roe Γ is ill-conditioned
     // (δλ row ~1e3 vs others ~1e-4), so refinement takes several iterations on
     // the degenerate e=0.7 contact. This is a public-API guard that the loop

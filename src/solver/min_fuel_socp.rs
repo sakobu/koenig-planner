@@ -1,14 +1,13 @@
-//! Direct min-fuel SOCP (Phase 5b): recover full 3-DOF maneuvers over a fixed
+//! Direct min-fuel SOCP: recover full 3-DOF maneuvers over a fixed
 //! candidate-time set by minimizing the (piecewise) fuel cost subject to exact
 //! reachability `Σⱼ Γ(tⱼ)·Δvⱼ = w`.
 //!
-//! This replaces the fixed-support-direction magnitude QP (`extract_qp`) inside
-//! Algorithm 3, which is not robust on the degenerate flat contacts of e=0.7
-//! orbits: there the per-time support directions are nearly collinear and cannot
-//! span `w`. Freeing each maneuver to a full vector (charged by its true cost)
-//! recovers `w` to ~0 residual; by conic strong duality the optimum equals the
-//! eq.40 dual value `c*`. Sum-of-norms is group-sparse, so few maneuvers come
-//! out nonzero.
+//! Unlike the fixed-support-direction magnitude QP (`extract_qp`), this is robust
+//! on the degenerate flat contacts of e=0.7 orbits, where the per-time support
+//! directions are nearly collinear and cannot span `w`. Freeing each maneuver to
+//! a full vector (charged by its true cost) recovers `w` to ~0 residual; by conic
+//! strong duality the optimum equals the eq.40 dual value `c*`. Sum-of-norms is
+//! group-sparse, so few maneuvers come out nonzero.
 
 use crate::solver::{check_status, silent_settings};
 use crate::types::{FuelGenerator, PlannerError, Pseudostate, M, N};
@@ -251,8 +250,8 @@ mod tests {
 
     #[test]
     fn degenerate_collinear_support_still_spans_w() {
-        // THE Phase-5b case in miniature. Two times whose Γ map control space to
-        // DIFFERENT pseudostate planes; the per-time support directions of a
+        // The degenerate-collinear scenario in miniature. Two times whose Γ map
+        // control space to DIFFERENT pseudostate planes; the per-time support directions of a
         // shared λ are collinear (the failure mode of extract_qp), yet w needs a
         // contribution from each time. Full-DOF min-fuel recovers w exactly.
         // Time A: Γ_A = [I;0] (controls coords 0..2). Time B: Γ_B maps to coords 3..5.

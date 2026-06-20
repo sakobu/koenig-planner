@@ -6,24 +6,20 @@
 //!   cargo run --example mdot
 //!   cargo run --example mdot --features validation   # also writes the Fig. 7 CSV
 //!
-//! NOTE on reproducing Koenig & D'Amico's published numbers: the paper reports a
-//! 3-maneuver, 82.4 mm/s plan. Our dynamics are independently finite-difference
-//! verified (tests/fd_stm.rs, tests/fd_b_matrix.rs) at this exact orbit, and in
-//! these dynamics the paper's own Table IV maneuvers do NOT reconstruct the
-//! Table III target (≈65% residual), while the true optimum is ≈80.9 mm/s. The
-//! paper's printed STM also contains a transcription typo we had to correct (the
-//! delta-lambda secular drift was -1.5 n dt^2 instead of the dimensionally-correct
-//! -1.5 n dt). So this example validates the *math* (FD-verified dynamics + a
-//! self-consistent dual/primal), not bit-for-bit reproduction of the paper's
-//! (internally inconsistent) worked-example figures.
-//! Phase 5b: the min-fuel SOCP extractor now reconstructs w to ~0 residual.
+//! Reproducibility note: the published worked example reports a 3-maneuver,
+//! 82.4 mm/s plan. The J2 mean-ROE dynamics used here are finite-difference
+//! verified (see tests/fd_stm.rs, tests/fd_b_matrix.rs) at this orbit. Under
+//! these dynamics this example validates the math — FD-verified dynamics plus a
+//! self-consistent primal/dual pair — rather than bit-for-bit reproduction of
+//! the paper's printed maneuver figures.
+//! The min-fuel SOCP extractor reconstructs w to near-zero residual.
 
 use koenig_planner::cost::Piecewise;
 use koenig_planner::dynamics::{AbsoluteOrbit, J2Roe};
 use koenig_planner::{refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid};
 use std::f64::consts::TAU;
 
-/// Chief semimajor axis a_c [m] — the I/O scaling factor (spec §5.5).
+/// Chief semimajor axis a_c [m] — the I/O scaling factor for nondimensionalization.
 const A_C: f64 = 25_000e3;
 /// Table III target pseudostate in metres (= a_c * w_nd).
 const W_METRES: [f64; 6] = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0];
@@ -132,7 +128,7 @@ fn main() {
     );
     assert!(
         sol.residual < 1e-3,
-        "Phase 5b: extraction residual {:.3e} should be << 0.1%",
+        "extraction residual {:.3e} should be << 0.1%",
         sol.residual
     );
     // The refinement finds the true discretized dual optimum (self-consistency).

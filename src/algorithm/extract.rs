@@ -1,6 +1,6 @@
 //! Algorithm 3 - Control-Input Extraction: a direct min-fuel SOCP over the
-//! converged active set `T^opt` recovers full 3-DOF maneuvers (robust on the
-//! degenerate flat contacts where the fixed-support-direction QP under-spans w).
+//! converged active set `T^opt` recovers full 3-DOF maneuvers, including on
+//! degenerate flat contacts where a fixed-direction recovery would under-span w.
 
 use crate::cost::CostModel;
 use crate::solver::min_fuel_socp;
@@ -9,7 +9,8 @@ use nalgebra::{SMatrix, SVector};
 
 /// Maneuvers whose magnitude is below this fraction of the largest recovered
 /// maneuver are interior-point dust and are pruned from the reported plan.
-/// (Interior-point solutions are not exactly sparse; see Decision D5.)
+/// (Interior-point solutions are not exactly sparse, so a relative-magnitude
+/// threshold is used to drop negligible maneuvers.)
 const PRUNE_REL: f64 = 1e-3;
 
 /// Result of Algorithm 3.

@@ -13,7 +13,7 @@ use crate::types::PlannerError;
 use clarabel::solver::{DefaultSettings, DefaultSettingsBuilder, SolverStatus};
 
 /// Default clarabel settings with logging suppressed (keeps the test/CI output
-/// clean and the per-iteration SOCP solves quiet during Phase 4 refinement).
+/// clean and the per-iteration SOCP solves quiet during refinement).
 pub(crate) fn silent_settings() -> DefaultSettings<f64> {
     DefaultSettingsBuilder::default()
         .verbose(false)
@@ -57,7 +57,7 @@ mod tests {
         ] {
             let err = check_status(bad).unwrap_err();
             // The error message must name the underlying clarabel status,
-            // so Phase 4 debugging is not blind.
+            // so solver-failure debugging is not blind.
             assert!(format!("{err}").contains(&format!("{bad:?}")));
         }
     }

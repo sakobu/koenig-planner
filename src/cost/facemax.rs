@@ -73,8 +73,8 @@ impl SublevelSet for FaceMax {
     fn fuel_generator(&self) -> FuelGenerator {
         // Unit ball U(1) = conv{0, V_vertex columns}; its gauge is
         //   f(v) = min{ Σₖ θₖ : Σₖ θₖ vₖ = v, θ ≥ 0 }.
-        // (The eq.48 V_face matrix is the inconsistent printed form and is used
-        // nowhere; the algorithm's geometry is the V_vertex columns.)
+        // (The eq. 48 V_face matrix is the cost-defining form and is not used here;
+        // the algorithm's geometry is fully carried by the V_vertex columns above.)
         FuelGenerator::Polytope(vertex_columns().to_vec())
     }
 }

@@ -22,10 +22,10 @@ secular dynamics, via the paper's three-step reachable-set method:
   `tests/fd_stm.rs` and `tests/fd_b_matrix.rs` at two orbit regimes.
 - **STM correction.** The paper's printed `Φ₂₁` δλ-drift term is a transcription
   typo (`−1.5 n Δt²`, dimensionally invalid); this crate uses the correct linear
-  `−1.5 n Δt` (author-confirmed). See `src/dynamics/stm.rs`.
+  `−1.5 n Δt` (the printed Δt² form is dimensionally inconsistent for a rate term). See `src/dynamics/stm.rs`.
 - **The worked-example figures are not bit-reproducible.** Under the corrected
   dynamics the paper's §VIII Table IV maneuvers do not reconstruct the Table III
-  target (author-confirmed typos in the published example). The crate validates
+  target, which is consistent with transcription errors in the published example. The crate validates
   the *math* and *self-consistency*, not the printed numbers — see
   `tests/worked_example.rs`.
 

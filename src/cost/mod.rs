@@ -12,7 +12,7 @@ pub trait SublevelSet {
     fn support(&self, y: SVector<f64, M>) -> SVector<f64, M>;
     /// Conic rows encoding `g_{U(1,t)}(Gamma^T(t) lambda) <= 1`.
     fn cone_constraints(&self, gamma_t: &SMatrix<f64, N, M>) -> ConicRows;
-    /// Primal fuel generator for the direct min-fuel SOCP (Phase 5b): how a Δv
+    /// Primal fuel generator for the direct min-fuel SOCP: how a Δv
     /// in this sublevel set is built from solver variables and charged.
     fn fuel_generator(&self) -> FuelGenerator;
 }
@@ -39,7 +39,7 @@ mod tests {
     fn cost_types_wire_to_their_traits() {
         let _s: &dyn SublevelSet = &Norm2;
         let _f: &dyn SublevelSet = &FaceMax;
-        // Piecewise now carries fields, so construct it via `new`.
+        // Piecewise carries fields, so construct it via `new`.
         let pw = Piecewise::new(39_338.811_433_158_5);
         let _c: &dyn CostModel = &pw;
     }

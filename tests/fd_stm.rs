@@ -177,8 +177,8 @@ fn stm_matches_independent_finite_difference() {
     );
 
     // FD precision floor on the smallest term (Phi_24, ~1e-5) is ~3e-5 through
-    // the J_t^-1 amplification; a real coefficient/sign bug is O(1e-2..1e0)
-    // relative (the dt^2 bug was ~1.0), so 1e-4 cleanly separates the two.
+    // the J_t^-1 amplification; a real coefficient/sign error is O(1e-2..1e0)
+    // relative, so the 1e-4 threshold cleanly separates FD noise from a true mismatch.
     assert!(w1 < 1e-4, "worst @16050 = {w1:e}");
     assert!(w2 < 1e-4, "worst @0 = {w2:e}");
     assert!(w3 < 1e-4, "worst fixture = {w3:e}");
