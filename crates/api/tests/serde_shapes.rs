@@ -1,6 +1,8 @@
 //! Serde round-trip and shape tests for the API DTOs.
 
-use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
+use koenig_damico_planner_api::{
+    run, ApiErrorKind, CostSpec, OrbitDto, SolveParamsDto, SolveRequest,
+};
 
 fn minimal_chief() -> OrbitDto {
     OrbitDto {
@@ -110,7 +112,11 @@ fn invalid_time_window_maps_to_bad_request() {
         ..minimal_request()
     };
     let err = run(req).expect_err("should fail");
-    assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
+    assert_eq!(
+        err.kind,
+        ApiErrorKind::BadRequest,
+        "expected bad_request, got {err}"
+    );
 }
 
 /// A non-elliptic chief (e >= 1) maps to `kind == "bad_request"`.
@@ -124,7 +130,11 @@ fn non_elliptic_chief_maps_to_bad_request() {
         ..minimal_request()
     };
     let err = run(req).expect_err("should fail");
-    assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
+    assert_eq!(
+        err.kind,
+        ApiErrorKind::BadRequest,
+        "expected bad_request, got {err}"
+    );
 }
 
 /// A non-positive semimajor axis maps to `kind == "bad_request"` — NOT `"solver"`.
@@ -141,7 +151,11 @@ fn nonpositive_semimajor_axis_maps_to_bad_request() {
         ..minimal_request()
     };
     let err = run(req).expect_err("should fail");
-    assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
+    assert_eq!(
+        err.kind,
+        ApiErrorKind::BadRequest,
+        "expected bad_request, got {err}"
+    );
 }
 
 /// The error-kind wire strings are stable and identical across serde and Display.

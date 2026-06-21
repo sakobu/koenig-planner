@@ -178,7 +178,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn api_error_maps_kind_and_message() {
         let e = api::ApiError {
-            kind: "bad_request",
+            kind: api::ApiErrorKind::BadRequest,
             message: "boom".to_string(),
         };
         let m: dto::ApiError = e.into();

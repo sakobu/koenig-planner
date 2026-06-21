@@ -9,7 +9,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use koenig_damico_planner_api::{run, ApiError, SolveRequest, SolveResponse};
+use koenig_damico_planner_api::{run, ApiError, ApiErrorKind, SolveRequest, SolveResponse};
 use std::time::Duration;
 use tower::limit::ConcurrencyLimitLayer;
 use tower::ServiceBuilder;
@@ -68,12 +68,13 @@ async fn health() -> Json<serde_json::Value> {
     Json(serde_json::json!({ "status": "ok" }))
 }
 
-/// Map an `ApiError` `kind` to the response status code.
-pub(crate) fn status_for_kind(kind: &str) -> StatusCode {
+/// Map an [`ApiErrorKind`] to the response status code. Exhaustive: a new kind
+/// is a compile error here, never a silent fall-through.
+pub(crate) fn status_for_kind(kind: ApiErrorKind) -> StatusCode {
     match kind {
-        "bad_request" => StatusCode::BAD_REQUEST,
-        "solver" => StatusCode::UNPROCESSABLE_ENTITY,
-        _ => StatusCode::INTERNAL_SERVER_ERROR,
+        ApiErrorKind::BadRequest => StatusCode::BAD_REQUEST,
+        ApiErrorKind::Solver => StatusCode::UNPROCESSABLE_ENTITY,
+        ApiErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
@@ -116,7 +117,7 @@ where
             Err(rejection) => Err(AppError {
                 status: rejection.status(),
                 body: ApiError {
-                    kind: "bad_request",
+                    kind: ApiErrorKind::BadRequest,
                     message: rejection.body_text(),
                 },
             }),
@@ -142,7 +143,7 @@ async fn solve(ApiJson(req): ApiJson<SolveRequest>) -> Result<Json<SolveResponse
         .map_err(|_join_err| AppError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             body: ApiError {
-                kind: "internal",
+                kind: ApiErrorKind::Internal,
                 message: "solve task failed".into(),
             },
         })??; // outer ? : JoinError→AppError ; inner ? : ApiError→AppError (From)
@@ -193,7 +194,7 @@ mod tests {
     #[test]
     fn app_error_maps_bad_request_to_400() {
         let e: AppError = ApiError {
-            kind: "bad_request",
+            kind: ApiErrorKind::BadRequest,
             message: "x".into(),
         }
         .into();
@@ -203,24 +204,11 @@ mod tests {
     #[test]
     fn app_error_maps_solver_to_422() {
         let e: AppError = ApiError {
-            kind: "solver",
+            kind: ApiErrorKind::Solver,
             message: "x".into(),
         }
         .into();
         assert_eq!(e.into_response().status(), StatusCode::UNPROCESSABLE_ENTITY);
-    }
-
-    #[test]
-    fn app_error_maps_unknown_to_500() {
-        let e: AppError = ApiError {
-            kind: "mystery",
-            message: "x".into(),
-        }
-        .into();
-        assert_eq!(
-            e.into_response().status(),
-            StatusCode::INTERNAL_SERVER_ERROR
-        );
     }
 
     #[tokio::test]
@@ -251,7 +239,7 @@ mod tests {
     #[test]
     fn app_error_maps_internal_to_500() {
         let e: AppError = ApiError {
-            kind: "internal",
+            kind: ApiErrorKind::Internal,
             message: "x".into(),
         }
         .into();

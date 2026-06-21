@@ -134,17 +134,13 @@ pub struct SolveResponse {
 
 /// Owned error that decouples the wire contract from [`PlannerError`](crate::core::PlannerError).
 ///
-/// `kind` is the status class for HTTP frontends:
-/// - `"bad_request"` — invalid input (the caller should fix the request).
-/// - `"solver"` — well-formed input but numerically unsolvable / failed.
-///
-/// Serializes to `{"kind": …, "message": …}` so the WASM/HTTP frontends can
-/// return it directly as a JSON error body.
+/// `kind` is an [`ApiErrorKind`]; serializes to `{"kind": …, "message": …}` so the
+/// WASM/HTTP frontends can return it directly as a JSON error body.
 #[derive(Debug, thiserror::Error, Serialize)]
 #[error("{kind}: {message}")]
 pub struct ApiError {
-    /// Status class: `"bad_request"` or `"solver"`.
-    pub kind: &'static str,
+    /// Status class for HTTP/Python/WASM frontends.
+    pub kind: ApiErrorKind,
     /// Human-readable description of what went wrong.
     pub message: String,
 }
