@@ -13,6 +13,17 @@ use nalgebra::{SMatrix, SVector};
 /// threshold is used to drop negligible maneuvers.)
 const PRUNE_REL: f64 = 1e-3;
 
+/// Relative tolerance for the primal/dual self-consistency gate: the extracted
+/// min-fuel objective must agree with the refinement dual budget `c*` to within
+/// this fraction. `budget` and this primal are the dual and primal of the **same**
+/// converged active set `T^opt`, so conic strong duality forces them to coincide
+/// to interior-point solver accuracy — independent of `ε_cost`. The 5% bound is
+/// thus slack for solver noise on the ill-conditioned e=0.7 contacts, set
+/// comfortably above the largest gap seen in the validated regime (~0.6% on the
+/// worked example, p. 10's 82.4-vs-82.0 mm/s) while still catching a genuine
+/// primal/dual divergence.
+const BUDGET_REL_TOL: f64 = 5e-2;
+
 /// Result of Algorithm 3.
 #[derive(Debug, Clone)]
 pub(super) struct ExtractOutcome {
@@ -23,12 +34,19 @@ pub(super) struct ExtractOutcome {
 
 /// Algorithm 3 — recover maneuvers over `T^opt` by direct min-fuel SOCP.
 ///
-/// `budget` is the dual optimum `c*` from refinement; it is used only as a
-/// self-consistency sanity reference (the SOCP objective should match it to
-/// solver tolerance), not as a constraint.
+/// `budget` is the dual optimum `c*` from refinement (\[KD20\] eq. 40, Theorem 2).
+/// It is not a constraint on the SOCP, but the extracted primal objective is
+/// checked against it: by conic strong duality (\[KD20\] Theorems 1–3) the two
+/// must agree, so a relative gap beyond [`BUDGET_REL_TOL`] is surfaced as
+/// [`PlannerError::SolverFailed`]. This gate is **always on** (it was previously a
+/// release-stripped `debug_assert!`).
 ///
 /// Ref: \[KD20\] Algorithm 3 (Control Input Extraction); eq. 4 / eq. 7;
 /// \[CD18\] eq. 2 / eq. 1.
+///
+/// # Errors
+/// Propagates [`PlannerError::SolverFailed`] from the min-fuel SOCP, and returns
+/// it when the recovered objective is inconsistent with `budget` (see above).
 pub(super) fn extract<C: CostModel>(
     cost: &C,
     grid: &TimeGrid,
@@ -45,11 +63,35 @@ pub(super) fn extract<C: CostModel>(
         .collect();
 
     let sol = min_fuel_socp(w, &gammas_t, &generators)?;
-    debug_assert!(
-        budget <= 0.0 || (sol.objective - budget).abs() / budget < 5e-2,
-        "min-fuel objective {} disagrees with dual budget {budget}",
-        sol.objective
-    );
+
+    // Self-consistency gate (always on, not a release-stripped `debug_assert!`):
+    // by conic strong duality the primal min-fuel objective must equal the
+    // Algorithm-2 dual budget `c* = λ_optᵀw` (\[KD20\] Theorems 1–3; the eq.-37
+    // lower bound). A gap beyond `BUDGET_REL_TOL` means the SOCP — which
+    // `check_status` may accept at reduced accuracy (`AlmostSolved`) — returned a
+    // primal inconsistent with the dual: a numerical failure the caller must see,
+    // surfaced as `SolverFailed` rather than silently passing in release.
+    //
+    // The non-finite check is first and unconditional: a NaN/∞ objective must fail
+    // the gate, but `NaN >= BUDGET_REL_TOL` is `false`, so the relative-gap test
+    // alone would let it slip into `total_dv`. (`budget <= 0` only skips the
+    // *relative* check — a degenerate non-positive dual carries no usable scale.)
+    if !sol.objective.is_finite() {
+        return Err(PlannerError::SolverFailed(format!(
+            "min-fuel objective is non-finite ({})",
+            sol.objective
+        )));
+    }
+    if budget > 0.0 {
+        let rel_gap = (sol.objective - budget).abs() / budget;
+        if rel_gap >= BUDGET_REL_TOL {
+            return Err(PlannerError::SolverFailed(format!(
+                "min-fuel objective {} disagrees with dual budget {budget} \
+                 (relative gap {rel_gap:.3} >= {BUDGET_REL_TOL})",
+                sol.objective
+            )));
+        }
+    }
 
     // Both `total_dv` and `residual` are reported on the FULL, pre-prune min-fuel
     // solution; only `maneuvers` is pruned of interior-point dust below.
@@ -133,7 +175,7 @@ mod tests {
         let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| TopId.gamma(t).unwrap()).collect();
-        let cost = Piecewise::new(1.0e12); // Norm2
+        let cost = Piecewise::new(1.0e12).unwrap(); // Norm2
         let w = SVector::<f64, N>::from_row_slice(&[3.0, 4.0, 12.0, 0.0, 0.0, 0.0]);
         let out = extract(&cost, &grid, &gammas, &w, 13.0, &[0]).unwrap();
 
@@ -161,7 +203,7 @@ mod tests {
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| TopId.gamma(t).unwrap()).collect();
         // Perigee at t = 0 ⇒ the t = 0 candidate is FaceMax-charged (Polytope gauge).
-        let cost = Piecewise::with_perigee_epoch(40_000.0, 0.0);
+        let cost = Piecewise::with_perigee_epoch(40_000.0, 0.0).unwrap();
         let mut w = SVector::<f64, N>::zeros();
         for r in 0..M {
             w[r] = target_dv[r];
@@ -189,12 +231,43 @@ mod tests {
             .times()
             .map(|t| TopThenZero.gamma(t).unwrap())
             .collect();
-        let cost = Piecewise::new(1.0e12);
+        let cost = Piecewise::new(1.0e12).unwrap();
         let w = SVector::<f64, N>::from_row_slice(&[3.0, 4.0, 12.0, 0.0, 0.0, 0.0]);
         let out = extract(&cost, &grid, &gammas, &w, 13.0, &[0, 8]).unwrap();
 
         assert_eq!(out.maneuvers.len(), 1); // t=8 pruned
         assert!((out.maneuvers[0].t - 0.0).abs() < 1e-12);
         assert!(out.residual < 1e-3);
+    }
+
+    #[test]
+    fn extract_rejects_objective_inconsistent_with_dual_budget() {
+        // Self-consistency gate (audit B4a). By conic strong duality the extracted
+        // min-fuel objective must equal the Algorithm-2 dual budget `c*`
+        // ([KD20] Theorems 1-3). When it disagrees beyond tolerance, extraction
+        // must surface `SolverFailed` — an always-on check, NOT the release-stripped
+        // `debug_assert!` it used to be. Here the true min-fuel cost is 13, but a
+        // wildly wrong budget of 100 is passed (relative gap 0.87 >> 5%).
+        let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
+        let gammas: Vec<SMatrix<f64, N, M>> =
+            grid.times().map(|t| TopId.gamma(t).unwrap()).collect();
+        let cost = Piecewise::new(1.0e12).unwrap(); // Norm2
+        let w = SVector::<f64, N>::from_row_slice(&[3.0, 4.0, 12.0, 0.0, 0.0, 0.0]);
+        let err = extract(&cost, &grid, &gammas, &w, 100.0, &[0]).unwrap_err();
+        assert!(
+            matches!(err, PlannerError::SolverFailed(_)),
+            "expected SolverFailed on a primal/dual mismatch, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn extract_accepts_objective_matching_dual_budget() {
+        // The gate must NOT fire on a consistent budget: true cost 13, budget 13.
+        let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
+        let gammas: Vec<SMatrix<f64, N, M>> =
+            grid.times().map(|t| TopId.gamma(t).unwrap()).collect();
+        let cost = Piecewise::new(1.0e12).unwrap();
+        let w = SVector::<f64, N>::from_row_slice(&[3.0, 4.0, 12.0, 0.0, 0.0, 0.0]);
+        assert!(extract(&cost, &grid, &gammas, &w, 13.0, &[0]).is_ok());
     }
 }

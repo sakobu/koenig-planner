@@ -82,7 +82,7 @@ fn solve_column(
 #[test]
 fn monte_carlo_invariants_hold() {
     let dynamics = J2Roe::new(chief(), 0.0, 117_990.0).unwrap();
-    let cost = Piecewise::new(TAU / chief().mean_motion());
+    let cost = Piecewise::new(TAU / chief().mean_motion()).unwrap();
     let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
     let ws = sample_ws(N_SAMPLES, 0xC0FFEE);
     let n_inits = [2usize, 6, 10];

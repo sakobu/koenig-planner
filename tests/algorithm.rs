@@ -47,7 +47,7 @@ fn solve_converges_on_reachable_synthetic_problem() {
     let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
     let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
     let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub; // reachable
-    let cost = Piecewise::new(1.0e12); // Norm2 everywhere
+    let cost = Piecewise::new(1.0e12).unwrap(); // Norm2 everywhere
     let params = SolveParams::default();
 
     let sol = solve(&dynamics, &cost, w, grid, &params).unwrap();
@@ -64,7 +64,7 @@ fn solve_rejects_zero_target() {
     let dynamics = SpinDyn { rate: 0.05 };
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
     let w = SVector::<f64, N>::zeros();
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
@@ -78,7 +78,7 @@ fn solve_rejects_degenerate_grid() {
         dt: 0.0,
     }; // dt = 0, t_f == t_i
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
@@ -92,7 +92,7 @@ fn solve_rejects_nan_dt() {
         dt: f64::NAN,
     };
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
@@ -106,7 +106,7 @@ fn solve_rejects_infinite_dt() {
         dt: f64::INFINITY,
     };
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
@@ -116,7 +116,7 @@ fn solve_rejects_nan_target() {
     let dynamics = SpinDyn { rate: 0.05 };
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[f64::NAN, 1.0, 1.0, 1.0, 1.0, 1.0]);
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
 }
@@ -139,7 +139,7 @@ fn refine_on_real_j2roe_runs_multiple_iterations() {
         180.0_f64.to_radians(),
     );
     let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
-    let cost = Piecewise::new(TAU / chief.mean_motion());
+    let cost = Piecewise::new(TAU / chief.mean_motion()).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
     let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
 
@@ -167,7 +167,7 @@ fn solve_from_initial_times_endpoints_seed_reconstructs_w() {
         180.0_f64.to_radians(),
     );
     let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
-    let cost = Piecewise::new(TAU / chief.mean_motion());
+    let cost = Piecewise::new(TAU / chief.mean_motion()).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
     let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
 
@@ -190,7 +190,7 @@ fn solve_from_initial_times_rejects_empty_seed() {
     let dynamics = SpinDyn { rate: 0.05 };
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve_from_initial_times(&dynamics, &cost, w, grid, &SolveParams::default(), &[])
         .unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(_)));
@@ -208,7 +208,7 @@ fn solve_propagates_dynamics_gamma_error() {
     }
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&FailDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(matches!(err, PlannerError::InvalidInput(m) if m == "boom"));
 }
@@ -224,7 +224,7 @@ fn solution_residual_is_unpruned_and_kept_set_residual_is_bounded() {
     let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
     let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
     let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
 
     let sol = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap();
 
@@ -256,7 +256,7 @@ fn solve_reports_not_converged_through_public_api() {
     let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
     let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
     let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
     let params = SolveParams {
         eps_cost: -0.5,
         ..SolveParams::default()
@@ -297,7 +297,7 @@ fn solve_reports_solver_failed_on_unreachable_target() {
 
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
-    let cost = Piecewise::new(1.0e12);
+    let cost = Piecewise::new(1.0e12).unwrap();
 
     let err = solve(&RankDeficientDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
     assert!(

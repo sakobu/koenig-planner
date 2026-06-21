@@ -54,7 +54,7 @@ let chief = AbsoluteOrbit::new(
 );
 let dynamics = J2Roe::new(chief, 0.0, 117_990.0)?;        // fallible: validates the chief
 let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0)?;       // fallible: validates dt>0, t_f>=t_i
-let cost = Piecewise::new(TAU / chief.mean_motion());      // eq.49 perigee windows
+let cost = Piecewise::new(TAU / chief.mean_motion())?;     // fallible: validates period > 0
 let w = Pseudostate::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / a_c;
 
 let solution = solve(&dynamics, &cost, w, grid, &SolveParams::default())?;

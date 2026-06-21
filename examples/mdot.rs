@@ -40,7 +40,7 @@ fn main() {
     );
     let (t_i, t_f) = (0.0, 117_990.0);
     let dynamics = J2Roe::new(chief, t_i, t_f).expect("worked-example chief is valid");
-    let cost = Piecewise::new(TAU / chief.mean_motion()); // eq.49 perigee windows
+    let cost = Piecewise::new(TAU / chief.mean_motion()).expect("worked-example period is valid"); // eq.49 perigee windows
     let w = Pseudostate::from_row_slice(&W_METRES) / A_C; // dimensionless w_nd
     let grid = TimeGrid::uniform(t_i, t_f, 30.0).expect("valid grid"); // 3934 candidate times
     let params = SolveParams::default();

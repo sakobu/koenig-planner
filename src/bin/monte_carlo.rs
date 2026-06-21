@@ -97,6 +97,7 @@ mod harness {
     /// Ref: \[KD20\] eq. 49 (piecewise cost).
     pub fn worked_example_cost() -> Piecewise {
         Piecewise::new(TAU / worked_example_chief().mean_motion())
+            .expect("worked-example period is valid")
     }
 
     pub fn main() {

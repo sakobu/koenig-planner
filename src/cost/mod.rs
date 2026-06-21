@@ -40,7 +40,7 @@ mod tests {
         let _s: &dyn SublevelSet = &Norm2;
         let _f: &dyn SublevelSet = &FaceMax;
         // Piecewise carries fields, so construct it via `new`.
-        let pw = Piecewise::new(39_338.811_433_158_5);
+        let pw = Piecewise::new(39_338.811_433_158_5).unwrap();
         let _c: &dyn CostModel = &pw;
     }
 }

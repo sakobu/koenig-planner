@@ -90,7 +90,7 @@ mod tests {
         let grid = TimeGrid::uniform(0.0, 100.0, 1.0).unwrap(); // 101 points
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| RampDyn.gamma(t).unwrap()).collect();
-        let cost = Piecewise::new(1.0e12); // huge period -> Norm2 everywhere
+        let cost = Piecewise::new(1.0e12).unwrap(); // huge period -> Norm2 everywhere
         let w = SVector::<f64, N>::from_row_slice(&[1.0, 2.0, 3.0, 0.0, 0.0, 0.0]);
         let params = SolveParams {
             n_coarse: 11,
