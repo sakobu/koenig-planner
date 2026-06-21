@@ -35,13 +35,16 @@ pub struct OrbitDto {
 /// (`2π / n`) when omitted — supplying a period unrelated to the chief
 /// silently misaligns the perigee windows, so prefer the default.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type")]
 pub enum CostSpec {
     /// L2 norm (isotropic cost).
+    #[serde(rename = "norm2")]
     Norm2,
     /// FaceMax gauge (fuel-optimal for an impulsive thruster set).
+    #[serde(rename = "facemax")]
     FaceMax,
     /// Piecewise eq.-49 selector: FaceMax near perigee, Norm2 elsewhere.
+    #[serde(rename = "piecewise")]
     Piecewise {
         /// Orbit period `[s]`.  When `None`, derived as `2π / n` from the
         /// chief — strongly preferred so the perigee windows align correctly.

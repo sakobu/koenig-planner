@@ -158,6 +158,27 @@ fn nonpositive_semimajor_axis_maps_to_bad_request() {
     );
 }
 
+/// The cost-model wire tags are stable.
+#[test]
+fn cost_spec_wire_tags_are_stable() {
+    assert_eq!(
+        serde_json::to_value(CostSpec::Norm2).unwrap()["type"],
+        "norm2"
+    );
+    assert_eq!(
+        serde_json::to_value(CostSpec::FaceMax).unwrap()["type"],
+        "facemax"
+    );
+    assert_eq!(
+        serde_json::to_value(CostSpec::Piecewise {
+            period: None,
+            t_perigee0: None
+        })
+        .unwrap()["type"],
+        "piecewise"
+    );
+}
+
 /// The error-kind wire strings are stable and identical across serde and Display.
 #[test]
 fn api_error_kind_wire_strings_are_stable() {
