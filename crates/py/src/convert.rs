@@ -47,7 +47,14 @@ pub(crate) fn build_request(
             )))
         }
     };
-    let Orbit { a, e, i, raan, argp, mean_anom } = chief;
+    let Orbit {
+        a,
+        e,
+        i,
+        raan,
+        argp,
+        mean_anom,
+    } = chief;
     Ok(SolveRequest {
         chief: OrbitDto {
             a: *a,
@@ -62,20 +69,43 @@ pub(crate) fn build_request(
         dt,
         w_metres,
         cost,
-        params: Some(SolveParamsDto { n_coarse, n_init, eps_cost, eps_remove }),
+        params: Some(SolveParamsDto {
+            n_coarse,
+            n_init,
+            eps_cost,
+            eps_remove,
+        }),
         initial_times,
     })
 }
 
 /// Convert an api [`SolveResponse`] into the Python `Solution` pyclass.
 pub(crate) fn solution_to_py(py: Python<'_>, resp: SolveResponse) -> PyResult<Solution> {
-    let SolveResponse { maneuvers, total_dv, iterations, residual, lambda } = resp;
+    let SolveResponse {
+        maneuvers,
+        total_dv,
+        iterations,
+        residual,
+        lambda,
+    } = resp;
     let maneuvers = maneuvers
         .iter()
         .map(|m| {
             let ManeuverDto { t, dv } = m;
-            Py::new(py, Maneuver { t: *t, dv: (dv[0], dv[1], dv[2]) })
+            Py::new(
+                py,
+                Maneuver {
+                    t: *t,
+                    dv: (dv[0], dv[1], dv[2]),
+                },
+            )
         })
         .collect::<PyResult<Vec<_>>>()?;
-    Ok(Solution { maneuvers, total_dv, iterations, residual, lambda: lambda.to_vec() })
+    Ok(Solution {
+        maneuvers,
+        total_dv,
+        iterations,
+        residual,
+        lambda: lambda.to_vec(),
+    })
 }

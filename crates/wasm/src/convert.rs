@@ -94,7 +94,13 @@ impl From<&api::ManeuverDto> for dto::ManeuverDto {
 
 impl From<(api::SolveResponse, dto::ChiefGeometry)> for dto::SolveResponse {
     fn from((resp, geometry): (api::SolveResponse, dto::ChiefGeometry)) -> Self {
-        let api::SolveResponse { maneuvers, total_dv, iterations, residual, lambda } = resp;
+        let api::SolveResponse {
+            maneuvers,
+            total_dv,
+            iterations,
+            residual,
+            lambda,
+        } = resp;
         dto::SolveResponse {
             maneuvers: maneuvers.iter().map(Into::into).collect(),
             total_dv,
@@ -183,7 +189,10 @@ mod tests {
     #[wasm_bindgen_test]
     fn response_converts_field_for_field() {
         let resp = api::SolveResponse {
-            maneuvers: vec![api::ManeuverDto { t: 7.0, dv: [1.0, 2.0, 3.0] }],
+            maneuvers: vec![api::ManeuverDto {
+                t: 7.0,
+                dv: [1.0, 2.0, 3.0],
+            }],
             total_dv: 4.0,
             iterations: 2,
             residual: 1e-9,

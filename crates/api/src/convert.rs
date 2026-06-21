@@ -63,19 +63,30 @@ pub(crate) fn resolve_params(dto: Option<SolveParamsDto>) -> SolveParams {
 impl From<&Maneuver> for ManeuverDto {
     fn from(m: &Maneuver) -> Self {
         let Maneuver { t, dv } = *m; // Maneuver is Copy
-        ManeuverDto { t, dv: [dv[0], dv[1], dv[2]] }
+        ManeuverDto {
+            t,
+            dv: [dv[0], dv[1], dv[2]],
+        }
     }
 }
 
 impl From<Solution> for SolveResponse {
     fn from(sol: Solution) -> Self {
-        let Solution { maneuvers, total_dv, iterations, residual, lambda } = sol;
+        let Solution {
+            maneuvers,
+            total_dv,
+            iterations,
+            residual,
+            lambda,
+        } = sol;
         SolveResponse {
             maneuvers: maneuvers.iter().map(ManeuverDto::from).collect(),
             total_dv,
             iterations,
             residual,
-            lambda: [lambda[0], lambda[1], lambda[2], lambda[3], lambda[4], lambda[5]],
+            lambda: [
+                lambda[0], lambda[1], lambda[2], lambda[3], lambda[4], lambda[5],
+            ],
         }
     }
 }
@@ -89,7 +100,10 @@ mod tests {
     #[test]
     fn solution_converts_field_for_field() {
         let sol = Solution {
-            maneuvers: vec![Maneuver { t: 12.0, dv: Vector3::new(1.0, 2.0, 3.0) }],
+            maneuvers: vec![Maneuver {
+                t: 12.0,
+                dv: Vector3::new(1.0, 2.0, 3.0),
+            }],
             total_dv: 6.0,
             iterations: 4,
             residual: 1e-12,

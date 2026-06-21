@@ -126,8 +126,19 @@ fn solve(
     initial_times: Option<Vec<f64>>,
 ) -> PyResult<Solution> {
     let req = convert::build_request(
-        &chief, t_i, t_f, dt, w_metres, cost, period, t_perigee0, n_coarse, n_init, eps_cost,
-        eps_remove, initial_times,
+        &chief,
+        t_i,
+        t_f,
+        dt,
+        w_metres,
+        cost,
+        period,
+        t_perigee0,
+        n_coarse,
+        n_init,
+        eps_cost,
+        eps_remove,
+        initial_times,
     )?;
     let resp = run(req).map_err(convert::api_err_to_py)?;
     convert::solution_to_py(py, resp)
