@@ -6,7 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- HTTP server now catches handler/middleware panics via `CatchPanicLayer` and returns the uniform `{"kind":"internal"}` 500 (panic payload logged server-side, never sent to the client). Wire-enum tags are pinned by tests.
+
 ### Changed
+- `ApiError.kind` is now a typed `ApiErrorKind` enum (was `&'static str`), matched exhaustively by every frontend. The serialized wire JSON is unchanged; this is a breaking change for direct Rust consumers of `koenig-damico-planner-api`.
 - **BREAKING:** `Piecewise::new` and `Piecewise::with_perigee_epoch` now return
   `Result<Self, PlannerError>` instead of `Self`. They validate that `period` is
   finite and `> 0` and that the perigee epoch is finite (`InvalidInput`
