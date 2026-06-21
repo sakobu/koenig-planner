@@ -7,7 +7,8 @@
 
 use crate::{Maneuver, Orbit, Solution};
 use koenig_damico_planner_api::{
-    ApiError, CostSpec, ManeuverDto, OrbitDto, SolveParamsDto, SolveRequest, SolveResponse,
+    ApiError, ApiErrorKind, CostSpec, ManeuverDto, OrbitDto, SolveParamsDto, SolveRequest,
+    SolveResponse,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -15,8 +16,8 @@ use pyo3::prelude::*;
 /// Map an [`ApiError`] to the matching Python exception.
 pub(crate) fn api_err_to_py(e: ApiError) -> PyErr {
     match e.kind {
-        "bad_request" => PyValueError::new_err(e.message),
-        _ => PyRuntimeError::new_err(e.message),
+        ApiErrorKind::BadRequest => PyValueError::new_err(e.message),
+        ApiErrorKind::Solver | ApiErrorKind::Internal => PyRuntimeError::new_err(e.message),
     }
 }
 

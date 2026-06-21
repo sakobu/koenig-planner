@@ -1,4 +1,4 @@
-use koenig_damico_planner_api::run_json;
+use koenig_damico_planner_api::{run_json, ApiErrorKind};
 use serde_json::Value;
 
 const WORKED_EXAMPLE_JSON: &str = r#"{
@@ -40,7 +40,7 @@ fn run_json_golden_roundtrip() {
 #[test]
 fn run_json_malformed_returns_bad_request() {
     let err = run_json("{ not json").unwrap_err();
-    assert_eq!(err.kind, "bad_request");
+    assert_eq!(err.kind, ApiErrorKind::BadRequest);
 }
 
 // The WASM/HTTP frontends return `ApiError` directly as a JSON error body, so it

@@ -1,7 +1,9 @@
 //! Grid-size cap: `run` must reject a request whose grid exceeds
 //! `MAX_GRID_POINTS` with `kind == "bad_request"`, before any solve allocation.
 
-use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveRequest, MAX_GRID_POINTS};
+use koenig_damico_planner_api::{
+    run, ApiErrorKind, CostSpec, OrbitDto, SolveRequest, MAX_GRID_POINTS,
+};
 
 /// Worked-example chief — a known-valid orbit so `J2Roe::new` accepts it and the
 /// request reaches (and trips) the grid-size guard rather than failing earlier.
@@ -34,9 +36,11 @@ fn oversized_grid_via_tiny_dt_is_bad_request() {
 
     let err = run(req).expect_err("an oversized grid must be rejected");
     assert_eq!(
-        err.kind, "bad_request",
+        err.kind,
+        ApiErrorKind::BadRequest,
         "expected kind=bad_request, got kind={} (message: {})",
-        err.kind, err.message
+        err.kind,
+        err.message
     );
     assert!(
         err.message.contains("grid") && err.message.contains("max"),
@@ -62,7 +66,12 @@ fn one_over_cap_is_rejected() {
     };
 
     let err = run(req).expect_err("MAX_GRID_POINTS + 1 must be rejected");
-    assert_eq!(err.kind, "bad_request", "message: {}", err.message);
+    assert_eq!(
+        err.kind,
+        ApiErrorKind::BadRequest,
+        "message: {}",
+        err.message
+    );
     assert!(
         err.message.contains("grid") && err.message.contains("max"),
         "message should name the grid-size cap, got {:?}",

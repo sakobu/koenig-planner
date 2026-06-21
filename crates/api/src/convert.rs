@@ -4,13 +4,13 @@
 //! core type fails to compile here until it is handled — drift is impossible to
 //! merge. `From` is used where it fits; error/param mappers are plain fns.
 
-use crate::dto::{ApiError, ManeuverDto, SolveParamsDto, SolveResponse};
+use crate::dto::{ApiError, ApiErrorKind, ManeuverDto, SolveParamsDto, SolveResponse};
 use koenig_damico_planner::{Maneuver, PlannerError, Solution, SolveParams};
 
 /// Map a [`PlannerError`] to a `"bad_request"` [`ApiError`].
 pub(crate) fn bad_request(e: PlannerError) -> ApiError {
     ApiError {
-        kind: "bad_request",
+        kind: ApiErrorKind::BadRequest,
         message: e.to_string(),
     }
 }
@@ -27,14 +27,14 @@ pub(crate) fn map_dispatch_error(e: koenig_damico_planner::PlannerError) -> ApiE
     match e {
         // Caller-fixable: bad request.
         PlannerError::InvalidInput(_) => ApiError {
-            kind: "bad_request",
+            kind: ApiErrorKind::BadRequest,
             message: e.to_string(),
         },
         // Well-formed request, numerically unsolvable / solver failure.
         PlannerError::SolverFailed(_)
         | PlannerError::NotConverged { .. }
         | PlannerError::KeplerDivergence { .. } => ApiError {
-            kind: "solver",
+            kind: ApiErrorKind::Solver,
             message: e.to_string(),
         },
     }

@@ -24,10 +24,13 @@ pub struct OrbitDto {
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(from_wasm_abi)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type")]
 pub enum CostSpec {
+    #[serde(rename = "norm2")]
     Norm2,
+    #[serde(rename = "facemax")]
     FaceMax,
+    #[serde(rename = "piecewise")]
     Piecewise {
         #[tsify(optional)]
         period: Option<f64>,
@@ -100,10 +103,25 @@ pub struct SolveResponse {
     pub geometry: ChiefGeometry,
 }
 
+/// Status class for an [`ApiError`]. Mirrors `api::ApiErrorKind`; the explicit
+/// per-variant `#[serde(rename)]` pins the wire tags (`bad_request`/`solver`/
+/// `internal`) and types `ApiError.kind` in the generated `.d.ts` as the union
+/// `"bad_request" | "solver" | "internal"` instead of a bare `string`.
+#[derive(Tsify, Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[tsify(into_wasm_abi)]
+pub enum ApiErrorKind {
+    #[serde(rename = "bad_request")]
+    BadRequest,
+    #[serde(rename = "solver")]
+    Solver,
+    #[serde(rename = "internal")]
+    Internal,
+}
+
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 pub struct ApiError {
-    pub kind: String,
+    pub kind: ApiErrorKind,
     pub message: String,
 }
 
@@ -111,8 +129,10 @@ pub struct ApiError {
 /// (a wasm `Result` would erase `Err` into an untyped JS throw).
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
-#[serde(tag = "status", rename_all = "lowercase")]
+#[serde(tag = "status")]
 pub enum SolveOutcome {
+    #[serde(rename = "ok")]
     Ok { value: SolveResponse },
+    #[serde(rename = "err")]
     Err { error: ApiError },
 }

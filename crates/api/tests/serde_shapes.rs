@@ -1,6 +1,8 @@
 //! Serde round-trip and shape tests for the API DTOs.
 
-use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
+use koenig_damico_planner_api::{
+    run, ApiErrorKind, CostSpec, OrbitDto, SolveParamsDto, SolveRequest,
+};
 
 fn minimal_chief() -> OrbitDto {
     OrbitDto {
@@ -110,7 +112,11 @@ fn invalid_time_window_maps_to_bad_request() {
         ..minimal_request()
     };
     let err = run(req).expect_err("should fail");
-    assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
+    assert_eq!(
+        err.kind,
+        ApiErrorKind::BadRequest,
+        "expected bad_request, got {err}"
+    );
 }
 
 /// A non-elliptic chief (e >= 1) maps to `kind == "bad_request"`.
@@ -124,7 +130,11 @@ fn non_elliptic_chief_maps_to_bad_request() {
         ..minimal_request()
     };
     let err = run(req).expect_err("should fail");
-    assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
+    assert_eq!(
+        err.kind,
+        ApiErrorKind::BadRequest,
+        "expected bad_request, got {err}"
+    );
 }
 
 /// A non-positive semimajor axis maps to `kind == "bad_request"` — NOT `"solver"`.
@@ -141,5 +151,48 @@ fn nonpositive_semimajor_axis_maps_to_bad_request() {
         ..minimal_request()
     };
     let err = run(req).expect_err("should fail");
-    assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
+    assert_eq!(
+        err.kind,
+        ApiErrorKind::BadRequest,
+        "expected bad_request, got {err}"
+    );
+}
+
+/// The cost-model wire tags are stable.
+#[test]
+fn cost_spec_wire_tags_are_stable() {
+    assert_eq!(
+        serde_json::to_value(CostSpec::Norm2).unwrap()["type"],
+        "norm2"
+    );
+    assert_eq!(
+        serde_json::to_value(CostSpec::FaceMax).unwrap()["type"],
+        "facemax"
+    );
+    assert_eq!(
+        serde_json::to_value(CostSpec::Piecewise {
+            period: None,
+            t_perigee0: None
+        })
+        .unwrap()["type"],
+        "piecewise"
+    );
+}
+
+/// The error-kind wire strings are stable and identical across serde and Display.
+#[test]
+fn api_error_kind_wire_strings_are_stable() {
+    use koenig_damico_planner_api::ApiErrorKind::{BadRequest, Internal, Solver};
+    for (kind, want) in [
+        (BadRequest, "bad_request"),
+        (Solver, "solver"),
+        (Internal, "internal"),
+    ] {
+        assert_eq!(kind.as_str(), want);
+        assert_eq!(kind.to_string(), want);
+        assert_eq!(
+            serde_json::to_value(kind).unwrap(),
+            serde_json::Value::String(want.to_string())
+        );
+    }
 }

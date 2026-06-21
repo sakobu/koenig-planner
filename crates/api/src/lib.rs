@@ -137,7 +137,7 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
     let n_points = grid.len();
     if n_points > MAX_GRID_POINTS {
         return Err(ApiError {
-            kind: "bad_request",
+            kind: ApiErrorKind::BadRequest,
             message: format!(
                 "grid has {n_points} points (> {MAX_GRID_POINTS} max); \
                  reduce (t_f - t_i)/dt"
@@ -178,7 +178,7 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
         || !sol.lambda.iter().all(|x| x.is_finite())
     {
         return Err(ApiError {
-            kind: "solver",
+            kind: ApiErrorKind::Solver,
             message: "solver produced a non-finite result".into(),
         });
     }
@@ -199,12 +199,12 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
 /// problems (including an internal response-serialization failure).
 pub fn run_json(input: &str) -> Result<String, ApiError> {
     let req: SolveRequest = serde_json::from_str(input).map_err(|e| ApiError {
-        kind: "bad_request",
+        kind: ApiErrorKind::BadRequest,
         message: format!("invalid request JSON: {e}"),
     })?;
     let resp = run(req)?;
     serde_json::to_string(&resp).map_err(|e| ApiError {
-        kind: "solver",
+        kind: ApiErrorKind::Solver,
         message: format!("failed to serialize response: {e}"),
     })
 }

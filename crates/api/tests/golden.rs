@@ -3,7 +3,9 @@
 //! Asserts the same bands as `tests/worked_example.rs` in the core crate —
 //! these are FD-verified, solver-dependent ranges rather than exact bytes.
 
-use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
+use koenig_damico_planner_api::{
+    run, ApiErrorKind, CostSpec, OrbitDto, SolveParamsDto, SolveRequest,
+};
 
 /// Canonical Koenig & D'Amico (2020) worked example (Table III).
 ///
@@ -176,8 +178,10 @@ fn n_coarse_zero_is_bad_request() {
 
     let err = run(req).expect_err("n_coarse=0 should return an error");
     assert_eq!(
-        err.kind, "bad_request",
+        err.kind,
+        ApiErrorKind::BadRequest,
         "expected kind=bad_request, got kind={} (message: {})",
-        err.kind, err.message
+        err.kind,
+        err.message
     );
 }

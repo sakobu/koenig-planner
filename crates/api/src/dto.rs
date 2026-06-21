@@ -35,13 +35,16 @@ pub struct OrbitDto {
 /// (`2π / n`) when omitted — supplying a period unrelated to the chief
 /// silently misaligns the perigee windows, so prefer the default.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type")]
 pub enum CostSpec {
     /// L2 norm (isotropic cost).
+    #[serde(rename = "norm2")]
     Norm2,
     /// FaceMax gauge (fuel-optimal for an impulsive thruster set).
+    #[serde(rename = "facemax")]
     FaceMax,
     /// Piecewise eq.-49 selector: FaceMax near perigee, Norm2 elsewhere.
+    #[serde(rename = "piecewise")]
     Piecewise {
         /// Orbit period `[s]`.  When `None`, derived as `2π / n` from the
         /// chief — strongly preferred so the perigee windows align correctly.
@@ -134,17 +137,52 @@ pub struct SolveResponse {
 
 /// Owned error that decouples the wire contract from [`PlannerError`](crate::core::PlannerError).
 ///
-/// `kind` is the status class for HTTP frontends:
-/// - `"bad_request"` — invalid input (the caller should fix the request).
-/// - `"solver"` — well-formed input but numerically unsolvable / failed.
-///
-/// Serializes to `{"kind": …, "message": …}` so the WASM/HTTP frontends can
-/// return it directly as a JSON error body.
+/// `kind` is an [`ApiErrorKind`]; serializes to `{"kind": …, "message": …}` so the
+/// WASM/HTTP frontends can return it directly as a JSON error body.
 #[derive(Debug, thiserror::Error, Serialize)]
 #[error("{kind}: {message}")]
 pub struct ApiError {
-    /// Status class: `"bad_request"` or `"solver"`.
-    pub kind: &'static str,
+    /// Status class for HTTP/Python/WASM frontends.
+    pub kind: ApiErrorKind,
     /// Human-readable description of what went wrong.
     pub message: String,
+}
+
+/// Status class for an [`ApiError`].
+///
+/// Serializes to a stable wire string via an **explicit per-variant**
+/// `#[serde(rename)]` (deliberately *not* `rename_all`: the sibling cost/outcome
+/// enums need single-word lowercase tags like `facemax`, whereas these need the
+/// snake-cased `bad_request`; an explicit rename keeps each wire string literal
+/// and local, immune to a `rename_all` change). `as_str` is the single source of
+/// truth shared by [`Display`](std::fmt::Display) and verified against serde by a
+/// wire-stability test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ApiErrorKind {
+    /// Invalid input / malformed request — the caller should fix the request.
+    #[serde(rename = "bad_request")]
+    BadRequest,
+    /// Well-formed input but numerically unsolvable / solver failure.
+    #[serde(rename = "solver")]
+    Solver,
+    /// Unexpected internal fault (e.g. a panic caught by the HTTP layer).
+    #[serde(rename = "internal")]
+    Internal,
+}
+
+impl ApiErrorKind {
+    /// The stable wire string (`"bad_request"` / `"solver"` / `"internal"`).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ApiErrorKind::BadRequest => "bad_request",
+            ApiErrorKind::Solver => "solver",
+            ApiErrorKind::Internal => "internal",
+        }
+    }
+}
+
+impl std::fmt::Display for ApiErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
 }

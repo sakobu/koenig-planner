@@ -40,7 +40,7 @@ pub fn solve(req: dto::SolveRequest) -> dto::SolveOutcome {
                 },
                 Err(e) => dto::SolveOutcome::Err {
                     error: dto::ApiError {
-                        kind: "solver".to_string(),
+                        kind: dto::ApiErrorKind::Solver,
                         message: e.to_string(),
                     },
                 },
