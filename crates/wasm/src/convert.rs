@@ -112,10 +112,20 @@ impl From<(api::SolveResponse, dto::ChiefGeometry)> for dto::SolveResponse {
     }
 }
 
+impl From<api::ApiErrorKind> for dto::ApiErrorKind {
+    fn from(k: api::ApiErrorKind) -> Self {
+        match k {
+            api::ApiErrorKind::BadRequest => dto::ApiErrorKind::BadRequest,
+            api::ApiErrorKind::Solver => dto::ApiErrorKind::Solver,
+            api::ApiErrorKind::Internal => dto::ApiErrorKind::Internal,
+        }
+    }
+}
+
 impl From<api::ApiError> for dto::ApiError {
     fn from(e: api::ApiError) -> Self {
         dto::ApiError {
-            kind: e.kind.to_string(),
+            kind: e.kind.into(),
             message: e.message,
         }
     }
@@ -182,7 +192,7 @@ mod tests {
             message: "boom".to_string(),
         };
         let m: dto::ApiError = e.into();
-        assert_eq!(m.kind, "bad_request");
+        assert_eq!(m.kind, dto::ApiErrorKind::BadRequest);
         assert_eq!(m.message, "boom");
     }
 

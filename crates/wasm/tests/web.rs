@@ -29,6 +29,7 @@ fn golden_request_deserializes() {
 }
 
 use koenig_damico_planner_wasm::{solve, solve_json, OrbitDto, SolveOutcome, SolveRequest as Req};
+use koenig_damico_planner_wasm::{ApiError, ApiErrorKind, ChiefGeometry, SolveResponse};
 
 fn golden_req() -> Req {
     Req {
@@ -71,7 +72,7 @@ fn solve_golden_is_ok_within_bands() {
             assert!(value.geometry.perigee_window.is_some());
         }
         SolveOutcome::Err { error } => {
-            panic!("expected Ok, got err: {} {}", error.kind, error.message)
+            panic!("expected Ok, got err: {:?} {}", error.kind, error.message)
         }
     }
 }
@@ -81,9 +82,40 @@ fn solve_non_elliptic_is_bad_request() {
     let mut req = golden_req();
     req.chief.e = 1.0; // parabolic — rejected upstream
     match solve(req) {
-        SolveOutcome::Err { error } => assert_eq!(error.kind, "bad_request"),
+        SolveOutcome::Err { error } => assert_eq!(error.kind, ApiErrorKind::BadRequest),
         SolveOutcome::Ok { .. } => panic!("expected Err for non-elliptic chief"),
     }
+}
+
+#[wasm_bindgen_test]
+fn solve_outcome_status_tags_are_stable() {
+    let ok = SolveOutcome::Ok {
+        value: SolveResponse {
+            maneuvers: vec![],
+            total_dv: 0.0,
+            iterations: 0,
+            residual: 0.0,
+            lambda: [0.0; 6],
+            geometry: ChiefGeometry {
+                a: 0.0,
+                e: 0.0,
+                maneuver_nu: vec![],
+                perigee_window: None,
+            },
+        },
+    };
+    let err = SolveOutcome::Err {
+        error: ApiError {
+            kind: ApiErrorKind::Solver,
+            message: "x".into(),
+        },
+    };
+    assert_eq!(serde_json::to_value(&ok).unwrap()["status"], "ok");
+    assert_eq!(serde_json::to_value(&err).unwrap()["status"], "err");
+    assert_eq!(
+        serde_json::to_value(ApiErrorKind::Internal).unwrap(),
+        "internal"
+    );
 }
 
 #[wasm_bindgen_test]
