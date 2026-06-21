@@ -213,6 +213,7 @@ mod tests {
         assert_eq!(got.residual, 1e-9);
         assert_eq!(got.lambda, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         assert_eq!(got.geometry.a, 25_000e3);
+        assert_eq!(got.geometry.e, 0.7);
         assert_eq!(got.geometry.maneuver_nu, vec![0.5]);
         assert_eq!(got.geometry.perigee_window, Some([0.1, 0.2]));
     }
