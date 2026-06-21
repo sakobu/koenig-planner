@@ -39,7 +39,7 @@ function kpis(r: SolveResponse): HTMLElement {
   const box = document.createElement("div");
   box.className = "kpis";
   const cells: [string, string][] = [
-    ["Σ Δv", `${r.total_dv.toFixed(4)} m/s`],
+    ["Δv cost", `${r.total_dv.toFixed(4)} m/s`],
     ["maneuvers", String(r.maneuvers.length)],
     ["iterations", String(r.iterations)],
     ["residual", r.residual.toExponential(2)],

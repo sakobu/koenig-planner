@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- `Solution.total_dv` now reports the minimized fuel-cost objective — the paper's
+  "delta-v cost" `c*` (eq. 4): `Σ‖Δvⱼ‖₂` under the `Norm2` cost and the polytope
+  gauge `Σθ` under `FaceMax` — instead of `Σ‖Δvⱼ‖₂` of the recovered net Δv. The
+  two agree for `Norm2` and for single-vertex `FaceMax` burns; they diverge (the
+  gauge is larger, by up to √3 per burn) only when a perigee-window maneuver
+  combines ≥2 tetrahedron vertices, where the old value under-reported the
+  optimized budget. The value is now measured on the full, pre-prune solution,
+  consistent with `residual`. Affects the reported number in every frontend
+  (core/api/server/wasm/py); maneuvers, residual, and dual are unchanged.
+
 ## [0.1.0] — 2026-06-19
 
 Initial release.

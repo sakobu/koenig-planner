@@ -51,7 +51,16 @@ pub(super) fn extract<C: CostModel>(
         sol.objective
     );
 
-    // NOTE: residual is measured on the FULL unpruned solution (true reachability); total_dv below sums only the kept maneuvers. They are deliberately measured pre/post-prune.
+    // Both `total_dv` and `residual` are reported on the FULL, pre-prune min-fuel
+    // solution; only `maneuvers` is pruned of interior-point dust below.
+    //
+    // `total_dv` is the minimized fuel cost — the objective `Σⱼ f_{tⱼ}(Δvⱼ)` (the
+    // paper's "delta-v cost" `c*`; eq. 4): `Σ‖Δvⱼ‖₂` under the L2 model, the
+    // polytope gauge `Σθ` under FaceMax. It is the cost that was actually
+    // minimized, NOT the L2 norm of the recovered net Δv (which under-states the
+    // FaceMax gauge whenever a burn combines ≥2 vertices — audit B3).
+    let total_dv = sol.objective;
+
     // Residual of the FULL (unpruned) min-fuel solution: this is the ~0 we report.
     let mut w_acc_full = SVector::<f64, N>::zeros();
     for (idx, &k) in t_opt.iter().enumerate() {
@@ -63,13 +72,11 @@ pub(super) fn extract<C: CostModel>(
     let max_dv = sol.dvs.iter().map(|dv| dv.norm()).fold(0.0_f64, f64::max);
     let keep = PRUNE_REL * max_dv;
     let mut maneuvers = Vec::new();
-    let mut total_dv = 0.0;
     for (idx, &k) in t_opt.iter().enumerate() {
         let dv = sol.dvs[idx];
         if dv.norm() <= keep {
             continue;
         }
-        total_dv += dv.norm();
         maneuvers.push(Maneuver {
             t: grid.time(k),
             dv,
@@ -134,6 +141,42 @@ mod tests {
         let dv = out.maneuvers[0].dv;
         assert!((dv - SVector::<f64, M>::new(3.0, 4.0, 12.0)).norm() < 1e-3);
         assert!((out.total_dv - 13.0).abs() < 1e-3);
+        assert!(out.residual < 1e-3);
+    }
+
+    #[test]
+    fn extract_total_dv_is_the_facemax_gauge_not_the_l2_norm() {
+        // Regression for audit B3. Under FaceMax the reported `total_dv` must be
+        // the minimized polytope gauge `Σθ` (the paper's "delta-v cost" `c*`,
+        // eq. 4 / eq. 9), NOT the L2 norm of the recovered net Δv. The target
+        // lands on a tetrahedron FACE, `w_top = v0 + v2`, whose gauge is 2.0
+        // (θ0 = θ2 = 1) while `‖v0 + v2‖₂ = √(4/3) ≈ 1.1547`.
+        let a = (2.0_f64 / 3.0).sqrt();
+        let b = (1.0_f64 / 3.0).sqrt();
+        let v0 = SVector::<f64, M>::new(a, 0.0, -b);
+        let v2 = SVector::<f64, M>::new(0.0, a, b);
+        let target_dv = v0 + v2; // (a, a, 0): ‖·‖₂ ≈ 1.1547, gauge = 2.0
+
+        let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
+        let gammas: Vec<SMatrix<f64, N, M>> =
+            grid.times().map(|t| TopId.gamma(t).unwrap()).collect();
+        // Perigee at t = 0 ⇒ the t = 0 candidate is FaceMax-charged (Polytope gauge).
+        let cost = Piecewise::with_perigee_epoch(40_000.0, 0.0);
+        let mut w = SVector::<f64, N>::zeros();
+        for r in 0..M {
+            w[r] = target_dv[r];
+        }
+        // budget = the true gauge optimum c* = 2.0.
+        let out = extract(&cost, &grid, &gammas, &w, 2.0, &[0]).unwrap();
+
+        assert_eq!(out.maneuvers.len(), 1);
+        assert!((out.maneuvers[0].dv - target_dv).norm() < 1e-3);
+        // The reported cost is the gauge (2.0), not the L2 net magnitude (1.1547).
+        assert!(
+            (out.total_dv - 2.0).abs() < 1e-3,
+            "total_dv = {} (expected the FaceMax gauge 2.0, not the L2 norm 1.1547)",
+            out.total_dv
+        );
         assert!(out.residual < 1e-3);
     }
 

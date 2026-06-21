@@ -72,6 +72,8 @@ impl Maneuver {
 struct Solution {
     #[pyo3(get)]
     maneuvers: Vec<Py<Maneuver>>,
+    /// Total fuel cost [m/s]: the minimized objective (the paper's "delta-v
+    /// cost" `c*`) — `Σ‖Δv‖₂` under the L2 cost, the polytope gauge `Σθ` under FaceMax.
     #[pyo3(get)]
     total_dv: f64,
     #[pyo3(get)]
