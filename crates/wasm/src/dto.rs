@@ -91,6 +91,8 @@ pub struct ChiefGeometry {
 #[tsify(into_wasm_abi)]
 pub struct SolveResponse {
     pub maneuvers: Vec<ManeuverDto>,
+    /// Total fuel cost [m/s]: the minimized objective (the paper's "delta-v
+    /// cost" c*) — Σ‖Δv‖₂ under the L2 cost, the polytope gauge Σθ under FaceMax.
     pub total_dv: f64,
     pub iterations: usize,
     pub residual: f64,

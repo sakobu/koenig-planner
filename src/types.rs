@@ -120,7 +120,14 @@ impl Default for SolveParams {
 pub struct Solution {
     /// Maneuvers `{t, Delta-v}`, one per optimal time in `T^opt`.
     pub maneuvers: Vec<Maneuver>,
-    /// Total fuel cost sum of ||Delta-v_j|| [m/s].
+    /// Total fuel cost `[m/s]`: the minimized objective `Σ_j f_{t_j}(Delta-v_j)`
+    /// (the paper's "delta-v cost" `c*`; eq. 4). For the L2 cost this is
+    /// `Σ ||Delta-v_j||`; for the FaceMax polytopic cost it is the gauge `Σ theta`
+    /// (the sum of the tetrahedral-thruster firings), which is `>=` the L2 norm of
+    /// the net Delta-v whenever a burn combines two or more vertices. This is the
+    /// cost that was actually minimized — not `Σ ||Delta-v_j||` under FaceMax.
+    ///
+    /// Measured on the **full, pre-prune** solution (consistent with `residual`).
     pub total_dv: f64,
     /// Algorithm 2 iteration count.
     pub iterations: usize,

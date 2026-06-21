@@ -219,6 +219,9 @@ mod harness {
         pub sample: usize,
         pub iterations: usize,
         pub residual: f64,
+        /// Minimized fuel-cost objective `c*` (the polytope gauge `Σθ` under a
+        /// FaceMax/Piecewise perigee window, `Σ‖Δv‖₂` under Norm2) — matches the
+        /// core `Solution::total_dv`.
         pub total_dv: f64,
     }
 

@@ -118,7 +118,9 @@ pub struct ManeuverDto {
 pub struct SolveResponse {
     /// Ordered list of maneuvers.
     pub maneuvers: Vec<ManeuverDto>,
-    /// Total fuel cost `Σ ‖Δvⱼ‖` `[m/s]`.
+    /// Total fuel cost `[m/s]`: the minimized objective `Σⱼ f_{tⱼ}(Δvⱼ)` (the
+    /// paper's "delta-v cost" `c*`). `Σ‖Δvⱼ‖₂` under the L2 cost; the polytope
+    /// gauge `Σθ` (`≥` the net-Δv L2 norm) under FaceMax.
     pub total_dv: f64,
     /// Algorithm 2 iteration count.
     pub iterations: usize,

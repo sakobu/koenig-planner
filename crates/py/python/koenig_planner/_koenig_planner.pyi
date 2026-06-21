@@ -46,6 +46,8 @@ class Solution:
 
     # Returned by solve(); not constructed directly.
     maneuvers: list[Maneuver]
+    # Total fuel cost [m/s]: the minimized objective (the paper's "delta-v cost"
+    # c*) — sum of ||dv|| under the L2 cost, the polytope gauge sum(theta) under FaceMax.
     total_dv: float
     iterations: int
     residual: float

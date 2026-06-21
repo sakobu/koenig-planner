@@ -90,10 +90,12 @@ fn worked_example_is_self_consistent() {
     );
 
     // The direct min-fuel SOCP recovers w to ~0 residual with a small maneuver set.
-    // Tolerance bands set from the observed converged values.
+    // `total_dv` is the min-fuel primal objective (the paper's "delta-v cost" c*):
+    // ~81.4 mm/s here, sitting just above the 80.9 mm/s dual lower bound (the ~0.6%
+    // gap is the eps_cost = 1% convergence tolerance). Both lie in the [78, 83] band.
     assert!(
         sol.total_dv > 0.078 && sol.total_dv < 0.083,
-        "total_dv = {} (expected ~80.9 mm/s)",
+        "total_dv = {} (expected ~81.4 mm/s, the min-fuel primal objective)",
         sol.total_dv
     );
     assert!(
