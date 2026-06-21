@@ -44,6 +44,7 @@ Every response is JSON. On failure the body is `{"kind": …, "message": …}`:
 | ------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
 | `bad_request` | invalid input / malformed request body               | `400` (or the rejection's `415`/`422` for content-type / field errors) |
 | `solver`      | well-formed request, numerically unsolvable / failed | `422`                                                                  |
+| `internal`    | unexpected internal fault (e.g. a solve task that panicked) | `500`                                                             |
 
 The `kind` field is the source of truth: a `422` with `kind:"bad_request"` is a
 request-field error from the extractor, whereas `kind:"solver"` is a planner

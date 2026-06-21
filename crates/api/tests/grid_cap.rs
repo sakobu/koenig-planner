@@ -64,8 +64,8 @@ fn one_over_cap_is_rejected() {
     let err = run(req).expect_err("MAX_GRID_POINTS + 1 must be rejected");
     assert_eq!(err.kind, "bad_request", "message: {}", err.message);
     assert!(
-        err.message.contains("max"),
-        "message should name the cap, got {:?}",
+        err.message.contains("grid") && err.message.contains("max"),
+        "message should name the grid-size cap, got {:?}",
         err.message
     );
 }

@@ -128,8 +128,14 @@ where
 ///
 /// The solve is synchronous CPU work, so it runs on the blocking pool: this keeps
 /// the async reactor free for liveness (`/health`) and lets the `TimeoutLayer`
-/// actually elapse (a non-yielding handler would never let the timer fire). A
-/// solve-task panic surfaces as a `JoinError` → uniform 500 `{kind:"internal"}`.
+/// actually elapse (a non-yielding handler would never let the timer fire).
+///
+/// On timeout the layer drops this future — releasing the concurrency permit and
+/// returning 408 — but the abandoned `spawn_blocking` task is uncancellable and
+/// runs to completion on the blocking pool. That is safe only because the
+/// `MAX_GRID_POINTS` cap (in `api::run`) bounds each solve to tens of ms / ~14 MB.
+///
+/// A solve-task panic surfaces as a `JoinError` → uniform 500 `{kind:"internal"}`.
 async fn solve(ApiJson(req): ApiJson<SolveRequest>) -> Result<Json<SolveResponse>, AppError> {
     let resp = tokio::task::spawn_blocking(move || run(req))
         .await
@@ -168,7 +174,7 @@ pub fn app() -> Router {
                 .layer(CorsLayer::permissive())
                 .layer(ConcurrencyLimitLayer::new(cfg.max_concurrency))
                 .layer(TimeoutLayer::with_status_code(
-                    StatusCode::REQUEST_TIMEOUT,
+                    StatusCode::REQUEST_TIMEOUT, // (status, duration)
                     cfg.timeout,
                 )),
         )
@@ -240,6 +246,19 @@ mod tests {
         let v: Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(v["kind"], "bad_request");
         assert!(v["message"].is_string());
+    }
+
+    #[test]
+    fn app_error_maps_internal_to_500() {
+        let e: AppError = ApiError {
+            kind: "internal",
+            message: "x".into(),
+        }
+        .into();
+        assert_eq!(
+            e.into_response().status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
     }
 
     #[test]
