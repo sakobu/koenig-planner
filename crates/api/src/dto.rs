@@ -56,7 +56,7 @@ pub enum CostSpec {
 }
 
 /// Solver tuning knobs.  Every field is optional; missing fields fall back to
-/// [`SolveParams::default`] (Table III of Koenig & D'Amico 2020).
+/// [`SolveParams::default`](crate::core::SolveParams::default) (Table III of Koenig & D'Amico 2020).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SolveParamsDto {
     /// Coarse-sample count `|T^d|` for Algorithm 1 (default 20).
@@ -130,7 +130,7 @@ pub struct SolveResponse {
 
 // ── Error ───────────────────────────────────────────────────────────────────
 
-/// Owned error that decouples the wire contract from [`PlannerError`].
+/// Owned error that decouples the wire contract from [`PlannerError`](crate::core::PlannerError).
 ///
 /// `kind` is the status class for HTTP frontends:
 /// - `"bad_request"` — invalid input (the caller should fix the request).
