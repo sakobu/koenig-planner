@@ -143,3 +143,21 @@ fn nonpositive_semimajor_axis_maps_to_bad_request() {
     let err = run(req).expect_err("should fail");
     assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
 }
+
+/// The error-kind wire strings are stable and identical across serde and Display.
+#[test]
+fn api_error_kind_wire_strings_are_stable() {
+    use koenig_damico_planner_api::ApiErrorKind::{BadRequest, Internal, Solver};
+    for (kind, want) in [
+        (BadRequest, "bad_request"),
+        (Solver, "solver"),
+        (Internal, "internal"),
+    ] {
+        assert_eq!(kind.as_str(), want);
+        assert_eq!(kind.to_string(), want);
+        assert_eq!(
+            serde_json::to_value(kind).unwrap(),
+            serde_json::Value::String(want.to_string())
+        );
+    }
+}

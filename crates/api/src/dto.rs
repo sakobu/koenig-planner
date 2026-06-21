@@ -148,3 +148,41 @@ pub struct ApiError {
     /// Human-readable description of what went wrong.
     pub message: String,
 }
+
+/// Status class for an [`ApiError`].
+///
+/// Serializes to a stable wire string via an **explicit per-variant**
+/// `#[serde(rename)]` (deliberately *not* `rename_all`: the sibling cost/outcome
+/// enums need single-word lowercase tags like `facemax`, whereas these need the
+/// snake-cased `bad_request`; an explicit rename keeps each wire string literal
+/// and local, immune to a `rename_all` change). `as_str` is the single source of
+/// truth shared by [`Display`] and verified against serde by a wire-stability test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ApiErrorKind {
+    /// Invalid input / malformed request — the caller should fix the request.
+    #[serde(rename = "bad_request")]
+    BadRequest,
+    /// Well-formed input but numerically unsolvable / solver failure.
+    #[serde(rename = "solver")]
+    Solver,
+    /// Unexpected internal fault (e.g. a panic caught by the HTTP layer).
+    #[serde(rename = "internal")]
+    Internal,
+}
+
+impl ApiErrorKind {
+    /// The stable wire string (`"bad_request"` / `"solver"` / `"internal"`).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ApiErrorKind::BadRequest => "bad_request",
+            ApiErrorKind::Solver => "solver",
+            ApiErrorKind::Internal => "internal",
+        }
+    }
+}
+
+impl std::fmt::Display for ApiErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
