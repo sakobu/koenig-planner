@@ -287,6 +287,16 @@ fn dispatch<C: CostModel>(
 // Public entry point
 // ──────────────────────────────────────────────────────────────────────────────
 
+/// Maximum number of grid points [`run`] will solve over.
+///
+/// The largest real request (the worked example) is ~3,934 points; this is ~25×
+/// that, bounding the Γ-cache (`grid.len() × 144 B`) to ~14 MB and a solve to tens
+/// of ms while never rejecting a realistic mission horizon. This is the
+/// untrusted-boundary guard against the grid-size complexity DoS (audit B1): all
+/// three frontends (HTTP, WASM, Python) funnel through [`run`], so this single cap
+/// protects every one.
+pub const MAX_GRID_POINTS: usize = 100_000;
+
 /// Plan a maneuver set from a serde request.
 ///
 /// This is the **one** place `solve`/`solve_from_initial_times` is
@@ -313,6 +323,22 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
 
     // 3. Build the uniform time grid (validates dt > 0, t_f >= t_i).
     let grid = TimeGrid::uniform(req.t_i, req.t_f, req.dt).map_err(bad_request)?;
+
+    // 3a. Bound the grid size before solving (audit B1): the Γ-cache allocation
+    // and the per-iteration contact sweep are O(grid.len()), driven by
+    // attacker-controlled scalars with no upper bound. Reject oversized grids as a
+    // bad request *before* any allocation. The `f64 → usize` saturation in `len()`
+    // keeps this correct even for absurd `t_f` (saturates to usize::MAX > cap).
+    let n_points = grid.len();
+    if n_points > MAX_GRID_POINTS {
+        return Err(ApiError {
+            kind: "bad_request",
+            message: format!(
+                "grid has {n_points} points (> {MAX_GRID_POINTS} max); \
+                 reduce (t_f - t_i)/dt"
+            ),
+        });
+    }
 
     // 4. Nondimensionalize the target pseudostate (divide by chief.a).
     let w = Pseudostate::from_row_slice(&req.w_metres) / chief.a;

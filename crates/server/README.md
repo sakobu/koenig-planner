@@ -15,6 +15,8 @@ nothing is sent anywhere.
 cargo run -p koenig-damico-planner-server
 # listens on 0.0.0.0:8080 by default; override with KOENIG_PLANNER_ADDR.
 # log level via RUST_LOG (default: info).
+# request timeout (s) via KOENIG_PLANNER_TIMEOUT_SECS (default: 10).
+# max simultaneous solves via KOENIG_PLANNER_MAX_CONCURRENCY (default: 64).
 ```
 
 ## Endpoints
@@ -42,11 +44,29 @@ Every response is JSON. On failure the body is `{"kind": …, "message": …}`:
 | ------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
 | `bad_request` | invalid input / malformed request body               | `400` (or the rejection's `415`/`422` for content-type / field errors) |
 | `solver`      | well-formed request, numerically unsolvable / failed | `422`                                                                  |
+| `internal`    | unexpected internal fault (e.g. a solve task that panicked) | `500`                                                             |
 
 The `kind` field is the source of truth: a `422` with `kind:"bad_request"` is a
 request-field error from the extractor, whereas `kind:"solver"` is a planner
-failure. Internal faults map to `500`. Requests are capped at 64 KiB; CORS is
-permissive (the service is meant to be self-hosted, including by a browser demo).
+failure. Internal faults map to `500`. CORS is permissive (the service is meant to
+be self-hosted, including by a browser demo); see [Limits](#limits) for request
+bounds.
+
+## Limits
+
+The service is hardened against unbounded-cost requests (audit B1):
+
+- **Grid size** is capped at 100 000 points; a larger `(t_f − t_i)/dt` is rejected
+  with `400 {kind:"bad_request"}` *before* any solve allocation. Cost scales with
+  the point count, not the request byte size.
+- **Request timeout** — `KOENIG_PLANNER_TIMEOUT_SECS` (default 10) → `408`.
+- **Concurrency limit** — `KOENIG_PLANNER_MAX_CONCURRENCY` (default 64) bounds
+  simultaneous solves; excess requests queue.
+- **Body size** is capped at 64 KiB → `413`.
+
+The `408`/`413` transport rejections are plain status responses; the
+`{kind,message}` JSON contract covers application-level errors (including the
+grid-size `400`).
 
 ## Docker
 
