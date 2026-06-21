@@ -10,9 +10,11 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use koenig_damico_planner_api::{run, ApiError, ApiErrorKind, SolveRequest, SolveResponse};
+use std::any::Any;
 use std::time::Duration;
 use tower::limit::ConcurrencyLimitLayer;
 use tower::ServiceBuilder;
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::timeout::TimeoutLayer;
@@ -66,6 +68,26 @@ fn config_from_env() -> ServerConfig {
 /// Liveness handler: returns `200` with a small status body.
 async fn health() -> Json<serde_json::Value> {
     Json(serde_json::json!({ "status": "ok" }))
+}
+
+/// Build the generic internal-fault [`ApiError`] for a caught panic, logging the
+/// payload server-side. The client never receives the payload (no info leak).
+fn internal_error(panic: &(dyn Any + Send)) -> ApiError {
+    let detail = panic
+        .downcast_ref::<&str>()
+        .map(|s| (*s).to_owned())
+        .or_else(|| panic.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "non-string panic payload".to_owned());
+    tracing::error!(panic = %detail, "request handler panicked");
+    ApiError {
+        kind: ApiErrorKind::Internal,
+        message: "internal server error".into(),
+    }
+}
+
+/// `CatchPanicLayer` handler: convert a caught panic into the uniform 500.
+fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
+    AppError::from(internal_error(&*err)).into_response()
 }
 
 /// Map an [`ApiErrorKind`] to the response status code. Exhaustive: a new kind
@@ -140,45 +162,52 @@ where
 async fn solve(ApiJson(req): ApiJson<SolveRequest>) -> Result<Json<SolveResponse>, AppError> {
     let resp = tokio::task::spawn_blocking(move || run(req))
         .await
-        .map_err(|_join_err| AppError {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            body: ApiError {
-                kind: ApiErrorKind::Internal,
-                message: "solve task failed".into(),
-            },
-        })??; // outer ? : JoinError→AppError ; inner ? : ApiError→AppError (From)
+        // spawn_blocking tasks cannot be cancelled, so a JoinError is always a
+        // panic; route it through the same logged internal-error path. The outer
+        // `?` maps ApiError→AppError (From); the inner `?` maps the api ApiError.
+        .map_err(|join_err| internal_error(&*join_err.into_panic()))??;
     Ok(Json(resp))
 }
 
-/// Build the application router with transport-hardening middleware.
+/// The application routes (no middleware).
+fn routes() -> Router {
+    Router::new()
+        .route("/health", get(health))
+        .route("/solve", post(solve))
+}
+
+/// Apply transport-hardening middleware to a router.
 ///
-/// Layer order (outermost → innermost): Trace, CORS, ConcurrencyLimit, Timeout,
-/// BodyLimit. The concurrency limit is *outer* of the timeout so a slow solve
-/// frees its permit on elapse. Both new layers are Infallible (ConcurrencyLimit
-/// backpressures via `poll_ready`; `tower_http`'s TimeoutLayer emits a 408
-/// Response), so the router's error type stays `Infallible` — no `HandleErrorLayer`.
+/// Layer order (outermost → innermost): Trace, CORS, CatchPanic, ConcurrencyLimit,
+/// Timeout, BodyLimit. CatchPanic sits *inside* CORS and Trace so a panic-derived
+/// 500 still gets the CORS header and a trace log, and *outside* the handler and
+/// the remaining middleware so it catches their panics. (Solve-closure panics are
+/// handled separately, via the `spawn_blocking` JoinError arm.) The router's error
+/// type stays `Infallible`, so no `HandleErrorLayer` is needed.
 ///
 /// Note: `RequestBodyLimitLayer` is applied via `Router::layer` rather than inside
 /// `ServiceBuilder` because `tower_http::limit::ResponseBody` does not implement
 /// `Default`, which `ConcurrencyLimit`'s tower composition requires. The ordering
 /// is preserved: BodyLimit is innermost (applied first by `Router::layer`), then
-/// the `ServiceBuilder` wraps it with Timeout, ConcurrencyLimit, CORS, and Trace.
+/// the `ServiceBuilder` wraps it with Timeout, ConcurrencyLimit, CatchPanic, CORS,
+/// and Trace.
+pub(crate) fn harden(router: Router, cfg: ServerConfig) -> Router {
+    router.layer(RequestBodyLimitLayer::new(64 * 1024)).layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(CorsLayer::permissive())
+            .layer(CatchPanicLayer::custom(handle_panic))
+            .layer(ConcurrencyLimitLayer::new(cfg.max_concurrency))
+            .layer(TimeoutLayer::with_status_code(
+                StatusCode::REQUEST_TIMEOUT, // (status, duration)
+                cfg.timeout,
+            )),
+    )
+}
+
+/// Build the application router with transport-hardening middleware.
 pub fn app() -> Router {
-    let cfg = config_from_env();
-    Router::new()
-        .route("/health", get(health))
-        .route("/solve", post(solve))
-        .layer(RequestBodyLimitLayer::new(64 * 1024))
-        .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(CorsLayer::permissive())
-                .layer(ConcurrencyLimitLayer::new(cfg.max_concurrency))
-                .layer(TimeoutLayer::with_status_code(
-                    StatusCode::REQUEST_TIMEOUT, // (status, duration)
-                    cfg.timeout,
-                )),
-        )
+    harden(routes(), config_from_env())
 }
 
 #[cfg(test)]
@@ -188,8 +217,10 @@ mod tests {
     use axum::extract::FromRequest;
     use axum::http::{header, Request, StatusCode};
     use axum::response::IntoResponse;
+    use axum::routing::get;
     use koenig_damico_planner_api::ApiError;
     use serde_json::Value;
+    use tower::ServiceExt;
 
     #[test]
     fn app_error_maps_bad_request_to_400() {
@@ -281,5 +312,55 @@ mod tests {
         let c = parse_config(Some("30".into()), Some("128".into()));
         assert_eq!(c.timeout, std::time::Duration::from_secs(30));
         assert_eq!(c.max_concurrency, 128);
+    }
+
+    #[tokio::test]
+    async fn handle_panic_returns_uniform_internal_500() {
+        let resp = handle_panic(Box::new("boom"));
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(v["kind"], "internal");
+        assert_eq!(v["message"], "internal server error");
+    }
+
+    #[tokio::test]
+    async fn caught_panic_maps_to_uniform_500_with_cors_header() {
+        let cfg = parse_config(None, None);
+        // An explicit `-> Response` return type keeps the diverging handler from
+        // resolving to `!` (which fails `!: IntoResponse` under Rust 1.92's
+        // `rust_2024_compatibility` never-type-fallback lint); the panic itself is
+        // what the test exercises.
+        async fn boom() -> Response {
+            panic!("kaboom")
+        }
+        let panicking = Router::new().route("/boom", get(boom));
+        let app = harden(panicking, cfg);
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/boom")
+            .header(header::ORIGIN, "https://example.com")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            resp.headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .map(|v| v.to_str().unwrap().to_owned()),
+            Some("*".to_owned()),
+            "the synthesized 500 must still carry the permissive CORS header"
+        );
+
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(v["kind"], "internal");
+        assert_eq!(v["message"], "internal server error");
     }
 }
