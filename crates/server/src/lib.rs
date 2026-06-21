@@ -149,7 +149,7 @@ async fn solve(ApiJson(req): ApiJson<SolveRequest>) -> Result<Json<SolveResponse
     Ok(Json(resp))
 }
 
-/// Build the application router with transport-hardening middleware (audit B1).
+/// Build the application router with transport-hardening middleware.
 ///
 /// Layer order (outermost → innermost): Trace, CORS, ConcurrencyLimit, Timeout,
 /// BodyLimit. The concurrency limit is *outer* of the timeout so a slow solve

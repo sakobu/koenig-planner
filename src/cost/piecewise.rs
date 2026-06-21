@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn new_rejects_nonpositive_or_nonfinite_period() {
         // A zero/NaN/negative period would make in_perigee_window NaN-out and
-        // silently collapse the eq.-49 cost to pure Norm2 (audit B4b). Reject it
+        // silently collapse the eq.-49 cost to pure Norm2. Reject it
         // up front — like the sibling TimeGrid::uniform / J2Roe::new constructors.
         assert!(Piecewise::new(0.0).is_err());
         assert!(Piecewise::new(-1.0).is_err());
