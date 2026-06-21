@@ -36,18 +36,7 @@ pub fn solve(req: dto::SolveRequest) -> dto::SolveOutcome {
             let times: Vec<f64> = resp.maneuvers.iter().map(|m| m.t).collect();
             match geometry::chief_geometry(&req, &times) {
                 Ok(geom) => dto::SolveOutcome::Ok {
-                    value: dto::SolveResponse {
-                        maneuvers: resp
-                            .maneuvers
-                            .iter()
-                            .map(|m| dto::ManeuverDto { t: m.t, dv: m.dv })
-                            .collect(),
-                        total_dv: resp.total_dv,
-                        iterations: resp.iterations,
-                        residual: resp.residual,
-                        lambda: resp.lambda,
-                        geometry: geom,
-                    },
+                    value: (resp, geom).into(),
                 },
                 Err(e) => dto::SolveOutcome::Err {
                     error: dto::ApiError {

@@ -2,8 +2,9 @@
 //!
 //! Field-for-field mirrors of the `crates/api` DTOs (request types add
 //! `from_wasm_abi`, response types add `into_wasm_abi`), plus the presentation
-//! `geometry` block and the `SolveOutcome` tagged-union result. Conversions in
-//! `convert.rs` keep these in lock-step with `api` at compile time.
+//! `geometry` block and the `SolveOutcome` tagged-union result. The `From` impls
+//! in `convert.rs` keep these in lock-step with `api` at compile time, on both
+//! the request and response paths.
 
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
