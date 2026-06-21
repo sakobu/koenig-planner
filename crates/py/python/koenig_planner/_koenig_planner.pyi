@@ -3,6 +3,10 @@
 This mirrors the PyO3 surface defined in `crates/py/src/lib.rs`. Type checkers
 read this stub; the real implementation is the compiled `_koenig_planner`
 extension installed alongside it.
+
+NOTE: unlike the Rust DTO boundaries, this stub is NOT compiler-enforced. When
+a `#[pyclass]` field or `solve` signature changes in `crates/py/src/lib.rs`,
+update the matching declaration here by hand — pyright checks usage, not parity.
 """
 
 from typing import Sequence
