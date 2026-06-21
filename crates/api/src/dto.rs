@@ -155,7 +155,8 @@ pub struct ApiError {
 /// enums need single-word lowercase tags like `facemax`, whereas these need the
 /// snake-cased `bad_request`; an explicit rename keeps each wire string literal
 /// and local, immune to a `rename_all` change). `as_str` is the single source of
-/// truth shared by [`Display`] and verified against serde by a wire-stability test.
+/// truth shared by [`Display`](std::fmt::Display) and verified against serde by a
+/// wire-stability test.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ApiErrorKind {
     /// Invalid input / malformed request — the caller should fix the request.
