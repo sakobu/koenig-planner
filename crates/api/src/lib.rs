@@ -161,7 +161,8 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
             let cost = match t_perigee0 {
                 Some(tp) => Piecewise::with_perigee_epoch(period, tp),
                 None => Piecewise::new(period),
-            };
+            }
+            .map_err(bad_request)?;
             dispatch(&dyn_, &cost, w, grid, &params, its)
         }
     }

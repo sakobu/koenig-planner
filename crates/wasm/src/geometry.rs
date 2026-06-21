@@ -43,7 +43,7 @@ pub fn chief_geometry(
             let pw = match t_perigee0 {
                 Some(tp) => Piecewise::with_perigee_epoch(period, *tp),
                 None => Piecewise::new(period),
-            };
+            }?;
             // Probe the ACTUAL eq.-49 selector outward from the perigee center to
             // find its time half-width — no hard-coded constant, no private fields.
             let step = (period / 720.0).max(1.0);

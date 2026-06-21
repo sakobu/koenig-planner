@@ -185,8 +185,8 @@ mod tests {
         let dynamics = SpinDyn { rate: 0.05 };
         let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap(); // 61 points
         let gammas = cache(&dynamics, &grid);
-        let cost = Piecewise::new(1.0e12); // Norm2 everywhere
-                                           // Reachable target: impulses at two distinct grid times.
+        let cost = Piecewise::new(1.0e12).unwrap(); // Norm2 everywhere
+                                                    // Reachable target: impulses at two distinct grid times.
         let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
         let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
         let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
@@ -213,7 +213,7 @@ mod tests {
         let dynamics = SpinDyn { rate: 0.05 };
         let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
         let gammas = cache(&dynamics, &grid);
-        let cost = Piecewise::new(1.0e12);
+        let cost = Piecewise::new(1.0e12).unwrap();
         let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
         let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
         let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
@@ -248,9 +248,9 @@ mod tests {
         let dynamics = SpinDyn { rate: 1.0e-4 };
         let grid = TimeGrid::uniform(0.0, 80_000.0, 1000.0).unwrap(); // 81 points
         let gammas = cache(&dynamics, &grid);
-        let cost = Piecewise::new(40_000.0); // FaceMax for t mod 40000 in (16400, 23600)
-                                             // Seed T^est with one Norm2 time (k=5, t=5000) and one FaceMax time
-                                             // (k=20, t=20000) so the FIRST refine_socp assembles mixed cones.
+        let cost = Piecewise::new(40_000.0).unwrap(); // FaceMax for t mod 40000 in (16400, 23600)
+                                                      // Seed T^est with one Norm2 time (k=5, t=5000) and one FaceMax time
+                                                      // (k=20, t=20000) so the FIRST refine_socp assembles mixed cones.
         let ua = SVector::<f64, M>::new(0.5, -0.4, 0.6);
         // FaceMax support directions are tetrahedral vertices; use vertex 0
         // = [√(2/3), 0, -√(1/3)] so the FaceMax time is genuinely reachable.
@@ -287,7 +287,7 @@ mod tests {
         let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
         let gammas: Vec<SMatrix<f64, N, M>> =
             grid.times().map(|t| dynamics.gamma(t).unwrap()).collect();
-        let cost = Piecewise::new(TAU / chief.mean_motion());
+        let cost = Piecewise::new(TAU / chief.mean_motion()).unwrap();
         let w = SVector::<f64, N>::from_row_slice(&[50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]) / A_C;
         let params = SolveParams::default();
 

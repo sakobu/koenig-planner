@@ -6,7 +6,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING:** `Piecewise::new` and `Piecewise::with_perigee_epoch` now return
+  `Result<Self, PlannerError>` instead of `Self`. They validate that `period` is
+  finite and `> 0` and that the perigee epoch is finite (`InvalidInput`
+  otherwise), matching the fallible `TimeGrid::uniform` / `J2Roe::new`
+  constructors. This prevents a non-finite or non-positive period from silently
+  corrupting the eq.-49 window selector: a zero/NaN period makes `in_perigee_window`
+  `false` for every time (collapsing the cost to pure `Norm2`), and a negative
+  period makes it `true` for every time (collapsing it to `FaceMax` everywhere).
+  Callers must now handle or `unwrap` the result; the `api` and `wasm` adapters
+  surface a bad period as a `bad_request`.
+
 ### Fixed
+- The two genuine self-consistency checks that were `debug_assert!` — and so were
+  compiled out of the release binary (audit B4) — are now always on. Algorithm 3's
+  primal/dual cross-check (the extracted min-fuel objective must agree with the
+  refinement dual budget `c*` to within tolerance, by strong duality —
+  \[KD20\] Theorems 1–3) now returns `PlannerError::SolverFailed` on a mismatch
+  instead of vanishing in release, and the `Piecewise` period precondition is
+  enforced (see Changed).
 - `Solution.total_dv` now reports the minimized fuel-cost objective — the paper's
   "delta-v cost" `c*` (eq. 4): `Σ‖Δvⱼ‖₂` under the `Norm2` cost and the polytope
   gauge `Σθ` under `FaceMax` — instead of `Σ‖Δvⱼ‖₂` of the recovered net Δv. The
