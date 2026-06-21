@@ -182,26 +182,9 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
         });
     }
 
-    // 8. Map Solution → SolveResponse.
-    let maneuvers = sol
-        .maneuvers
-        .iter()
-        .map(|m| ManeuverDto {
-            t: m.t,
-            dv: [m.dv[0], m.dv[1], m.dv[2]],
-        })
-        .collect();
-
-    let lam = sol.lambda;
-    let lambda = [lam[0], lam[1], lam[2], lam[3], lam[4], lam[5]];
-
-    Ok(SolveResponse {
-        maneuvers,
-        total_dv: sol.total_dv,
-        iterations: sol.iterations,
-        residual: sol.residual,
-        lambda,
-    })
+    // 8. Map Solution → SolveResponse via the field-exhaustive `From` in
+    //    convert.rs: a new core field becomes a compile error here.
+    Ok(sol.into())
 }
 
 /// Parse a JSON [`SolveRequest`], run it, and serialize the [`SolveResponse`] to JSON.
