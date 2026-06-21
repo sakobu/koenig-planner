@@ -10,9 +10,58 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use koenig_damico_planner_api::{run, ApiError, SolveRequest, SolveResponse};
+use std::time::Duration;
+use tower::limit::ConcurrencyLimitLayer;
+use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
+
+/// Default cap on simultaneous in-flight solves. Worst-case memory ≈
+/// `DEFAULT_MAX_CONCURRENCY × (MAX_GRID_POINTS × 144 B)` ≈ 64 × 14 MB ≈ 900 MB.
+const DEFAULT_MAX_CONCURRENCY: usize = 64;
+/// Default per-request timeout (seconds). A solve is sub-second even at the grid
+/// cap, so this only sheds genuinely-stuck requests.
+const DEFAULT_TIMEOUT_SECS: u64 = 10;
+
+const TIMEOUT_ENV: &str = "KOENIG_PLANNER_TIMEOUT_SECS";
+const CONCURRENCY_ENV: &str = "KOENIG_PLANNER_MAX_CONCURRENCY";
+
+/// Resolved transport-hardening limits applied to the router.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ServerConfig {
+    pub(crate) max_concurrency: usize,
+    pub(crate) timeout: Duration,
+}
+
+/// Pure config resolver: parse optional env-var strings, falling back to the
+/// defaults on absent / unparseable / non-positive values. Never panics.
+pub(crate) fn parse_config(
+    timeout_secs: Option<String>,
+    max_concurrency: Option<String>,
+) -> ServerConfig {
+    let timeout_secs = timeout_secs
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .filter(|&v| v > 0)
+        .unwrap_or(DEFAULT_TIMEOUT_SECS);
+    let max_concurrency = max_concurrency
+        .and_then(|s| s.trim().parse::<usize>().ok())
+        .filter(|&v| v > 0)
+        .unwrap_or(DEFAULT_MAX_CONCURRENCY);
+    ServerConfig {
+        max_concurrency,
+        timeout: Duration::from_secs(timeout_secs),
+    }
+}
+
+/// Resolve [`ServerConfig`] from the process environment.
+fn config_from_env() -> ServerConfig {
+    parse_config(
+        std::env::var(TIMEOUT_ENV).ok(),
+        std::env::var(CONCURRENCY_ENV).ok(),
+    )
+}
 
 /// Liveness handler: returns `200` with a small status body.
 async fn health() -> Json<serde_json::Value> {
@@ -76,18 +125,53 @@ where
 }
 
 /// Plan a maneuver set. Body is a `SolveRequest`; response is a `SolveResponse`.
+///
+/// The solve is synchronous CPU work, so it runs on the blocking pool: this keeps
+/// the async reactor free for liveness (`/health`) and lets the `TimeoutLayer`
+/// actually elapse (a non-yielding handler would never let the timer fire). A
+/// solve-task panic surfaces as a `JoinError` → uniform 500 `{kind:"internal"}`.
 async fn solve(ApiJson(req): ApiJson<SolveRequest>) -> Result<Json<SolveResponse>, AppError> {
-    Ok(Json(run(req)?))
+    let resp = tokio::task::spawn_blocking(move || run(req))
+        .await
+        .map_err(|_join_err| AppError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            body: ApiError {
+                kind: "internal",
+                message: "solve task failed".into(),
+            },
+        })??; // outer ? : JoinError→AppError ; inner ? : ApiError→AppError (From)
+    Ok(Json(resp))
 }
 
-/// Build the application router.
+/// Build the application router with transport-hardening middleware (audit B1).
+///
+/// Layer order (outermost → innermost): Trace, CORS, ConcurrencyLimit, Timeout,
+/// BodyLimit. The concurrency limit is *outer* of the timeout so a slow solve
+/// frees its permit on elapse. Both new layers are Infallible (ConcurrencyLimit
+/// backpressures via `poll_ready`; `tower_http`'s TimeoutLayer emits a 408
+/// Response), so the router's error type stays `Infallible` — no `HandleErrorLayer`.
+///
+/// Note: `RequestBodyLimitLayer` is applied via `Router::layer` rather than inside
+/// `ServiceBuilder` because `tower_http::limit::ResponseBody` does not implement
+/// `Default`, which `ConcurrencyLimit`'s tower composition requires. The ordering
+/// is preserved: BodyLimit is innermost (applied first by `Router::layer`), then
+/// the `ServiceBuilder` wraps it with Timeout, ConcurrencyLimit, CORS, and Trace.
 pub fn app() -> Router {
+    let cfg = config_from_env();
     Router::new()
         .route("/health", get(health))
         .route("/solve", post(solve))
-        .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive())
         .layer(RequestBodyLimitLayer::new(64 * 1024))
+        .layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(CorsLayer::permissive())
+                .layer(ConcurrencyLimitLayer::new(cfg.max_concurrency))
+                .layer(TimeoutLayer::with_status_code(
+                    StatusCode::REQUEST_TIMEOUT,
+                    cfg.timeout,
+                )),
+        )
 }
 
 #[cfg(test)]
@@ -156,5 +240,30 @@ mod tests {
         let v: Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(v["kind"], "bad_request");
         assert!(v["message"].is_string());
+    }
+
+    #[test]
+    fn parse_config_uses_defaults_when_absent_or_invalid() {
+        // Absent → defaults.
+        let c = parse_config(None, None);
+        assert_eq!(c.max_concurrency, DEFAULT_MAX_CONCURRENCY);
+        assert_eq!(c.timeout, std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS));
+
+        // Unparseable → defaults (must not panic).
+        let c = parse_config(Some("abc".into()), Some("-5".into()));
+        assert_eq!(c.max_concurrency, DEFAULT_MAX_CONCURRENCY);
+        assert_eq!(c.timeout, std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS));
+
+        // Zero → defaults (0 concurrency would deadlock; 0 s would reject all).
+        let c = parse_config(Some("0".into()), Some("0".into()));
+        assert_eq!(c.max_concurrency, DEFAULT_MAX_CONCURRENCY);
+        assert_eq!(c.timeout, std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS));
+    }
+
+    #[test]
+    fn parse_config_reads_valid_values() {
+        let c = parse_config(Some("30".into()), Some("128".into()));
+        assert_eq!(c.timeout, std::time::Duration::from_secs(30));
+        assert_eq!(c.max_concurrency, 128);
     }
 }
