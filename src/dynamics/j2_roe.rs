@@ -21,15 +21,30 @@ impl J2Roe {
     /// Build from the chief's mean absolute orbit at `t_i` and the window
     /// endpoints `[t_i, t_f]` `[s]`.
     ///
-    /// Ref: \[CD18\] eq. 38 / \[KD20\] B(t), p. 13 — the `1/tan(i)` term in `B(t)`
-    /// is what makes the near-equatorial chief guard necessary.
+    /// Ref: \[KD20\] eq. 50 / Appendix — the secular rates carry `n = sqrt(mu/a^3)`
+    /// and an `a^{7/2}` denominator (real-and-finite only for a bounded ellipse:
+    /// `a > 0` finite, `e ∈ [0,1)`); \[CD18\] eq. 38 / \[KD20\] B(t), p. 13 — the
+    /// `1/tan(i)` term in `B(t)` is what makes the near-equatorial chief guard
+    /// necessary.
     ///
     /// # Errors
-    /// Returns [`PlannerError::InvalidInput`] if the chief is non-elliptic
-    /// (`e ∉ [0,1)`), equatorial (`i` within `1e-9` rad of `0` or `π`, where the
-    /// `tan i` term in `B(t)` is singular), or the window is not `t_f > t_i`
-    /// (finite).
+    /// Returns [`PlannerError::InvalidInput`] if the chief semimajor axis is not
+    /// finite and positive (`a > 0`), the chief is non-elliptic (`e ∉ [0,1)`),
+    /// equatorial (`i` within `1e-9` rad of `0` or `π`, where the `tan i` term in
+    /// `B(t)` is singular), or the window is not `t_f > t_i` (finite).
     pub fn new(chief_ti: AbsoluteOrbit, t_i: f64, t_f: f64) -> Result<Self, PlannerError> {
+        // Bounded-ellipse preconditions on the chief (a, e together). `a` is the
+        // most fundamental: `mean_motion`/`secular_rates` are NaN without a finite,
+        // positive semimajor axis (\[KD20\] eq. 50), so guard it first — otherwise
+        // the NaN propagates silently through `Gamma` and is mis-reported as a
+        // solver failure instead of the caller-fixable input error it is.
+        if !chief_ti.a.is_finite() || chief_ti.a <= 0.0 {
+            return Err(PlannerError::InvalidInput(format!(
+                "J2Roe: chief semimajor axis must be finite and positive (a > 0), \
+                 got a = {}",
+                chief_ti.a
+            )));
+        }
         if !(0.0..1.0).contains(&chief_ti.e) {
             return Err(PlannerError::InvalidInput(format!(
                 "J2Roe: chief must be elliptic (0 <= e < 1), got e = {}",
@@ -98,6 +113,25 @@ mod tests {
 
         let bad_window = AbsoluteOrbit::new(25_000e3, 0.7, 40.0_f64.to_radians(), 0.0, 0.0, 0.0);
         assert!(J2Roe::new(bad_window, 100.0, 100.0).is_err()); // t_f <= t_i
+    }
+
+    // Ref: [KD20] eq. 50 / Appendix — the secular rates carry `n = sqrt(mu/a^3)`
+    // and an `a^{7/2}` denominator, real-and-finite only for a bounded ellipse
+    // (`a` finite, `a > 0`). A non-positive or non-finite `a` makes `mean_motion`
+    // / `secular_rates` NaN, so the chief must be rejected at the gateway with a
+    // caller-fixable `InvalidInput` (audit B5).
+    #[test]
+    fn new_rejects_nonpositive_or_nonfinite_semimajor_axis() {
+        let mk = |a: f64| AbsoluteOrbit::new(a, 0.7, 40.0_f64.to_radians(), 0.0, 0.0, 0.0);
+        assert!(J2Roe::new(mk(25_000e3), 0.0, 100.0).is_ok()); // baseline valid `a`
+        for bad in [-1.0, 0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let err =
+                J2Roe::new(mk(bad), 0.0, 100.0).expect_err(&format!("a = {bad} must be rejected"));
+            assert!(
+                matches!(err, PlannerError::InvalidInput(_)),
+                "a = {bad} must be InvalidInput, got {err:?}"
+            );
+        }
     }
 
     #[test]

@@ -126,3 +126,20 @@ fn non_elliptic_chief_maps_to_bad_request() {
     let err = run(req).expect_err("should fail");
     assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
 }
+
+/// A non-positive semimajor axis maps to `kind == "bad_request"` — NOT `"solver"`.
+/// The invalid `a` must be caught at the `J2Roe` gateway, before it poisons the
+/// dynamics into a non-finite result that the backstop would misreport as a
+/// solver failure (audit B5).
+#[test]
+fn nonpositive_semimajor_axis_maps_to_bad_request() {
+    let req = SolveRequest {
+        chief: OrbitDto {
+            a: -25_000e3, // non-positive semimajor axis — physically invalid
+            ..minimal_chief()
+        },
+        ..minimal_request()
+    };
+    let err = run(req).expect_err("should fail");
+    assert_eq!(err.kind, "bad_request", "expected bad_request, got {err}");
+}
