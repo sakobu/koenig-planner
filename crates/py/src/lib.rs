@@ -3,17 +3,10 @@
 //! Thin PyO3 wrapper over [`koenig_damico_planner_api`]. See `crates/py/tests` for the
 //! golden worked-example checks and `crates/py/examples` for a plotting showcase.
 
-use koenig_damico_planner_api::{run, ApiError, CostSpec, OrbitDto, SolveParamsDto, SolveRequest};
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
-use pyo3::prelude::*;
+mod convert;
 
-/// Map an [`ApiError`] to the matching Python exception.
-fn api_err_to_py(e: ApiError) -> PyErr {
-    match e.kind {
-        "bad_request" => PyValueError::new_err(e.message),
-        _ => PyRuntimeError::new_err(e.message),
-    }
-}
+use koenig_damico_planner_api::run;
+use pyo3::prelude::*;
 
 /// Chief mean absolute orbit. Angles in **degrees**; `a` in **metres**.
 #[pyclass(from_py_object)]
@@ -132,63 +125,23 @@ fn solve(
     eps_remove: Option<f64>,
     initial_times: Option<Vec<f64>>,
 ) -> PyResult<Solution> {
-    let cost = match cost {
-        "norm2" => CostSpec::Norm2,
-        "facemax" => CostSpec::FaceMax,
-        "piecewise" => CostSpec::Piecewise { period, t_perigee0 },
-        other => {
-            return Err(PyValueError::new_err(format!(
-                "unknown cost {other:?}; expected one of \"norm2\", \"facemax\", \"piecewise\""
-            )))
-        }
-    };
-
-    let req = SolveRequest {
-        chief: OrbitDto {
-            a: chief.a,
-            e: chief.e,
-            i: chief.i,
-            raan: chief.raan,
-            argp: chief.argp,
-            mean_anom: chief.mean_anom,
-        },
+    let req = convert::build_request(
+        &chief,
         t_i,
         t_f,
         dt,
         w_metres,
         cost,
-        params: Some(SolveParamsDto {
-            n_coarse,
-            n_init,
-            eps_cost,
-            eps_remove,
-        }),
+        period,
+        t_perigee0,
+        n_coarse,
+        n_init,
+        eps_cost,
+        eps_remove,
         initial_times,
-    };
-
-    let resp = run(req).map_err(api_err_to_py)?;
-
-    let maneuvers = resp
-        .maneuvers
-        .iter()
-        .map(|m| {
-            Py::new(
-                py,
-                Maneuver {
-                    t: m.t,
-                    dv: (m.dv[0], m.dv[1], m.dv[2]),
-                },
-            )
-        })
-        .collect::<PyResult<Vec<_>>>()?;
-
-    Ok(Solution {
-        maneuvers,
-        total_dv: resp.total_dv,
-        iterations: resp.iterations,
-        residual: resp.residual,
-        lambda: resp.lambda.to_vec(),
-    })
+    )?;
+    let resp = run(req).map_err(convert::api_err_to_py)?;
+    convert::solution_to_py(py, resp)
 }
 
 /// Parse a JSON `SolveRequest`, run it, and return the JSON `SolveResponse`.
@@ -197,7 +150,7 @@ fn solve(
 /// solver failures.
 #[pyfunction]
 fn solve_json(input: &str) -> PyResult<String> {
-    koenig_damico_planner_api::run_json(input).map_err(api_err_to_py)
+    koenig_damico_planner_api::run_json(input).map_err(convert::api_err_to_py)
 }
 
 /// The `koenig_planner` Python module.

@@ -852,6 +852,7 @@ name = "koenig-damico-planner-api"
 version = "0.1.0"
 dependencies = [
  "koenig-damico-planner",
+ "nalgebra",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
