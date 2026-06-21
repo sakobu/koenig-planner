@@ -1,4 +1,4 @@
-//! Grid-size cap (audit B1): `run` must reject a request whose grid exceeds
+//! Grid-size cap: `run` must reject a request whose grid exceeds
 //! `MAX_GRID_POINTS` with `kind == "bad_request"`, before any solve allocation.
 
 use koenig_damico_planner_api::{run, CostSpec, OrbitDto, SolveRequest, MAX_GRID_POINTS};

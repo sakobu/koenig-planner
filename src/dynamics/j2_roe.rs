@@ -119,7 +119,7 @@ mod tests {
     // and an `a^{7/2}` denominator, real-and-finite only for a bounded ellipse
     // (`a` finite, `a > 0`). A non-positive or non-finite `a` makes `mean_motion`
     // / `secular_rates` NaN, so the chief must be rejected at the gateway with a
-    // caller-fixable `InvalidInput` (audit B5).
+    // caller-fixable `InvalidInput`.
     #[test]
     fn new_rejects_nonpositive_or_nonfinite_semimajor_axis() {
         let mk = |a: f64| AbsoluteOrbit::new(a, 0.7, 40.0_f64.to_radians(), 0.0, 0.0, 0.0);

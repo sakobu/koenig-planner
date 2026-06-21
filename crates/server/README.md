@@ -54,7 +54,7 @@ bounds.
 
 ## Limits
 
-The service is hardened against unbounded-cost requests (audit B1):
+The service is hardened against unbounded-cost requests:
 
 - **Grid size** is capped at 100 000 points; a larger `(t_f − t_i)/dt` is rejected
   with `400 {kind:"bad_request"}` *before* any solve allocation. Cost scales with

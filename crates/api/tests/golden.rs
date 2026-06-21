@@ -144,8 +144,8 @@ fn facemax_run_ok() {
     );
 }
 
-/// A `n_coarse: 0` request must map to `kind == "bad_request"` (Fix 1:
-/// `PlannerError::InvalidInput` routed correctly).
+/// A `n_coarse: 0` request must map to `kind == "bad_request"`
+/// (`PlannerError::InvalidInput` routed correctly).
 #[test]
 fn n_coarse_zero_is_bad_request() {
     let req = SolveRequest {

@@ -17,7 +17,7 @@ const WORKED_EXAMPLE_JSON: &str = r#"{
 }"#;
 
 /// Same valid window as the worked example but a tiny `dt` → ~1.18e8 grid points,
-/// far past `MAX_GRID_POINTS`. The grid cap (audit B1) must reject this as a 400
+/// far past `MAX_GRID_POINTS`. The grid cap must reject this as a 400
 /// at the HTTP boundary *before* any solve allocation.
 const OVERSIZED_GRID_JSON: &str = r#"{
     "chief": {"a": 25000000.0, "e": 0.7, "i": 40.0, "raan": 358.0, "argp": 0.0, "mean_anom": 180.0},

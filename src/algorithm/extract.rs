@@ -100,7 +100,7 @@ pub(super) fn extract<C: CostModel>(
     // paper's "delta-v cost" `c*`; eq. 4): `Σ‖Δvⱼ‖₂` under the L2 model, the
     // polytope gauge `Σθ` under FaceMax. It is the cost that was actually
     // minimized, NOT the L2 norm of the recovered net Δv (which under-states the
-    // FaceMax gauge whenever a burn combines ≥2 vertices — audit B3).
+    // FaceMax gauge whenever a burn combines ≥2 vertices).
     let total_dv = sol.objective;
 
     // Residual of the FULL (unpruned) min-fuel solution: this is the ~0 we report.
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn extract_total_dv_is_the_facemax_gauge_not_the_l2_norm() {
-        // Regression for audit B3. Under FaceMax the reported `total_dv` must be
+        // Under FaceMax the reported `total_dv` must be
         // the minimized polytope gauge `Σθ` (the paper's "delta-v cost" `c*`,
         // eq. 4 / eq. 9), NOT the L2 norm of the recovered net Δv. The target
         // lands on a tetrahedron FACE, `w_top = v0 + v2`, whose gauge is 2.0
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn extract_rejects_objective_inconsistent_with_dual_budget() {
-        // Self-consistency gate (audit B4a). By conic strong duality the extracted
+        // Self-consistency gate. By conic strong duality the extracted
         // min-fuel objective must equal the Algorithm-2 dual budget `c*`
         // ([KD20] Theorems 1-3). When it disagrees beyond tolerance, extraction
         // must surface `SolverFailed` — an always-on check, NOT the release-stripped

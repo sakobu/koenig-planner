@@ -26,10 +26,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   finite only for `a > 0`). Previously a non-positive or non-finite `a` passed
   the constructor and only surfaced downstream as a NaN-poisoned `Γ`, which the
   frontends mis-reported as a `solver` failure instead of the caller-fixable
-  `bad_request` it is (audit B5). The constructor signature is unchanged (already
+  `bad_request` it is. The constructor signature is unchanged (already
   fallible), so callers using `?`/`unwrap` are unaffected.
 - The two genuine self-consistency checks that were `debug_assert!` — and so were
-  compiled out of the release binary (audit B4) — are now always on. Algorithm 3's
+  compiled out of the release binary — are now always on. Algorithm 3's
   primal/dual cross-check (the extracted min-fuel objective must agree with the
   refinement dual budget `c*` to within tolerance, by strong duality —
   \[KD20\] Theorems 1–3) now returns `PlannerError::SolverFailed` on a mismatch

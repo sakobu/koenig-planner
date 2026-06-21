@@ -130,7 +130,7 @@ fn non_elliptic_chief_maps_to_bad_request() {
 /// A non-positive semimajor axis maps to `kind == "bad_request"` — NOT `"solver"`.
 /// The invalid `a` must be caught at the `J2Roe` gateway, before it poisons the
 /// dynamics into a non-finite result that the backstop would misreport as a
-/// solver failure (audit B5).
+/// solver failure.
 #[test]
 fn nonpositive_semimajor_axis_maps_to_bad_request() {
     let req = SolveRequest {
