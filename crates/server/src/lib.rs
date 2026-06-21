@@ -247,17 +247,26 @@ mod tests {
         // Absent → defaults.
         let c = parse_config(None, None);
         assert_eq!(c.max_concurrency, DEFAULT_MAX_CONCURRENCY);
-        assert_eq!(c.timeout, std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS));
+        assert_eq!(
+            c.timeout,
+            std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS)
+        );
 
         // Unparseable → defaults (must not panic).
         let c = parse_config(Some("abc".into()), Some("-5".into()));
         assert_eq!(c.max_concurrency, DEFAULT_MAX_CONCURRENCY);
-        assert_eq!(c.timeout, std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS));
+        assert_eq!(
+            c.timeout,
+            std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS)
+        );
 
         // Zero → defaults (0 concurrency would deadlock; 0 s would reject all).
         let c = parse_config(Some("0".into()), Some("0".into()));
         assert_eq!(c.max_concurrency, DEFAULT_MAX_CONCURRENCY);
-        assert_eq!(c.timeout, std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS));
+        assert_eq!(
+            c.timeout,
+            std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS)
+        );
     }
 
     #[test]
