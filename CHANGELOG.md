@@ -35,6 +35,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   surface a bad period as a `bad_request`.
 
 ### Fixed
+- `TimeGrid::uniform` now rejects a zero-length window (`t_f == t_i`), agreeing
+  with `validate_inputs` and `J2Roe::new`, which already require `t_f > t_i`.
+  No working solve path changes — the solver already rejected a single-point
+  grid one step later; this only tightens the standalone constructor so a grid
+  it accepts is never rejected downstream.
 - `docs.rs` now renders the derived `serde` `Serialize`/`Deserialize` impls on the
   public wire types (`Solution`, `Maneuver`, `SolveParams`, `TimeGrid`,
   `PlannerError`, `AbsoluteOrbit`). The crate has no default feature, so docs.rs
