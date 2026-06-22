@@ -1,133 +1,58 @@
-//! CI invariant test: Monte Carlo behavior of the public solver API on the
-//! worked-example problem, driving the paper's THREE Fig. 8 initialization schemes
-//! (n=2 endpoints, n=6 largest-g, n=10 evenly-spaced; Koenig & D'Amico 2020 p.11).
-//! Asserts paper-INDEPENDENT invariants (NOT the paper's 4.90/3.99/3.31 means,
-//! which depend on solver conventions not reproduced bit-for-bit here). Runs only
-//! under the `validation` feature (for rand/rand_distr); CI runs `--all-features`.
+//! Seeded CI invariant test for the Monte-Carlo harness. Asserts only paper-independent
+//! invariants (the paper's means are a reference, not a target) and that the sampler shared
+//! with the figure harness is deterministic and prefix-consistent. Ref: [KD20] Fig. 8 / Table V.
 
-use koenig_damico_planner::cost::Piecewise;
-use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
-use koenig_damico_planner::{
-    solve, solve_from_initial_times, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid,
+use koenig_damico_planner_validation::{
+    run_fig8, sample_pseudostates, worked_example_cost, worked_example_dynamics, FIG8_SCHEMES, SEED,
 };
-use rand::rngs::StdRng;
-use rand::SeedableRng;
-use rand_distr::{Distribution, Normal};
-use std::f64::consts::TAU;
 
-const A_C: f64 = 25_000e3;
-const N_SAMPLES: usize = 64; // tunable for CI runtime (192 solves total)
+const N_SAMPLES: usize = 64; // CI runtime (64 × 3 schemes = 192 solves)
 
-// Ref: [KD20] Table III.
-fn chief() -> AbsoluteOrbit {
-    AbsoluteOrbit::new(
-        A_C,
-        0.7,
-        40.0_f64.to_radians(),
-        358.0_f64.to_radians(),
-        0.0,
-        180.0_f64.to_radians(),
-    )
+#[test]
+fn sampler_is_deterministic_and_prefix_consistent() {
+    // Same (n, seed) → identical samples on every run/platform (portable StdRng).
+    assert_eq!(
+        sample_pseudostates(N_SAMPLES, SEED),
+        sample_pseudostates(N_SAMPLES, SEED),
+    );
+    // The smaller draw is an exact prefix of the larger — the test and the figure harness
+    // (N=200) share one sampler and one seed, so they cannot drift.
+    let full = sample_pseudostates(200, SEED);
+    let small = sample_pseudostates(N_SAMPLES, SEED);
+    assert_eq!(&full[..N_SAMPLES], &small[..]);
 }
 
-// Ref: [KD20] Fig. 8 (Gaussian pseudostate sampling).
-fn sample_ws(n: usize, seed: u64) -> Vec<Pseudostate> {
-    let mut rng = StdRng::seed_from_u64(seed);
-    let normal = Normal::new(0.0_f64, 1000.0).expect("σ > 0");
-    (0..n)
-        .map(|_| {
-            let mut c = [0.0_f64; 6];
-            for x in c.iter_mut() {
-                *x = normal.sample(&mut rng);
-            }
-            Pseudostate::from_row_slice(&c) / A_C
-        })
-        .collect()
-}
-
-/// Solve one sample under the paper's seeding for column `k` (0 = n=2 endpoints,
-/// 1 = n=6 largest-g, 2 = n=10 evenly-spaced).
-// Ref: [KD20] Fig. 8; Algorithm 1.
-fn solve_column(
-    dynamics: &J2Roe,
-    cost: &Piecewise,
-    w: Pseudostate,
-    grid: TimeGrid,
-    k: usize,
-) -> Result<Solution, PlannerError> {
-    let p = SolveParams::default();
-    match k {
-        0 => solve_from_initial_times(dynamics, cost, w, grid, &p, &[grid.t_i, grid.t_f]),
-        1 => solve(
-            dynamics,
-            cost,
-            w,
-            grid,
-            &SolveParams {
-                n_init: 6,
-                ..SolveParams::default()
-            },
-        ),
-        _ => {
-            let times: Vec<f64> = (0..10)
-                .map(|j| grid.t_i + (j as f64) * (grid.t_f - grid.t_i) / 9.0)
-                .collect();
-            solve_from_initial_times(dynamics, cost, w, grid, &p, &times)
-        }
-    }
-}
-
-// Ref: [KD20] Fig. 8; Algorithm 2.
 #[test]
 fn monte_carlo_invariants_hold() {
-    let dynamics = J2Roe::new(chief(), 0.0, 117_990.0).unwrap();
-    let cost = Piecewise::new(TAU / chief().mean_motion()).unwrap();
-    let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
-    let ws = sample_ws(N_SAMPLES, 0xC0FFEE);
-    let n_inits = [2usize, 6, 10];
+    let dynamics = worked_example_dynamics();
+    let cost = worked_example_cost();
+    let ws = sample_pseudostates(N_SAMPLES, SEED);
+    let (rows, failures) = run_fig8(&dynamics, &cost, &ws, &FIG8_SCHEMES);
 
-    let mut means = [0.0_f64; 3];
-    let mut max_iters = 0usize;
-    let mut max_res = 0.0_f64;
-    let mut failures = 0usize;
-
-    for (k, &n_init) in n_inits.iter().enumerate() {
-        let (mut sum, mut count) = (0usize, 0usize);
-        for &w in &ws {
-            match solve_column(&dynamics, &cost, w, grid, k) {
-                Ok(sol) => {
-                    sum += sol.iterations;
-                    count += 1;
-                    max_iters = max_iters.max(sol.iterations);
-                    max_res = max_res.max(sol.residual);
-                }
-                Err(_) => failures += 1,
-            }
-        }
-        assert!(count > 0, "scheme n_init={n_init}: no successful solves");
-        means[k] = sum as f64 / count as f64;
-    }
-
-    // Invariant 1: every solve succeeds (robust min-fuel extraction).
     assert_eq!(failures, 0, "{failures} solve(s) failed; expected 0");
-    // Invariant 2: converges within the paper's stated 8-iteration bound.
+
+    let max_iters = rows.iter().map(|r| r.iterations).max().unwrap_or(0);
     assert!(
         max_iters <= 8,
         "max iterations {max_iters} exceeds the paper's 8-iter bound"
     );
-    // Invariant 3: residual under 0.01% (the min-fuel SOCP reconstructs w).
-    assert!(max_res < 1e-4, "max residual {max_res:.3e} exceeds 0.01%");
-    // Invariant 4: Fig. 8 shape — the worst-case endpoints seed (n=2) needs more
-    // refinement iterations than the well-spread evenly-spaced seed (n=10).
-    assert!(
-        means[0] > means[2],
-        "mean iters n=2 endpoints ({:.3}) should exceed n=10 evenly-spaced ({:.3})",
-        means[0],
-        means[2]
-    );
 
-    eprintln!(
-        "observed mean iters: n_init=2 -> {:.2}, 6 -> {:.2}, 10 -> {:.2}  (paper 4.90/3.99/3.31)",
-        means[0], means[1], means[2]
+    let max_res = rows.iter().map(|r| r.residual).fold(0.0_f64, f64::max);
+    assert!(max_res < 1e-4, "max residual {max_res:.3e} exceeds 0.01%");
+
+    let mean = |n_init: usize| {
+        let v: Vec<f64> = rows
+            .iter()
+            .filter(|r| r.n_init == n_init)
+            .map(|r| r.iterations as f64)
+            .collect();
+        v.iter().sum::<f64>() / v.len() as f64
+    };
+    let (m2, m6, m10) = (mean(2), mean(6), mean(10));
+    // Worst-case 2-time endpoints needs more refinement than the 10-time evenly-spaced seed.
+    assert!(
+        m2 > m10,
+        "mean iters n=2 ({m2:.3}) should exceed n=10 ({m10:.3})"
     );
+    eprintln!("observed mean iters: 2->{m2:.2}, 6->{m6:.2}, 10->{m10:.2}  (paper 4.90/3.99/3.31)");
 }
