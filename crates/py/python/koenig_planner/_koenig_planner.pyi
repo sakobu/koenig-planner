@@ -69,7 +69,11 @@ def solve(
     eps_remove: float | None = ...,
     initial_times: Sequence[float] | None = ...,
 ) -> Solution:
-    """Plan a maneuver set. `cost` is one of "norm2", "facemax", "piecewise"."""
+    """Plan a maneuver set. `cost` is one of "norm2", "facemax", "piecewise".
+
+    `n_coarse`/`n_init` are ignored when `initial_times` is supplied (that path
+    bypasses Algorithm 1).
+    """
     ...
 
 def solve_json(input: str) -> str:
