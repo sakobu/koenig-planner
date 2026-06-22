@@ -39,10 +39,11 @@ pub fn chief_geometry(
     let perigee_window = match &req.cost {
         dto::CostSpec::Piecewise { period, t_perigee0 } => {
             let period = period.unwrap_or(TAU / chief.mean_motion());
-            let t_pc = t_perigee0.unwrap_or(period / 2.0);
+            let t_pc =
+                t_perigee0.unwrap_or((-chief.mean_anom / chief.mean_motion()).rem_euclid(period));
             let pw = match t_perigee0 {
                 Some(tp) => Piecewise::with_perigee_epoch(period, *tp),
-                None => Piecewise::new(period),
+                None => Piecewise::with_perigee_epoch(period, t_pc),
             }?;
             // Probe the ACTUAL eq.-49 selector outward from the perigee center to
             // find its time half-width — no hard-coded constant, no private fields.
@@ -123,6 +124,31 @@ mod tests {
         assert!(
             lo < 0.0 && hi > 0.0,
             "window should bracket perigee, got [{lo}, {hi}]"
+        );
+        assert!(lo > -PI && hi < PI);
+    }
+
+    #[wasm_bindgen_test]
+    fn piecewise_window_brackets_perigee_general_m0() {
+        // M₀ = 90° ≠ 180°: the chief is NOT at apogee at t = 0, so the old
+        // period/2 default centered the eq.-49 window on the wrong arc. The
+        // default epoch must be derived from M₀ so the window still brackets
+        // perigee (ν = 0).
+        let g = chief_geometry(
+            &req_with(
+                dto::CostSpec::Piecewise {
+                    period: None,
+                    t_perigee0: None,
+                },
+                90.0,
+            ),
+            &[],
+        )
+        .unwrap();
+        let [lo, hi] = g.perigee_window.expect("piecewise has a window");
+        assert!(
+            lo < 0.0 && hi > 0.0,
+            "window should bracket perigee for M0=90, got [{lo}, {hi}]"
         );
         assert!(lo > -PI && hi < PI);
     }

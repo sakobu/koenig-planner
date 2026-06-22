@@ -35,6 +35,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   surface a bad period as a `bad_request`.
 
 ### Fixed
+- The `piecewise` cost's default perigee-window epoch is now derived from the
+  chief's mean anomaly `M₀` — the first perigee passage at or after `t = 0`,
+  `(-M₀ / n) mod period` — instead of assuming the chief is at apogee at
+  `t = 0`. This places the eq. 49 FaceMax windows on the correct orbital arc
+  for any chief; it reduces exactly to `period / 2` for the worked example
+  (`M₀ = 180°`), leaving that result unchanged. Adapter-only (`api` and `wasm`,
+  inherited by the Python and HTTP frontends); the numerical core is untouched.
 - `TimeGrid::uniform` now rejects a zero-length window (`t_f == t_i`), agreeing
   with `validate_inputs` and `J2Roe::new`, which already require `t_f > t_i`.
   No working solve path changes — the solver already rejected a single-point

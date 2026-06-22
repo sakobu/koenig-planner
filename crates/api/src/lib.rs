@@ -165,7 +165,10 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
             let period = period.unwrap_or_else(|| TAU / chief.mean_motion());
             let cost = match t_perigee0 {
                 Some(tp) => Piecewise::with_perigee_epoch(period, tp),
-                None => Piecewise::new(period),
+                None => Piecewise::with_perigee_epoch(
+                    period,
+                    (-chief.mean_anom / chief.mean_motion()).rem_euclid(period),
+                ),
             }
             .map_err(bad_request)?;
             dispatch(&dyn_, &cost, w, grid, &params, its)
