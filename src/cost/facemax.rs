@@ -29,7 +29,7 @@ static VERTEX_COLUMNS: LazyLock<[SVector<f64, M>; 4]> = LazyLock::new(|| {
 });
 
 // Ref: [KD20] eq. 47 (the four tetrahedral V_vertex directions); Table II.
-fn vertex_columns() -> [SVector<f64, M>; 4] {
+pub(crate) fn vertex_columns() -> [SVector<f64, M>; 4] {
     *VERTEX_COLUMNS
 }
 

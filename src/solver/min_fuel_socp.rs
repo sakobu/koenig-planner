@@ -201,17 +201,10 @@ mod tests {
         FuelGenerator::Norm
     }
 
-    // The four FaceMax V_vertex columns (must match src/cost/facemax.rs).
-    // Ref: [KD20] eq. 47.
+    // The four FaceMax V_vertex columns, shared with the cost module so the two
+    // cannot drift. Ref: [KD20] eq. 47.
     fn vertex_dirs() -> Vec<SVector<f64, M>> {
-        let a = (2.0_f64 / 3.0).sqrt();
-        let b = (1.0_f64 / 3.0).sqrt();
-        vec![
-            SVector::<f64, M>::new(a, 0.0, -b),
-            SVector::<f64, M>::new(-a, 0.0, -b),
-            SVector::<f64, M>::new(0.0, a, b),
-            SVector::<f64, M>::new(0.0, -a, b),
-        ]
+        crate::cost::facemax::vertex_columns().to_vec()
     }
 
     fn w6(v: [f64; N]) -> Pseudostate {

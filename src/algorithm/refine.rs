@@ -254,7 +254,7 @@ mod tests {
         let ua = SVector::<f64, M>::new(0.5, -0.4, 0.6);
         // FaceMax support directions are tetrahedral vertices; use vertex 0
         // = [√(2/3), 0, -√(1/3)] so the FaceMax time is genuinely reachable.
-        let v0 = SVector::<f64, M>::new((2.0_f64 / 3.0).sqrt(), 0.0, -(1.0_f64 / 3.0).sqrt());
+        let v0 = crate::cost::facemax::vertex_columns()[0];
         let w =
             dynamics.gamma(5000.0).unwrap() * ua + dynamics.gamma(20_000.0).unwrap() * (0.8 * v0);
         let params = SolveParams::default();
