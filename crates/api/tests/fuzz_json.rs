@@ -107,6 +107,32 @@ fn malformed_literals_are_bad_request() {
     }
 }
 
+/// A request that is valid except for an extra unknown top-level field must be
+/// rejected as BadRequest (no silent skip via serde's IgnoredAny path). Also
+/// covers an unknown field nested in the `chief` object and in `params`.
+#[test]
+fn unknown_fields_are_rejected_as_bad_request() {
+    let valid_chief = r#"{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0}"#;
+    let cases: Vec<String> = vec![
+        // unknown top-level field on SolveRequest
+        format!(
+            r#"{{"chief":{valid_chief},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}},"junk":1}}"#
+        ),
+        // unknown field inside the chief (OrbitDto)
+        format!(
+            r#"{{"chief":{{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0,"junk":1}},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
+        ),
+        // unknown field inside params (SolveParamsDto)
+        format!(
+            r#"{{"chief":{valid_chief},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}},"params":{{"n_coarse":20,"junk":1}}}}"#
+        ),
+    ];
+    for c in &cases {
+        let err = run_json(c).expect_err(&format!("expected error for: {c}"));
+        assert_eq!(err.kind, ApiErrorKind::BadRequest, "input: {c}");
+    }
+}
+
 /// Well-formed-but-hostile inputs must not panic, abort, or OOM. They may be
 /// Ok or a typed error; the assertion is the absence of a crash.
 #[test]
@@ -143,23 +169,14 @@ fn stressful_inputs_never_crash() {
     }
 }
 
-/// Deeply nested JSON in an unknown field exercises serde_json's recursion
-/// handling (no `deny_unknown_fields`, so unknown values are skipped via
-/// IgnoredAny, which recurses).
-///
-/// EMPIRICAL FINDING: serde_json's depth-128 recursion limit applies only
-/// to `serde_json::Value` parsing, NOT to the `IgnoredAny` skip path used
-/// when deserialising into a concrete struct with unknown fields. At depth
-/// 300 the unknown `junk` array is silently discarded and the request
-/// succeeds or fails on its own merits (domain validation, solver, etc.).
-/// No stack overflow occurs. This means the wire surface does NOT currently
-/// enforce a depth bound on ignored fields — an open hardening item
-/// (relate: `deny_unknown_fields` or a size/depth limit on the JSON body).
-///
-/// This test pins the observed behaviour: depth-300 nesting in an unknown
-/// field must not panic or abort; any outcome (Ok or typed error) is valid.
+/// Deeply nested JSON in an UNKNOWN field is now rejected up-front by
+/// `deny_unknown_fields` (added on the request DTOs), so the nest is never
+/// traversed. Previously the field was silently skipped via serde's IgnoredAny
+/// path (iterative/heap-bounded, so no stack overflow, but an unbounded skip
+/// on the uncapped library path). The depth-300 nest must reject as BadRequest
+/// at the unknown key, with no panic/abort/OOM.
 #[test]
-fn deeply_nested_unknown_field_is_skipped_without_crash() {
+fn deeply_nested_unknown_field_is_rejected_without_crash() {
     let valid_chief = r#"{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0}"#;
     let depth = 300;
     let deep = format!(
@@ -167,13 +184,6 @@ fn deeply_nested_unknown_field_is_skipped_without_crash() {
         "[".repeat(depth),
         "]".repeat(depth)
     );
-    // Must not panic, abort, or OOM.  The unknown field is silently skipped
-    // by IgnoredAny; the call may return Ok (solve succeeds) or a typed error.
-    if let Err(e) = run_json(&deep) {
-        assert!(
-            matches!(e.kind, ApiErrorKind::BadRequest | ApiErrorKind::Solver),
-            "unexpected kind {:?}",
-            e.kind
-        );
-    }
+    let err = run_json(&deep).expect_err("unknown field must be rejected");
+    assert_eq!(err.kind, ApiErrorKind::BadRequest);
 }

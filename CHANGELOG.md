@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- Request DTOs now use `#[serde(deny_unknown_fields)]` (`OrbitDto`, `SolveParamsDto`,
+  `SolveRequest`), so unknown/typo'd fields are rejected as `bad_request` instead of
+  silently ignored. This closes the wire-format "no `deny_unknown_fields`" hardening
+  item and bounds the unknown-field skip path on the uncapped `run_json`/py/wasm
+  entrypoints (defense-in-depth; the HTTP server's 64 KiB body cap already bounded it).
+
 ### Added
 - HTTP server now catches handler/middleware panics via `CatchPanicLayer` and returns the uniform `{"kind":"internal"}` 500 (panic payload logged server-side, never sent to the client). Wire-enum tags are pinned by tests.
 
