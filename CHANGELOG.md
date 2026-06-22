@@ -112,6 +112,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The server container image now runs as a non-root user
   (`gcr.io/distroless/cc-debian12:nonroot`, UID 65532).
 
+### Documentation
+- The public fallible functions (`solve`, `solve_from_initial_times`, and the
+  convex-encoding building blocks `extract_qp` / `min_fuel_socp` / `refine_socp`)
+  now carry `# Errors` rustdoc listing the `PlannerError` variants each can return
+  and when; a `missing_errors_doc` / `missing_panics_doc` lint enforces the
+  convention. `PlannerError::InvalidInput` is documented as an intentionally
+  opaque, caller-fixable catch-all whose wrapped message is the only diagnostic.
+- The request wire contract is documented more completely: `n_coarse` / `n_init`
+  are marked inert when `initial_times` is supplied (that path bypasses
+  Algorithm 1) on the api and wasm DTOs and the Python `solve` docstring/stub,
+  and the api crate README gains a "Wire stability" note tying the JSON
+  request/response shape to crate semver and naming the stable cost-model tags,
+  error kinds, and field names.
+
 ## [0.1.0] — 2026-06-19
 
 Initial release.
