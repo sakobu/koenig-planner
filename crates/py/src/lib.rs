@@ -103,6 +103,8 @@ impl Solution {
 ///
 /// `cost` is one of `"norm2"`, `"facemax"`, `"piecewise"`. `period` /
 /// `t_perigee0` apply only to `"piecewise"` (defaults derived from the chief).
+/// `n_coarse` / `n_init` are ignored when `initial_times` is supplied (that
+/// path bypasses Algorithm 1).
 #[pyfunction]
 #[pyo3(signature = (
     chief, t_i, t_f, dt, w_metres, cost="piecewise",

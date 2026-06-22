@@ -46,6 +46,24 @@ println!("{} maneuvers, total dv = {} m/s", resp.maneuvers.len(), resp.total_dv)
 The same request as a JSON string can be driven through `run_json` instead, which is what the
 Python `solve_json` and the planned WASM `solve` delegate to.
 
+## Wire stability
+
+The JSON request/response shape is part of this crate's public contract and is
+versioned with the workspace crates: the wire schema only changes in a
+semver-significant release. There is no `schema_version` field — the crate
+version is the single source of truth for the contract.
+
+Stable identifiers a client may hard-code:
+
+- **Cost-model tags** (`cost.type`): `"norm2"`, `"facemax"`, `"piecewise"`.
+- **Error kinds** (`ApiError.kind`): `"bad_request"`, `"solver"`, `"internal"`.
+- **Field names** of `SolveRequest` / `SolveResponse` as documented on the DTOs.
+
+These tags are regression-pinned by `crates/api/tests/serde_shapes.rs`, so a
+silent rename can't slip through. Requests use `#[serde(deny_unknown_fields)]`:
+an unknown request field is rejected rather than ignored. Responses may gain
+fields in a future release, so clients should ignore unknown response fields.
+
 ## License
 
 Licensed under either of [Apache-2.0](../../LICENSE-APACHE) or [MIT](../../LICENSE-MIT) at your
