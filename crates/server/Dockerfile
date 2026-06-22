@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- cargo-chef base: caches dependency compilation ----
-FROM rust:1 AS chef
+FROM rust:1@sha256:c6811167278337db5f3b0234964ced5f538f154a2a20f09ec03721d7411c933d AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
@@ -17,9 +17,12 @@ RUN cargo chef cook --release --locked -p koenig-damico-planner-server --recipe-
 COPY . .
 RUN cargo build --release --locked -p koenig-damico-planner-server
 
-# ---- runtime: distroless (glibc; deps are pure-Rust) ----
-FROM gcr.io/distroless/cc-debian12 AS runtime
+# ---- runtime: distroless nonroot (glibc; deps are pure-Rust) ----
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:b0ae8e989418b458e0f25489bc3be523718938a2b70864cc0f6a00af1ddbd985 AS runtime
 COPY --from=builder /app/target/release/koenig-damico-planner-server /
+# Run as the distroless nonroot user (UID 65532); port 8080 (>1024) needs no privilege.
+USER nonroot:nonroot
 EXPOSE 8080
 ENV KOENIG_PLANNER_ADDR=0.0.0.0:8080
+# No HEALTHCHECK: distroless has no shell. Probe GET /health from the orchestrator.
 ENTRYPOINT ["/koenig-damico-planner-server"]

@@ -1,0 +1,33 @@
+# cargo-deny supply-chain policy. Run locally: `cargo deny check`.
+# Docs: https://embarkstudios.github.io/cargo-deny/
+# If the installed cargo-deny uses a different schema than below, reconcile with
+# the `cargo deny init` template — the POLICY INTENT is what matters:
+#   deny yanked + known-vuln crates; restrict sources to crates.io;
+#   allow only the permissive license family below; warn (don't fail) on duplicates.
+
+[advisories]
+# RustSec DB (default source). Known vulnerabilities are denied by default.
+yanked = "deny"
+ignore = []   # add a RustSec ID + justification comment here ONLY if truly unavoidable
+
+[licenses]
+# Anything not in `allow` is denied. Derived from the actual tree (Step 2).
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"   # duplicate versions are noise, not vulnerabilities
+wildcards = "deny"
+allow-wildcard-paths = true  # internal workspace path-deps are fine; deny only registry wildcards
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

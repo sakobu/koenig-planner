@@ -1,0 +1,19 @@
+name: Security
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # weekly Mon 06:00 UTC — re-scan the unchanged Cargo.lock for new advisories
+  workflow_dispatch:
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd          # v5
+      - uses: taiki-e/install-action@9e1e5806d4a4822de933115878265be9aaa786d9     # v2
+        with:
+          tool: cargo-deny@0.19.9
+      - name: cargo-deny (advisories, licenses, sources, bans)
+        run: cargo deny check
