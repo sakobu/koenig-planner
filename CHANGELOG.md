@@ -19,10 +19,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (defense-in-depth, alongside the `MAX_REQUEST_BYTES` cap above).
 
 ### Added
+- Tight snapshot regressions for the worked-example solutions (Koenig Table III and the
+  Hunter L2 cross-check): total Δv, residual ceiling, maneuver count, and per-maneuver
+  times/magnitudes are now pinned alongside the existing paper-bound bands, so silent
+  science drift fails the test instead of passing.
 - HTTP server now catches handler/middleware panics via `CatchPanicLayer` and returns the uniform `{"kind":"internal"}` 500 (panic payload logged server-side, never sent to the client). Wire-enum tags are pinned by tests.
+- New workspace-internal crate `koenig-damico-planner-validation` (`crates/validation`) holding
+  the Monte-Carlo sampler, the Fig. 7/8/9 reproduction harness, and the seeded invariant test.
+  Figure/CSV generation is behind its `figures` feature.
 
 ### Changed
 - `ApiError.kind` is now a typed `ApiErrorKind` enum (was `&'static str`), matched exhaustively by every frontend. The serialized wire JSON is unchanged; this is a breaking change for direct Rust consumers of `koenig-damico-planner-api`.
+- **BREAKING:** the `validation` feature is removed from `koenig-damico-planner`; the Monte-Carlo
+  harness and its `rand`/`rand_distr`/`plotters`/`csv` dependencies move to the new
+  `koenig-damico-planner-validation` crate. The published core now depends only on
+  `nalgebra`, `clarabel`, `thiserror` (and optional `serde`).
 - **BREAKING:** `Piecewise::new` and `Piecewise::with_perigee_epoch` now return
   `Result<Self, PlannerError>` instead of `Self`. They validate that `period` is
   finite and `> 0` and that the perigee epoch is finite (`InvalidInput`
@@ -35,6 +46,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   surface a bad period as a `bad_request`.
 
 ### Fixed
+- The Monte-Carlo Fig. 9 timing sweep now surfaces solver failures: `run_fig9` returns a
+  failure count (matching `run_fig8`), and the driver warns and skips the timing plot when any
+  solve fails, instead of silently plotting a NaN-bearing series.
+- Stale docs: the README no longer claims the seeded invariant test "runs without the feature
+  flag", and the api golden test comment no longer mislabels the dual lower bound (≈0.0808) as
+  the total Δv (≈0.0814).
 - The `piecewise` cost's default perigee-window epoch is now derived from the
   chief's mean anomaly `M₀` — the first perigee passage at or after `t = 0`,
   `(-M₀ / n) mod period` — instead of assuming the chief is at apogee at
@@ -52,10 +69,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `PlannerError`, `AbsoluteOrbit`). The crate has no default feature, so docs.rs
   built with `serde` off and omitted these impls from the published docs; a
   `[package.metadata.docs.rs]` entry now enables the `serde` feature for the docs
-  build only — targeted (not `all-features`) so the tooling-only `validation`
-  native deps (`plotters`/fontconfig) are not pulled in. Docs-render metadata
-  only: no code, API, or feature change, and not semver-relevant; it takes effect
-  on the next published version.
+  build only. Docs-render metadata only: no code, API, or feature change, and not
+  semver-relevant; it takes effect on the next published version.
 - `J2Roe::new` now rejects a chief whose semimajor axis `a` is not finite and
   positive, returning `PlannerError::InvalidInput` — completing the
   bounded-ellipse precondition alongside the existing `e ∈ [0,1)` check

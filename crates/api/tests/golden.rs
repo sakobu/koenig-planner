@@ -45,7 +45,7 @@ fn golden_worked_example() {
         resp.maneuvers.len()
     );
 
-    // FD-verified total Δv band [m/s] (observed ≈ 0.0808).
+    // FD-verified total Δv band [m/s] (observed ≈ 0.0814; 0.0808 is the dual lower bound).
     assert!(
         resp.total_dv > 0.078 && resp.total_dv < 0.083,
         "total_dv = {} is outside [0.078, 0.083]",

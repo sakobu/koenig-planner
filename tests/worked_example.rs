@@ -12,10 +12,11 @@
 //! refinement finds the true discretized dual optimum, and the optimum is
 //! self-consistent.
 
+use approx::{assert_abs_diff_eq, assert_relative_eq};
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
 use koenig_damico_planner::{
-    refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid,
+    refine_socp, solve, CostModel, Dynamics, Maneuver, Pseudostate, SolveParams, TimeGrid,
 };
 use nalgebra::SVector;
 use std::f64::consts::TAU;
@@ -112,6 +113,31 @@ fn worked_example_is_self_consistent() {
         sol.maneuvers.len()
     );
     assert!(sol.lambda.iter().all(|x| x.is_finite()));
+    // --- Tight regression pin: the converged worked-example solution ([KD20] Table III/IV). ---
+    // The coarse bands above are a paper-bound sanity check; these catch silent science drift
+    // (a 1–3% Δv shift or a residual blow-up) that the bands would pass.
+    assert_relative_eq!(sol.total_dv, 8.135_423_473_009_615e-2, max_relative = 1e-9);
+    assert!(
+        sol.residual < 1e-10,
+        "residual {:.3e} regressed above the 1e-10 ceiling (converges to ~1.1e-14)",
+        sol.residual
+    );
+    assert_eq!(
+        sol.maneuvers.len(),
+        3,
+        "maneuver count regressed from the expected 3"
+    );
+    let mut man: Vec<&Maneuver> = sol.maneuvers.iter().collect();
+    man.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
+    let expected: [(f64, f64); 3] = [
+        (14_460.0, 3.952_133_923_056_219e-2),
+        (101_970.0, 2.487_437_546_693_282e-2),
+        (104_190.0, 1.695_846_939_211_844_6e-2),
+    ];
+    for (m, (t, dv)) in man.iter().zip(expected) {
+        assert_abs_diff_eq!(m.t, t, epsilon = 1e-6);
+        assert_relative_eq!(m.dv.norm(), dv, max_relative = 1e-7);
+    }
 }
 
 // Ref: [H25] Table 2/3 / eq. 69; eq. 19; [KD20] eq. 40.
@@ -170,6 +196,31 @@ fn hunter_l2_cross_check_recovers_w() {
     );
     assert!((1..=50).contains(&sol.iterations));
     assert!(sol.lambda.iter().all(|x| x.is_finite()));
+    // --- Tight regression pin: the Hunter L2 cross-check converged solution. ---
+    assert_relative_eq!(sol.total_dv, 2.487_623_042_218_083e-4, max_relative = 1e-9);
+    assert!(
+        sol.residual < 1e-7,
+        "residual {:.3e} regressed above the 1e-7 ceiling (converges to ~4.6e-9)",
+        sol.residual
+    );
+    assert_eq!(
+        sol.maneuvers.len(),
+        5,
+        "maneuver count regressed from the expected 5"
+    );
+    let mut man: Vec<&Maneuver> = sol.maneuvers.iter().collect();
+    man.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
+    let expected: [(f64, f64); 5] = [
+        (0.0, 8.394_709_997_324_14e-5),
+        (6_380.0, 2.487_701_503_472_918e-7),
+        (7_170.0, 1.653_549_728_822_607e-5),
+        (18_460.0, 1.456_169_138_713_659_2e-4),
+        (20_530.0, 2.350_619_843_350_491_7e-6),
+    ];
+    for (m, (t, dv)) in man.iter().zip(expected) {
+        assert_abs_diff_eq!(m.t, t, epsilon = 1e-6);
+        assert_relative_eq!(m.dv.norm(), dv, max_relative = 1e-7);
+    }
 }
 
 // Ref: [KD20] Table IV vs Table III; eq. 11.

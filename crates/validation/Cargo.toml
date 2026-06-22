@@ -1,0 +1,35 @@
+[package]
+name = "koenig-damico-planner-validation"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+description = "Monte-Carlo validation harness reproducing the Koenig-D'Amico paper's Fig. 7/8/9 (workspace-internal)."
+# Workspace-internal reproduction/validation tooling for the paper's Section VIII;
+# not published to crates.io. Depends on the core solver by path.
+publish = false
+
+[dependencies]
+koenig-damico-planner = { path = "../.." }
+rand = "0.10"
+rand_distr = "0.6"
+
+[dependencies.csv]
+version = "1.4"
+optional = true
+
+[dependencies.plotters]
+version = "0.3"
+optional = true
+
+[dev-dependencies]
+approx = "0.5"
+
+[features]
+# Figure/CSV output pulls native plotting deps (plotters/fontconfig). The sampler,
+# fixtures, runners, and the seeded invariant test run on `rand` alone.
+figures = ["dep:csv", "dep:plotters"]
+
+[[bin]]
+name = "monte_carlo"
+required-features = ["figures"]
