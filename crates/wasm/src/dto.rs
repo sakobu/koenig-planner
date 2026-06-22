@@ -42,8 +42,12 @@ pub enum CostSpec {
 #[derive(Tsify, Serialize, Deserialize, Clone, Default)]
 #[tsify(from_wasm_abi)]
 pub struct SolveParamsDto {
+    /// Coarse-sample count for Algorithm 1. Ignored when `initial_times` is
+    /// supplied, since that path bypasses Algorithm 1.
     #[tsify(optional)]
     pub n_coarse: Option<usize>,
+    /// Initial candidate-time count. Ignored when `initial_times` is supplied,
+    /// since that path bypasses Algorithm 1.
     #[tsify(optional)]
     pub n_init: Option<usize>,
     #[tsify(optional)]
