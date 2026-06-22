@@ -4,7 +4,6 @@
 //! curve. Run:
 //!
 //!   cargo run --example mdot
-//!   cargo run --example mdot --features validation   # also writes the Fig. 7 CSV
 //!
 //! Reproducibility note: the published worked example reports a 3-maneuver,
 //! 82.4 mm/s plan. The J2 mean-ROE dynamics used here are finite-difference
@@ -103,23 +102,7 @@ fn main() {
         1.0 + params.eps_cost
     );
 
-    #[cfg(feature = "validation")]
-    {
-        let path = "target/fig7_contact.csv";
-        let mut wtr = csv::Writer::from_path(path).expect("open fig7 csv");
-        wtr.write_record(["t_s", "g"]).expect("header");
-        for (t, g) in &curve {
-            wtr.write_record(&[t.to_string(), g.to_string()])
-                .expect("row");
-        }
-        wtr.flush().expect("flush");
-        println!(
-            "  Fig. 7 curve         : written to {path} ({} rows)",
-            curve.len()
-        );
-    }
-    #[cfg(not(feature = "validation"))]
-    println!("  Fig. 7 curve         : (build with --features validation to write target/fig7_contact.csv)");
+    println!("  Fig. 7 curve         : reproduce via `cargo run -p koenig-damico-planner-validation --features figures --bin monte_carlo fig7`");
 
     // --- Self-checks (what is actually true of the FD-verified pipeline). ---
     assert!(

@@ -870,12 +870,8 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "clarabel",
- "csv",
  "nalgebra",
- "plotters",
  "proptest",
- "rand 0.10.1",
- "rand_distr",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -913,6 +909,18 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "koenig-damico-planner-validation"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "csv",
+ "koenig-damico-planner",
+ "plotters",
+ "rand 0.10.1",
+ "rand_distr",
 ]
 
 [[package]]

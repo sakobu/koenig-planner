@@ -24,9 +24,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   times/magnitudes are now pinned alongside the existing paper-bound bands, so silent
   science drift fails the test instead of passing.
 - HTTP server now catches handler/middleware panics via `CatchPanicLayer` and returns the uniform `{"kind":"internal"}` 500 (panic payload logged server-side, never sent to the client). Wire-enum tags are pinned by tests.
+- New workspace-internal crate `koenig-damico-planner-validation` (`crates/validation`) holding
+  the Monte-Carlo sampler, the Fig. 7/8/9 reproduction harness, and the seeded invariant test.
+  Figure/CSV generation is behind its `figures` feature.
 
 ### Changed
 - `ApiError.kind` is now a typed `ApiErrorKind` enum (was `&'static str`), matched exhaustively by every frontend. The serialized wire JSON is unchanged; this is a breaking change for direct Rust consumers of `koenig-damico-planner-api`.
+- **BREAKING:** the `validation` feature is removed from `koenig-damico-planner`; the Monte-Carlo
+  harness and its `rand`/`rand_distr`/`plotters`/`csv` dependencies move to the new
+  `koenig-damico-planner-validation` crate. The published core now depends only on
+  `nalgebra`, `clarabel`, `thiserror` (and optional `serde`).
 - **BREAKING:** `Piecewise::new` and `Piecewise::with_perigee_epoch` now return
   `Result<Self, PlannerError>` instead of `Self`. They validate that `period` is
   finite and `> 0` and that the perigee epoch is finite (`InvalidInput`

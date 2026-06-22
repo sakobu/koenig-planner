@@ -142,23 +142,21 @@ frontends over a shared serde/JSON facade:
 | `koenig-damico-planner-api`    | `crates/api`    | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
 | `koenig-damico-planner-py`     | `crates/py`     | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
 | `koenig-damico-planner-server` | `crates/server` | internal (`publish = false`)                                | self-hostable HTTP service (axum) — `POST /solve`, `GET /health`      |
-| `koenig-damico-planner-wasm`   | `crates/wasm`   | internal (`publish = false`)                                | WASM bindings + in-browser demo — `tsify`-typed `solve` / `solve_json` |
+| `koenig-damico-planner-wasm`       | `crates/wasm`       | internal (`publish = false`)                                | WASM bindings + in-browser demo — `tsify`-typed `solve` / `solve_json` |
+| `koenig-damico-planner-validation` | `crates/validation` | internal (`publish = false`)                                | Monte-Carlo Fig. 7/8/9 reproduction harness |
 
-## Validation harness (Fig. 8 / Fig. 9)
+## Validation harness (Fig. 7 / Fig. 8 / Fig. 9)
 
-A Monte-Carlo harness reproduces the paper's Fig. 8 (refinement-iteration counts
-under three seedings) and Fig. 9 (solve time vs. grid size). It is gated behind
-the `validation` feature (which pulls in `rand`, `rand_distr`, `csv`, and
-`plotters`); use `--release` for representative timings:
+A Monte-Carlo harness in the workspace-internal `koenig-damico-planner-validation` crate
+reproduces the paper's Fig. 7 (contact curve), Fig. 8 (refinement-iteration CDF under three
+seedings), and Fig. 9 (solve time vs. grid size). Figure/CSV output is behind its `figures`
+feature (which pulls `plotters`/`csv`):
 
-```sh
-cargo run --release --bin monte_carlo --features validation
-```
+    cargo run --release -p koenig-damico-planner-validation --features figures --bin monte_carlo
 
-This writes the CSVs and the PNGs below under `target/`. The seeded CI invariant
-test (`tests/monte_carlo.rs`) runs without the feature flag and asserts only
-paper-independent invariants — the paper's reported means are shown here as a
-_reference_, not a pass/fail target.
+The seeded invariant test (`crates/validation/tests/invariants.rs`) asserts only
+paper-independent invariants — the paper's reported means are shown as a _reference_, not a
+pass/fail target.
 
 **Fig. 8 — Algorithm-2 iteration distribution.** Empirical CDF of refinement
 iterations over 200 random targets per seeding scheme (red n=2 window endpoints;

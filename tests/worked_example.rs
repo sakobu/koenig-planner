@@ -116,11 +116,7 @@ fn worked_example_is_self_consistent() {
     // --- Tight regression pin: the converged worked-example solution ([KD20] Table III/IV). ---
     // The coarse bands above are a paper-bound sanity check; these catch silent science drift
     // (a 1–3% Δv shift or a residual blow-up) that the bands would pass.
-    assert_relative_eq!(
-        sol.total_dv,
-        8.135_423_473_009_614_77e-2,
-        max_relative = 1e-9
-    );
+    assert_relative_eq!(sol.total_dv, 8.135_423_473_009_615e-2, max_relative = 1e-9);
     assert!(
         sol.residual < 1e-10,
         "residual {:.3e} regressed above the 1e-10 ceiling (converges to ~1.1e-14)",
@@ -134,9 +130,9 @@ fn worked_example_is_self_consistent() {
     let mut man: Vec<&_> = sol.maneuvers.iter().collect();
     man.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
     let expected: [(f64, f64); 3] = [
-        (14_460.0, 3.952_133_923_056_218_99e-2),
-        (101_970.0, 2.487_437_546_693_281_95e-2),
-        (104_190.0, 1.695_846_939_211_844_57e-2),
+        (14_460.0, 3.952_133_923_056_219e-2),
+        (101_970.0, 2.487_437_546_693_282e-2),
+        (104_190.0, 1.695_846_939_211_844_6e-2),
     ];
     for (m, (t, dv)) in man.iter().zip(expected) {
         assert_abs_diff_eq!(m.t, t, epsilon = 1e-6);
@@ -201,11 +197,7 @@ fn hunter_l2_cross_check_recovers_w() {
     assert!((1..=50).contains(&sol.iterations));
     assert!(sol.lambda.iter().all(|x| x.is_finite()));
     // --- Tight regression pin: the Hunter L2 cross-check converged solution. ---
-    assert_relative_eq!(
-        sol.total_dv,
-        2.487_623_042_218_083_09e-4,
-        max_relative = 1e-9
-    );
+    assert_relative_eq!(sol.total_dv, 2.487_623_042_218_083e-4, max_relative = 1e-9);
     assert!(
         sol.residual < 1e-7,
         "residual {:.3e} regressed above the 1e-7 ceiling (converges to ~4.6e-9)",
@@ -219,11 +211,11 @@ fn hunter_l2_cross_check_recovers_w() {
     let mut man: Vec<&_> = sol.maneuvers.iter().collect();
     man.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
     let expected: [(f64, f64); 5] = [
-        (0.0, 8.394_709_997_324_139_70e-5),
-        (6_380.0, 2.487_701_503_472_918_05e-7),
-        (7_170.0, 1.653_549_728_822_607_04e-5),
-        (18_460.0, 1.456_169_138_713_659_21e-4),
-        (20_530.0, 2.350_619_843_350_491_73e-6),
+        (0.0, 8.394_709_997_324_14e-5),
+        (6_380.0, 2.487_701_503_472_918e-7),
+        (7_170.0, 1.653_549_728_822_607e-5),
+        (18_460.0, 1.456_169_138_713_659_2e-4),
+        (20_530.0, 2.350_619_843_350_491_7e-6),
     ];
     for (m, (t, dv)) in man.iter().zip(expected) {
         assert_abs_diff_eq!(m.t, t, epsilon = 1e-6);

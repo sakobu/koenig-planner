@@ -4,7 +4,6 @@
 //! Asserts paper-INDEPENDENT invariants (NOT the paper's 4.90/3.99/3.31 means,
 //! which depend on solver conventions not reproduced bit-for-bit here). Runs only
 //! under the `validation` feature (for rand/rand_distr); CI runs `--all-features`.
-#![cfg(feature = "validation")]
 
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
