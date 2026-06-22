@@ -57,6 +57,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   optimized budget. The value is now measured on the full, pre-prune solution,
   consistent with `residual`. Affects the reported number in every frontend
   (core/api/server/wasm/py); maneuvers, residual, and dual are unchanged.
+- Completed the Apache-2.0 license appendix copyright; the Python package version
+  is now sourced solely from the crate manifest (`pyproject.toml` uses
+  `dynamic = ["version"]`), so it can no longer drift from `crates/py/Cargo.toml`.
+
+### Security
+- CI now scans dependencies for security advisories, license compatibility, and
+  source provenance with `cargo-deny`, on every push/PR and on a weekly schedule
+  (the schedule re-checks the committed `Cargo.lock` for newly-published
+  advisories against unchanged dependencies). The demo's npm tree is audited
+  (non-blocking).
+- All GitHub Actions and Docker base images are now pinned to immutable commit
+  SHAs / digests and kept current by Dependabot, removing the floating-tag and
+  rolling-branch (`@master`/`@stable`) supply-chain exposure.
+- The server container image now runs as a non-root user
+  (`gcr.io/distroless/cc-debian12:nonroot`, UID 65532).
 
 ## [0.1.0] — 2026-06-19
 
