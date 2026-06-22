@@ -111,12 +111,18 @@ fn malformed_literals_are_bad_request() {
     }
 }
 
-/// A request that is valid except for an extra unknown top-level field must be
-/// rejected as BadRequest (no silent skip via serde's IgnoredAny path). Also
-/// covers an unknown field nested in the `chief` object and in `params`.
+/// A request that is valid except for an extra unknown field must be rejected as
+/// BadRequest (no silent skip via serde's IgnoredAny path) — at the top level,
+/// inside the `chief` object, and inside `params`. The positive companion proves
+/// the rejection is attributable to the unknown field: the same request WITHOUT
+/// junk passes the wire layer (parse + validate), returning Ok or a Solver error
+/// — never BadRequest.
 #[test]
 fn unknown_fields_are_rejected_as_bad_request() {
     let valid_chief = r#"{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0}"#;
+    // The chief object with an extra unknown field, derived from `valid_chief`
+    // (drop its closing brace, append the junk key) so the two stay in sync.
+    let chief_with_junk = format!(r#"{},"junk":1}}"#, valid_chief.strip_suffix('}').unwrap());
     let cases: Vec<String> = vec![
         // unknown top-level field on SolveRequest
         format!(
@@ -124,7 +130,7 @@ fn unknown_fields_are_rejected_as_bad_request() {
         ),
         // unknown field inside the chief (OrbitDto)
         format!(
-            r#"{{"chief":{{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0,"junk":1}},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
+            r#"{{"chief":{chief_with_junk},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
         ),
         // unknown field inside params (SolveParamsDto)
         format!(
@@ -134,6 +140,21 @@ fn unknown_fields_are_rejected_as_bad_request() {
     for c in &cases {
         let err = run_json(c).expect_err(&format!("expected error for: {c}"));
         assert_eq!(err.kind, ApiErrorKind::BadRequest, "input: {c}");
+    }
+
+    // Positive companion: the SAME request without the unknown field clears the
+    // wire layer, so the BadRequest above is caused by the junk and not by some
+    // unrelated invalidity. The solve may still fail numerically (Solver), but
+    // it must never be a wire-layer BadRequest.
+    let base = format!(
+        r#"{{"chief":{valid_chief},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
+    );
+    if let Err(e) = run_json(&base) {
+        assert_eq!(
+            e.kind,
+            ApiErrorKind::Solver,
+            "base request (no junk) must not be a wire-layer BadRequest"
+        );
     }
 }
 
@@ -179,20 +200,16 @@ fn stressful_inputs_never_crash() {
 fn oversized_request_body_is_rejected() {
     use koenig_damico_planner_api::MAX_REQUEST_BYTES;
     let valid_chief = r#"{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0}"#;
-    // Pad initial_times until the body exceeds the cap.
-    let big = (0..)
-        .map(|k| (k % 100).to_string())
-        .scan(String::new(), |acc, s| {
-            if !acc.is_empty() {
-                acc.push(',');
-            }
-            acc.push_str(&s);
-            Some(acc.clone())
-        })
-        .find(|acc| acc.len() > MAX_REQUEST_BYTES)
-        .unwrap();
+    // An `initial_times` array large enough that the FULL body exceeds the cap
+    // (each "1.0" element plus its separator is ~4 bytes).
+    let big = vec!["1.0"; MAX_REQUEST_BYTES / 4 + 1].join(",");
     let body = format!(
         r#"{{"chief":{valid_chief},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}},"initial_times":[{big}]}}"#
+    );
+    assert!(
+        body.len() > MAX_REQUEST_BYTES,
+        "test body ({} bytes) must exceed the cap",
+        body.len()
     );
     let err = run_json(&body).expect_err("oversized body must reject");
     assert_eq!(err.kind, ApiErrorKind::BadRequest);
