@@ -293,6 +293,11 @@ proptest! {
     /// all draws, with a tail clustered near 2.5e-2 and a rare ill-conditioned-Γ
     /// extreme at 5.55e-2; 8e-2 clears that observed max with margin while
     /// remaining a meaningful guard against gross unpruned dust.
+    /// NOTE: this reconstruction error is geometry-amplified through κ(Γ) and
+    /// is heavy-tailed — the 8e-2 bound is a characterized empirical guard with
+    /// only ~1.45× margin over the 5.55e-2 observed max, the thinnest in the
+    /// suite. It is intentionally a gross-dust guard, not a tight contract; the
+    /// tight, conditioning-independent guard is `pruned_cost_impact_is_bounded`.
     #[test]
     fn pruned_plan_residual_stays_small(raw in well_conditioned_problem()) {
         let problem = build_reachable(&raw);
@@ -309,6 +314,32 @@ proptest! {
         let r_pruned = (w - recon).norm() / w.norm();
         prop_assert!(r_pruned < 8e-2, "pruned residual {} too large", r_pruned);
         prop_assert!(sol.residual < 1e-6, "pre-prune residual {} too large", sol.residual);
+    }
+
+    /// Implementation contract (conditioning-INDEPENDENT, unlike the
+    /// reconstruction-error guard): pruning only drops dust, so the kept plan's
+    /// L2 fuel cost is within (#dropped)·PRUNE_REL of the reported pre-prune
+    /// objective. Each dropped Δv has ‖Δv‖ < PRUNE_REL (1e-3) × max‖Δv‖, and
+    /// max‖Δv‖ ≤ total_dv (a single term cannot exceed the sum), so with the
+    /// handful of dropped dust maneuvers in this tier the relative cost gap is
+    /// < ~1e-2 regardless of Γ conditioning. This is the tight guard the
+    /// geometry-amplified reconstruction-error bound (below) cannot be.
+    #[test]
+    fn pruned_cost_impact_is_bounded(raw in well_conditioned_problem()) {
+        let problem = build_reachable(&raw);
+        prop_assume!(problem.is_some());
+        let (dynamics, grid, w, seeds) = problem.unwrap();
+        let params = SolveParams::default();
+        let result = solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds);
+        prop_assume!(result.is_ok());
+        let sol = result.unwrap();
+        // Under Norm2 the reported total_dv is the pre-prune Σ‖Δv‖.
+        let kept_cost: f64 = sol.maneuvers.iter().map(|m| m.dv.norm()).sum();
+        let rel_cost_gap = (sol.total_dv - kept_cost).abs() / sol.total_dv.max(1e-12);
+        prop_assert!(
+            rel_cost_gap < 2e-2,
+            "pruned cost gap {rel_cost_gap} exceeds the conditioning-independent dust bound"
+        );
     }
 }
 
