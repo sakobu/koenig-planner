@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 /// These are the six mean Keplerian elements `[a, e, i, Ω, ω, M]` as used
 /// throughout Koenig & D'Amico (2020).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct OrbitDto {
     /// Semimajor axis `[m]`.
     pub a: f64,
@@ -61,6 +62,7 @@ pub enum CostSpec {
 /// Solver tuning knobs.  Every field is optional; missing fields fall back to
 /// [`SolveParams::default`](crate::core::SolveParams::default) (Table III of Koenig & D'Amico 2020).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SolveParamsDto {
     /// Coarse-sample count `|T^d|` for Algorithm 1 (default 20).
     #[serde(default)]
@@ -81,6 +83,7 @@ pub struct SolveParamsDto {
 /// Angles in [`OrbitDto`] are **degrees**; `w_metres` is in **metres**;
 /// times are in **seconds**.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SolveRequest {
     /// Chief mean absolute orbit (angles in degrees).
     pub chief: OrbitDto,

@@ -92,6 +92,11 @@ fn dispatch<C: CostModel>(
 // Public entry point
 // ──────────────────────────────────────────────────────────────────────────────
 
+/// Maximum accepted request-body size in bytes for [`run_json`]. The uncapped
+/// library/py/wasm entrypoints have no transport-layer limit, so this bounds
+/// the worst-case parse allocation. The HTTP server applies its own 64 KiB cap.
+pub const MAX_REQUEST_BYTES: usize = 1_048_576;
+
 /// Maximum number of grid points [`run`] will solve over.
 ///
 /// The largest real request (the worked example) is ~3,934 points; this is ~25×
@@ -194,10 +199,20 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
 /// frontends so the serde glue lives in exactly one place.
 ///
 /// # Errors
-/// Returns [`ApiError`] with `kind = "bad_request"` for malformed request JSON
-/// or invalid inputs, or `kind = "solver"` for numerically unsolvable / failed
-/// problems (including an internal response-serialization failure).
+/// Returns [`ApiError`] with `kind = "bad_request"` for malformed request JSON,
+/// invalid inputs, or a body exceeding [`MAX_REQUEST_BYTES`], or `kind = "solver"`
+/// for numerically unsolvable / failed problems (including an internal
+/// response-serialization failure).
 pub fn run_json(input: &str) -> Result<String, ApiError> {
+    if input.len() > MAX_REQUEST_BYTES {
+        return Err(ApiError {
+            kind: ApiErrorKind::BadRequest,
+            message: format!(
+                "request body is {} bytes (> {MAX_REQUEST_BYTES} max)",
+                input.len()
+            ),
+        });
+    }
     let req: SolveRequest = serde_json::from_str(input).map_err(|e| ApiError {
         kind: ApiErrorKind::BadRequest,
         message: format!("invalid request JSON: {e}"),
