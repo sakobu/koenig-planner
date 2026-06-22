@@ -133,6 +133,21 @@ fn nearest_grid_indices(grid: &TimeGrid, times: &[f64]) -> Vec<usize> {
 /// `Γ(t)` caching.
 ///
 /// Ref: \[KD20\] Algorithms 1/2/3 (full pipeline); eq. 4 (master problem).
+///
+/// # Errors
+/// - [`PlannerError::InvalidInput`] if the grid is non-finite or has `dt <= 0`
+///   or `t_f <= t_i`, if `params.n_init` or `params.n_coarse` is `0`, if the
+///   target `w` is zero or non-finite, or if the candidate-time set degenerates
+///   to empty during refinement.
+/// - [`PlannerError::KeplerDivergence`] if evaluating `Γ(t)` runs a Kepler solve
+///   whose Newton iteration fails to converge. The built-in `J2Roe` validates
+///   its chief eccentricity, so this is unreachable on that path; a custom
+///   `Dynamics` may instead surface [`PlannerError::InvalidInput`] for an
+///   out-of-domain (non-elliptic) chief.
+/// - [`PlannerError::SolverFailed`] if the refinement or min-fuel convex solver
+///   fails to set up or solve.
+/// - [`PlannerError::NotConverged`] if Algorithm 2 reaches its iteration cap
+///   before `max_t g <= 1 + eps_cost`.
 pub fn solve<D: Dynamics, C: CostModel>(
     dynamics: &D,
     cost: &C,
@@ -158,7 +173,13 @@ pub fn solve<D: Dynamics, C: CostModel>(
 ///
 /// Ref: \[KD20\] Fig. 8 (initialization-sensitivity study; bypasses Algorithm 1).
 ///
-/// Returns [`PlannerError::InvalidInput`] if no finite initial time lands in range.
+/// # Errors
+/// - [`PlannerError::InvalidInput`] if `initial_times` holds no finite value that
+///   snaps into the grid.
+/// - Every error [`solve`] can return, under the same conditions:
+///   [`PlannerError::InvalidInput`] for the shared input validation or an empty
+///   refinement set, plus [`PlannerError::KeplerDivergence`],
+///   [`PlannerError::SolverFailed`], and [`PlannerError::NotConverged`].
 pub fn solve_from_initial_times<D: Dynamics, C: CostModel>(
     dynamics: &D,
     cost: &C,
