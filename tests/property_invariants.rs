@@ -206,3 +206,82 @@ proptest! {
         prop_assert!(sol.total_dv.is_finite());
     }
 }
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
+
+    /// [KD20] eq. 40 / Algorithm 2 termination: at convergence the optimal
+    /// dual satisfies max_t g_{U(1,t)}(Γᵀ(t)λ) ≤ 1 + ε_cost. Reuses the
+    /// planner's own contact code, so this is a true optimality certificate.
+    #[test]
+    fn converged_dual_satisfies_support_constraint(raw in well_conditioned_problem()) {
+        let problem = build_reachable(&raw);
+        prop_assume!(problem.is_some());
+        let (dynamics, grid, w, seeds) = problem.unwrap();
+        let params = SolveParams::default();
+        let mut converged = false;
+        for use_facemax in [false, true] {
+            let sol = if use_facemax {
+                solve_from_initial_times(&dynamics, &UniformFaceMax, w, grid, &params, &seeds)
+            } else {
+                solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds)
+            };
+            let Ok(sol) = sol else { continue; };
+            converged = true;
+            let max_g = if use_facemax {
+                max_gauge(&dynamics, &UniformFaceMax, &grid, &sol.lambda)
+            } else {
+                max_gauge(&dynamics, &UniformNorm2, &grid, &sol.lambda)
+            };
+            prop_assert!(
+                max_g <= 1.0 + params.eps_cost + 1e-6,
+                "max_t g = {} exceeds 1 + eps_cost (facemax={})", max_g, use_facemax
+            );
+        }
+        prop_assume!(converged);
+    }
+
+    /// [KD20] Property 3 / eq. 24: the cost is a degree-1 gauge. Scaling the
+    /// target by α scales the optimal cost by α (the robust scalar relation).
+    #[test]
+    fn cost_is_positively_homogeneous(
+        raw in well_conditioned_problem(),
+        alpha in 0.1..10.0f64,
+    ) {
+        let problem = build_reachable(&raw);
+        prop_assume!(problem.is_some());
+        let (dynamics, grid, w, seeds) = problem.unwrap();
+        let params = SolveParams::default();
+        let base = solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds);
+        let scaled = solve_from_initial_times(&dynamics, &UniformNorm2, alpha * w, grid, &params, &seeds);
+        prop_assume!(base.is_ok() && scaled.is_ok());
+        let base = base.unwrap();
+        let scaled = scaled.unwrap();
+        let expected = alpha * base.total_dv;
+        prop_assert!(
+            (scaled.total_dv - expected).abs() <= 1e-4 * expected.max(1e-12),
+            "homogeneity: total_dv(αw) = {}, α·total_dv(w) = {}", scaled.total_dv, expected
+        );
+    }
+
+    /// Implementation contract (not paper math): recomputing the residual from
+    /// the pruned maneuvers stays small — pruned mass per maneuver < PRUNE_REL
+    /// (1e-3) of the largest Δv, summed over the returned maneuvers.
+    #[test]
+    fn pruned_plan_residual_stays_small(raw in well_conditioned_problem()) {
+        let problem = build_reachable(&raw);
+        prop_assume!(problem.is_some());
+        let (dynamics, grid, w, seeds) = problem.unwrap();
+        let params = SolveParams::default();
+        let result = solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds);
+        prop_assume!(result.is_ok());
+        let sol = result.unwrap();
+        let mut recon = Pseudostate::zeros();
+        for m in &sol.maneuvers {
+            recon += dynamics.gamma(m.t).expect("reachable chief => Γ finite") * m.dv;
+        }
+        let r_pruned = (w - recon).norm() / w.norm();
+        prop_assert!(r_pruned < 5e-3, "pruned residual {} too large", r_pruned);
+        prop_assert!(sol.residual < 1e-6, "pre-prune residual {} too large", sol.residual);
+    }
+}
