@@ -50,14 +50,14 @@ impl TimeGrid {
     ///
     /// # Errors
     /// Returns [`PlannerError::InvalidInput`] unless `t_i`, `t_f`, `dt` are all
-    /// finite, `dt > 0`, and `t_f >= t_i`. This is the only validating entry
+    /// finite, `dt > 0`, and `t_f > t_i`. This is the only validating entry
     /// point: constructing `TimeGrid { .. }` via the public fields bypasses it,
     /// in which case `len`/`time`/`times` assume that same invariant.
     pub fn uniform(t_i: f64, t_f: f64, dt: f64) -> Result<Self, PlannerError> {
-        if !t_i.is_finite() || !t_f.is_finite() || !dt.is_finite() || dt <= 0.0 || t_f < t_i {
+        if !t_i.is_finite() || !t_f.is_finite() || !dt.is_finite() || dt <= 0.0 || t_f <= t_i {
             return Err(PlannerError::InvalidInput(format!(
                 "TimeGrid::uniform requires finite t_i,t_f,dt with dt > 0 and \
-                 t_f >= t_i (got t_i={t_i}, t_f={t_f}, dt={dt})"
+                 t_f > t_i (got t_i={t_i}, t_f={t_f}, dt={dt})"
             )));
         }
         Ok(Self { t_i, t_f, dt })
@@ -65,7 +65,7 @@ impl TimeGrid {
 
     /// Number of grid points, inclusive of both endpoints.
     ///
-    /// Assumes the [`uniform`](Self::uniform) invariant (`dt > 0`, `t_f >= t_i`,
+    /// Assumes the [`uniform`](Self::uniform) invariant (`dt > 0`, `t_f > t_i`,
     /// finite); on a hand-built `TimeGrid` violating it the `f64 -> usize` cast
     /// saturates.
     pub fn len(&self) -> usize {
@@ -260,6 +260,6 @@ mod tests {
         assert!(TimeGrid::uniform(0.0, 60.0, f64::NAN).is_err());
         assert!(TimeGrid::uniform(0.0, 60.0, f64::INFINITY).is_err());
         assert!(TimeGrid::uniform(60.0, 0.0, 1.0).is_err()); // t_f < t_i
-        assert!(TimeGrid::uniform(0.0, 0.0, 1.0).is_ok()); // single-point grid is valid
+        assert!(TimeGrid::uniform(0.0, 0.0, 1.0).is_err()); // zero-length window rejected (matches validate_inputs / J2Roe::new)
     }
 }

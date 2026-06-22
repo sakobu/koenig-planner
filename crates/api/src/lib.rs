@@ -131,7 +131,7 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
     // 2. Build the J2-ROE dynamics (validates chief + window).
     let dyn_ = J2Roe::new(chief, req.t_i, req.t_f).map_err(bad_request)?;
 
-    // 3. Build the uniform time grid (validates dt > 0, t_f >= t_i).
+    // 3. Build the uniform time grid (validates dt > 0, t_f > t_i).
     let grid = TimeGrid::uniform(req.t_i, req.t_f, req.dt).map_err(bad_request)?;
 
     // 3a. Bound the grid size before solving: the Γ-cache allocation
@@ -165,7 +165,10 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
             let period = period.unwrap_or_else(|| TAU / chief.mean_motion());
             let cost = match t_perigee0 {
                 Some(tp) => Piecewise::with_perigee_epoch(period, tp),
-                None => Piecewise::new(period),
+                None => Piecewise::with_perigee_epoch(
+                    period,
+                    (-chief.mean_anom / chief.mean_motion()).rem_euclid(period),
+                ),
             }
             .map_err(bad_request)?;
             dispatch(&dyn_, &cost, w, grid, &params, its)
