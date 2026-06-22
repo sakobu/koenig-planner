@@ -19,6 +19,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (defense-in-depth, alongside the `MAX_REQUEST_BYTES` cap above).
 
 ### Added
+- Tight snapshot regressions for the worked-example solutions (Koenig Table III and the
+  Hunter L2 cross-check): total Δv, residual ceiling, maneuver count, and per-maneuver
+  times/magnitudes are now pinned alongside the existing paper-bound bands, so silent
+  science drift fails the test instead of passing.
 - HTTP server now catches handler/middleware panics via `CatchPanicLayer` and returns the uniform `{"kind":"internal"}` 500 (panic payload logged server-side, never sent to the client). Wire-enum tags are pinned by tests.
 
 ### Changed
