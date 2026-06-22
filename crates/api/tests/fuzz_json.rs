@@ -148,7 +148,7 @@ fn stressful_inputs_never_crash() {
 /// This test pins the observed behaviour: depth-300 nesting in an unknown
 /// field must not panic or abort; any outcome (Ok or typed error) is valid.
 #[test]
-fn deeply_nested_unknown_field_is_rejected_not_overflowing() {
+fn deeply_nested_unknown_field_is_skipped_without_crash() {
     let valid_chief = r#"{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0}"#;
     let depth = 300;
     let deep = format!(
