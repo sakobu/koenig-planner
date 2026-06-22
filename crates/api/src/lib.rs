@@ -199,9 +199,10 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
 /// frontends so the serde glue lives in exactly one place.
 ///
 /// # Errors
-/// Returns [`ApiError`] with `kind = "bad_request"` for malformed request JSON
-/// or invalid inputs, or `kind = "solver"` for numerically unsolvable / failed
-/// problems (including an internal response-serialization failure).
+/// Returns [`ApiError`] with `kind = "bad_request"` for malformed request JSON,
+/// invalid inputs, or a body exceeding [`MAX_REQUEST_BYTES`], or `kind = "solver"`
+/// for numerically unsolvable / failed problems (including an internal
+/// response-serialization failure).
 pub fn run_json(input: &str) -> Result<String, ApiError> {
     if input.len() > MAX_REQUEST_BYTES {
         return Err(ApiError {

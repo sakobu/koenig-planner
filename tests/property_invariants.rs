@@ -320,10 +320,12 @@ proptest! {
     /// reconstruction-error guard): pruning only drops dust, so the kept plan's
     /// L2 fuel cost is within (#dropped)·PRUNE_REL of the reported pre-prune
     /// objective. Each dropped Δv has ‖Δv‖ < PRUNE_REL (1e-3) × max‖Δv‖, and
-    /// max‖Δv‖ ≤ total_dv (a single term cannot exceed the sum), so with the
-    /// handful of dropped dust maneuvers in this tier the relative cost gap is
-    /// < ~1e-2 regardless of Γ conditioning. This is the tight guard the
-    /// geometry-amplified reconstruction-error bound (below) cannot be.
+    /// max‖Δv‖ ≤ total_dv under UniformNorm2 (where total_dv = Σ‖Δv‖, so a
+    /// single term cannot exceed the sum), so with the handful of dropped dust
+    /// maneuvers in this tier the relative cost gap is < ~1e-2 regardless of Γ
+    /// conditioning. This is the tight guard the geometry-amplified
+    /// reconstruction-error bound (`pruned_plan_residual_stays_small`, above)
+    /// cannot be.
     #[test]
     fn pruned_cost_impact_is_bounded(raw in well_conditioned_problem()) {
         let problem = build_reachable(&raw);
