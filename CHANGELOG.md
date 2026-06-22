@@ -46,6 +46,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   surface a bad period as a `bad_request`.
 
 ### Fixed
+- The Monte-Carlo Fig. 9 timing sweep now surfaces solver failures: `run_fig9` returns a
+  failure count (matching `run_fig8`), and the driver warns and skips the timing plot when any
+  solve fails, instead of silently plotting a NaN-bearing series.
+- Stale docs: the README no longer claims the seeded invariant test "runs without the feature
+  flag", and the api golden test comment no longer mislabels the dual lower bound (≈0.0808) as
+  the total Δv (≈0.0814).
 - The `piecewise` cost's default perigee-window epoch is now derived from the
   chief's mean anomaly `M₀` — the first perigee passage at or after `t = 0`,
   `(-M₀ / n) mod period` — instead of assuming the chief is at apogee at

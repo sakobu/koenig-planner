@@ -270,6 +270,8 @@ pub struct Fig9Row {
 /// `dt = (t_f - t_i)/(n-1)`, one warmup solve (discarded), one timed solve. The
 /// actual `grid.len()` is recorded (it may differ from `n` by ±1 due to rounding
 /// in `TimeGrid::len`). Timing shape is `w`-independent; use a single fixed `w`.
+/// Returns `(rows, failures)` — `failures` counts solves that errored; those rows
+/// carry `iterations: 0, residual: NAN` so failures are visible in the CSV.
 ///
 /// Ref: \[KD20\] Fig. 9 (timing study).
 pub fn run_fig9<D: Dynamics, C: CostModel>(
@@ -277,9 +279,10 @@ pub fn run_fig9<D: Dynamics, C: CostModel>(
     cost: &C,
     w: Pseudostate,
     sizes: &[usize],
-) -> Vec<Fig9Row> {
+) -> (Vec<Fig9Row>, usize) {
     let params = SolveParams::default();
-    sizes
+    let mut failures = 0usize;
+    let rows = sizes
         .iter()
         .map(|&n| {
             let dt = (T_F - T_I) / (n.max(2) - 1) as f64;
@@ -296,16 +299,20 @@ pub fn run_fig9<D: Dynamics, C: CostModel>(
                     iterations: s.iterations,
                     residual: s.residual,
                 },
-                Err(_) => Fig9Row {
-                    grid_len: grid.len(),
-                    dt,
-                    seconds,
-                    iterations: 0,
-                    residual: f64::NAN,
-                },
+                Err(_) => {
+                    failures += 1;
+                    Fig9Row {
+                        grid_len: grid.len(),
+                        dt,
+                        seconds,
+                        iterations: 0,
+                        residual: f64::NAN,
+                    }
+                }
             }
         })
-        .collect()
+        .collect();
+    (rows, failures)
 }
 
 /// Empirical CDF of iteration counts as `(value, fraction ≤ value)` over the
@@ -514,7 +521,7 @@ pub fn plot_fig8_cdf(
 pub fn fig9<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
     let w = sample_pseudostates(1, SEED)[0];
     println!("\nFig. 9 — solve time vs |T| (10⁶ is multi-second / ~150 MB)");
-    let rows = run_fig9(dynamics, cost, w, &FIG9_SIZES);
+    let (rows, failures) = run_fig9(dynamics, cost, w, &FIG9_SIZES);
     println!(
         "  {:>10}  {:>12}  {:>10}  {:>6}  {:>10}",
         "grid_len", "dt_s", "seconds", "iters", "residual"
@@ -525,15 +532,21 @@ pub fn fig9<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
             r.grid_len, r.dt, r.seconds, r.iterations, r.residual
         );
     }
+    if failures > 0 {
+        eprintln!("WARNING: {failures} solve(s) failed (expected 0); skipping the timing plot");
+    }
     let path = "target/fig9_timing.csv";
     match write_fig9_csv(path, &rows) {
         Ok(()) => println!("  rows written         : {path} ({} rows)", rows.len()),
         Err(e) => eprintln!("  CSV write failed     : {e}"),
     }
 
-    match plot_fig9_timing("target/fig9_timing.png", &rows) {
-        Ok(()) => println!("  timing plot          : target/fig9_timing.png"),
-        Err(e) => eprintln!("  PNG write failed     : {e}"),
+    if failures > 0 {
+        // CSV written above so failures are visible in the data; skip the plot.
+    } else if let Err(e) = plot_fig9_timing("target/fig9_timing.png", &rows) {
+        eprintln!("fig9 plot error: {e}");
+    } else {
+        println!("  timing plot          : target/fig9_timing.png");
     }
 }
 
@@ -615,7 +628,8 @@ mod tests {
         let cost = worked_example_cost();
         let w = sample_pseudostates(1, SEED)[0];
         let sizes = [10usize, 100];
-        let rows = run_fig9(&dynamics, &cost, w, &sizes);
+        let (rows, failures) = run_fig9(&dynamics, &cost, w, &sizes);
+        assert_eq!(failures, 0);
         assert_eq!(rows.len(), 2);
         assert!(rows.iter().all(|r| r.seconds >= 0.0 && r.grid_len >= 2));
         // Finer grid is at least as large in point count.
