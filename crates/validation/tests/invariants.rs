@@ -46,6 +46,7 @@ fn monte_carlo_invariants_hold() {
             .filter(|r| r.n_init == n_init)
             .map(|r| r.iterations as f64)
             .collect();
+        assert!(!v.is_empty(), "scheme n_init={n_init} produced no rows");
         v.iter().sum::<f64>() / v.len() as f64
     };
     let (m2, m6, m10) = (mean(2), mean(6), mean(10));

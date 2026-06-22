@@ -136,14 +136,14 @@ placed at their true anomaly via the core's own Kepler solver). See
 This repository is a Cargo workspace. The core solver is the root crate; the others are thin
 frontends over a shared serde/JSON facade:
 
-| Crate                          | Path            | Distribution                                                | Purpose                                                               |
-| ------------------------------ | --------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
-| `koenig-damico-planner`        | `.` (root)      | [crates.io](https://crates.io/crates/koenig-damico-planner) | the core solver (this README)                                         |
-| `koenig-damico-planner-api`    | `crates/api`    | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
-| `koenig-damico-planner-py`     | `crates/py`     | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
-| `koenig-damico-planner-server` | `crates/server` | internal (`publish = false`)                                | self-hostable HTTP service (axum) — `POST /solve`, `GET /health`      |
-| `koenig-damico-planner-wasm`       | `crates/wasm`       | internal (`publish = false`)                                | WASM bindings + in-browser demo — `tsify`-typed `solve` / `solve_json` |
-| `koenig-damico-planner-validation` | `crates/validation` | internal (`publish = false`)                                | Monte-Carlo Fig. 7/8/9 reproduction harness |
+| Crate                                | Path                | Distribution                                                | Purpose                                                               |
+| ------------------------------------ | ------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| `koenig-damico-planner`              | `.` (root)          | [crates.io](https://crates.io/crates/koenig-damico-planner) | the core solver (this README)                                         |
+| `koenig-damico-planner-api`          | `crates/api`        | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
+| `koenig-damico-planner-py`           | `crates/py`         | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
+| `koenig-damico-planner-server`       | `crates/server`     | internal (`publish = false`)                                | self-hostable HTTP service (axum) — `POST /solve`, `GET /health`      |
+| `koenig-damico-planner-wasm`         | `crates/wasm`       | internal (`publish = false`)                                | WASM bindings + in-browser demo — `tsify`-typed `solve` / `solve_json` |
+| `koenig-damico-planner-validation`   | `crates/validation` | internal (`publish = false`)                                | Monte-Carlo Fig. 7/8/9 reproduction harness                           |
 
 ## Validation harness (Fig. 7 / Fig. 8 / Fig. 9)
 

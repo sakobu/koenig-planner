@@ -16,7 +16,7 @@ use approx::{assert_abs_diff_eq, assert_relative_eq};
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
 use koenig_damico_planner::{
-    refine_socp, solve, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid,
+    refine_socp, solve, CostModel, Dynamics, Maneuver, Pseudostate, SolveParams, TimeGrid,
 };
 use nalgebra::SVector;
 use std::f64::consts::TAU;
@@ -127,7 +127,7 @@ fn worked_example_is_self_consistent() {
         3,
         "maneuver count regressed from the expected 3"
     );
-    let mut man: Vec<&_> = sol.maneuvers.iter().collect();
+    let mut man: Vec<&Maneuver> = sol.maneuvers.iter().collect();
     man.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
     let expected: [(f64, f64); 3] = [
         (14_460.0, 3.952_133_923_056_219e-2),
@@ -208,7 +208,7 @@ fn hunter_l2_cross_check_recovers_w() {
         5,
         "maneuver count regressed from the expected 5"
     );
-    let mut man: Vec<&_> = sol.maneuvers.iter().collect();
+    let mut man: Vec<&Maneuver> = sol.maneuvers.iter().collect();
     man.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
     let expected: [(f64, f64); 5] = [
         (0.0, 8.394_709_997_324_14e-5),

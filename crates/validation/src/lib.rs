@@ -532,9 +532,6 @@ pub fn fig9<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
             r.grid_len, r.dt, r.seconds, r.iterations, r.residual
         );
     }
-    if failures > 0 {
-        eprintln!("WARNING: {failures} solve(s) failed (expected 0); skipping the timing plot");
-    }
     let path = "target/fig9_timing.csv";
     match write_fig9_csv(path, &rows) {
         Ok(()) => println!("  rows written         : {path} ({} rows)", rows.len()),
@@ -542,7 +539,7 @@ pub fn fig9<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
     }
 
     if failures > 0 {
-        // CSV written above so failures are visible in the data; skip the plot.
+        eprintln!("WARNING: {failures} solve(s) failed (expected 0); skipping the timing plot");
     } else if let Err(e) = plot_fig9_timing("target/fig9_timing.png", &rows) {
         eprintln!("fig9 plot error: {e}");
     } else {
