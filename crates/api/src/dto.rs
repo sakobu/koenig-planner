@@ -65,10 +65,12 @@ pub enum CostSpec {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SolveParamsDto {
-    /// Coarse-sample count `|T^d|` for Algorithm 1 (default 20).
+    /// Coarse-sample count `|T^d|` for Algorithm 1 (default 20). Ignored when
+    /// `initial_times` is supplied, since that path bypasses Algorithm 1.
     #[serde(default)]
     pub n_coarse: Option<usize>,
-    /// Initial candidate-time count `n_init` (default 6).
+    /// Initial candidate-time count `n_init` (default 6). Ignored when
+    /// `initial_times` is supplied, since that path bypasses Algorithm 1.
     #[serde(default)]
     pub n_init: Option<usize>,
     /// Convergence tolerance `eps_cost` (default 0.01).
