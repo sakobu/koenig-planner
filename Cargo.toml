@@ -42,7 +42,7 @@ serde = ["dep:serde", "nalgebra/serde-serialize"]
 
 # Render docs.rs with `serde` enabled so the derived Serialize/Deserialize impls
 # on the public wire types are visible at https://docs.rs/koenig-damico-planner.
-# Targeted on purpose (not `all-features`): `validation` is a tooling-only feature
-# that pulls heavy native deps (plotters/fontconfig) and exposes no wire API.
+# `serde` is the core's only feature, so this is its full feature set; it is named
+# explicitly to document that the published docs include the serde wire API.
 [package.metadata.docs.rs]
 features = ["serde"]

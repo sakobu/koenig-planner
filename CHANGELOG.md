@@ -69,10 +69,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `PlannerError`, `AbsoluteOrbit`). The crate has no default feature, so docs.rs
   built with `serde` off and omitted these impls from the published docs; a
   `[package.metadata.docs.rs]` entry now enables the `serde` feature for the docs
-  build only — targeted (not `all-features`) so the tooling-only `validation`
-  native deps (`plotters`/fontconfig) are not pulled in. Docs-render metadata
-  only: no code, API, or feature change, and not semver-relevant; it takes effect
-  on the next published version.
+  build only. Docs-render metadata only: no code, API, or feature change, and not
+  semver-relevant; it takes effect on the next published version.
 - `J2Roe::new` now rejects a chief whose semimajor axis `a` is not finite and
   positive, returning `PlannerError::InvalidInput` — completing the
   bounded-ellipse precondition alongside the existing `e ∈ [0,1)` check
