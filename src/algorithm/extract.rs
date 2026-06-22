@@ -193,11 +193,10 @@ mod tests {
         // eq. 4 / eq. 9), NOT the L2 norm of the recovered net Δv. The target
         // lands on a tetrahedron FACE, `w_top = v0 + v2`, whose gauge is 2.0
         // (θ0 = θ2 = 1) while `‖v0 + v2‖₂ = √(4/3) ≈ 1.1547`.
-        let a = (2.0_f64 / 3.0).sqrt();
-        let b = (1.0_f64 / 3.0).sqrt();
-        let v0 = SVector::<f64, M>::new(a, 0.0, -b);
-        let v2 = SVector::<f64, M>::new(0.0, a, b);
-        let target_dv = v0 + v2; // (a, a, 0): ‖·‖₂ ≈ 1.1547, gauge = 2.0
+        let cols = crate::cost::facemax::vertex_columns();
+        let v0 = cols[0];
+        let v2 = cols[2];
+        let target_dv = v0 + v2; // = (√(2/3), √(2/3), 0): ‖·‖₂ ≈ 1.1547, gauge = 2.0
 
         let grid = TimeGrid::uniform(0.0, 10.0, 1.0).unwrap();
         let gammas: Vec<SMatrix<f64, N, M>> =

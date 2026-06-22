@@ -4,7 +4,7 @@
 //! Phi_21); `B` is unchanged. `Phi_24 = 7 kappa e_{y1} P dt / eta` is
 //! intentionally nonzero (delta-lambda couples to delta-e_y under J2).
 
-use super::constants::{J2, MU, R_E};
+use super::constants::j2_secular_numerator;
 use super::orbit::AbsoluteOrbit;
 use crate::types::N;
 use nalgebra::SMatrix;
@@ -29,7 +29,7 @@ pub fn state_transition(
     let n = orb_t.mean_motion();
     let w_dot = orb_t.secular_rates().argp_dot;
 
-    let kappa = 3.0 * J2 * R_E * R_E * MU.sqrt() / (4.0 * a.powf(3.5) * eta.powi(4));
+    let kappa = j2_secular_numerator() / (4.0 * a.powf(3.5) * eta.powi(4));
     let g = eta.powi(-2); // G = eta^-2
     let ci = i.cos();
     let p = 3.0 * ci * ci - 1.0; // P = 3 cos^2 i - 1

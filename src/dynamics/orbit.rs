@@ -1,7 +1,7 @@
 //! Mean absolute Keplerian orbit, its J2 secular rates (\[KD20\] eq. 50), and
 //! linear secular propagation. Mean elements in, mean elements out.
 
-use super::constants::{J2, MU, R_E};
+use super::constants::{j2_secular_numerator, MU};
 use super::kepler::mean_to_true;
 use crate::types::PlannerError;
 
@@ -80,7 +80,7 @@ impl AbsoluteOrbit {
         let n = self.mean_motion();
         let eta = self.eta();
         let ci = self.i.cos();
-        let pref = 3.0 * J2 * R_E * R_E * MU.sqrt() / self.a.powf(3.5);
+        let pref = j2_secular_numerator() / self.a.powf(3.5);
         SecularRates {
             raan_dot: -pref / (2.0 * eta.powi(4)) * ci,
             argp_dot: pref / (4.0 * eta.powi(4)) * (5.0 * ci * ci - 1.0),
