@@ -155,10 +155,16 @@ proptest! {
         prop_assume!(converged);
     }
 
-    /// [KD20] Property 5 / eq. 42: an optimal profile needs ≤ n = 6 impulses.
-    /// Asserted on the pruned output as a sparsity-regression guard.
+    /// [KD20] Property 5 (p.4) / eq. 21 (S(c) = co S¹(c)): a control profile
+    /// reaching w with ≤ n = 6 impulses EXISTS, but this is an EXISTENCE bound
+    /// — the convex optimum can be non-unique and an interior-point solver may
+    /// return a legitimate non-vertex optimum with more active impulses at the
+    /// same optimal cost c*. So we assert the invariants the implementation
+    /// actually guarantees: a nonzero reachable target yields ≥ 1 maneuver, and
+    /// the returned set carries no dust (extraction prunes any Δv far below the
+    /// largest), with every Δv finite.
     #[test]
-    fn maneuver_count_within_caratheodory_bound(raw in well_conditioned_problem()) {
+    fn reachable_target_yields_nondust_maneuvers(raw in well_conditioned_problem()) {
         let problem = build_reachable(&raw);
         prop_assume!(problem.is_some());
         let (dynamics, grid, w, seeds) = problem.unwrap();
@@ -166,10 +172,23 @@ proptest! {
         let result = solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds);
         prop_assume!(result.is_ok());
         let sol = result.unwrap();
-        prop_assert!(
-            (1..=6).contains(&sol.maneuvers.len()),
-            "maneuver count {} outside [1,6]", sol.maneuvers.len()
-        );
+        prop_assert!(!sol.maneuvers.is_empty(), "nonzero reachable w must yield >= 1 maneuver");
+        let max_dv = sol
+            .maneuvers
+            .iter()
+            .map(|m| m.dv.norm())
+            .fold(0.0_f64, f64::max);
+        prop_assert!(max_dv > 0.0);
+        // Extraction prunes any maneuver below ~1e-3 of the largest; a 0.5e-3
+        // floor catches a regression that returns dust without coupling tightly
+        // to the private PRUNE_REL constant or flaking on interior-point noise.
+        for m in &sol.maneuvers {
+            prop_assert!(m.dv.iter().all(|x| x.is_finite()));
+            prop_assert!(
+                m.dv.norm() >= 0.5e-3 * max_dv,
+                "returned dust maneuver: ‖Δv‖ {} < 0.5e-3 × max {}", m.dv.norm(), max_dv
+            );
+        }
     }
 
     /// [KD20] eq. 37/Thm 3: the optimal cost c* = total_dv is non-negative,
