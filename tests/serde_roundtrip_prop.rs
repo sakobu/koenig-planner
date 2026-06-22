@@ -44,7 +44,11 @@ prop_compose! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 512, ..ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig {
+        cases: 512,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(0x4B44_3230_5345_4544),
+        ..ProptestConfig::default()
+    })]
 
     #[test]
     fn orbit_round_trips(o in any_orbit()) {

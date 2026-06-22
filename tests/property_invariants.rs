@@ -127,7 +127,11 @@ fn max_gauge<D: Dynamics, C: CostModel>(
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 96, ..ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig {
+        cases: 96,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(0x4B44_3230_5345_4544),
+        ..ProptestConfig::default()
+    })]
 
     /// [KD20] eq. 33/42: a reachable target is recovered exactly. Seeding the
     /// exact construction times makes the SOCP have an exact solution, so the
@@ -209,7 +213,11 @@ proptest! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig {
+        cases: 64,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(0x4B44_3230_5345_4544),
+        ..ProptestConfig::default()
+    })]
 
     /// [KD20] eq. 40 / Algorithm 2 termination: at convergence the optimal
     /// dual satisfies max_t g_{U(1,t)}(Γᵀ(t)λ) ≤ 1 + ε_cost. Reuses the
@@ -337,7 +345,11 @@ fn wide_valid_problem() -> impl Strategy<Value = RawProblem> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(0x4B44_3230_5345_4544),
+        ..ProptestConfig::default()
+    })]
 
     /// Totality: on any well-posed reachable problem, `solve_from_initial_times`
     /// returns Ok or a typed PlannerError — never a panic. When Ok, every

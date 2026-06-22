@@ -45,7 +45,11 @@ prop_compose! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig {
+        cases: 256,
+        rng_seed: proptest::test_runner::RngSeed::Fixed(0x4B44_3230_5345_4544),
+        ..ProptestConfig::default()
+    })]
 
     #[test]
     fn run_json_is_total(s in request_shaped_json()) {
