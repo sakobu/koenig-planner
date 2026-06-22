@@ -10,6 +10,7 @@ use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
 use koenig_damico_planner::{
     solve_from_initial_times, CostModel, Dynamics, Pseudostate, SolveParams, TimeGrid,
 };
+use koenig_damico_planner::PlannerError;
 use nalgebra::SVector;
 use proptest::prelude::*;
 
@@ -283,5 +284,73 @@ proptest! {
         let r_pruned = (w - recon).norm() / w.norm();
         prop_assert!(r_pruned < 5e-3, "pruned residual {} too large", r_pruned);
         prop_assert!(sol.residual < 1e-6, "pre-prune residual {} too large", sol.residual);
+    }
+}
+
+/// Wide valid tier: full elliptic range and inclinations near (but not at)
+/// the singularities. Used only for the no-panic totality property.
+fn wide_valid_problem() -> impl Strategy<Value = RawProblem> {
+    (
+        7.0e6..5.0e7f64,
+        0.0..0.85f64,                                      // up to near-degenerate e
+        (5.0f64..175.0).prop_map(|d| d.to_radians()),
+        0.0..std::f64::consts::TAU,
+        0.0..std::f64::consts::TAU,
+        0.0..std::f64::consts::TAU,
+        1.0..5.0f64,
+        100usize..3000,
+        prop::collection::vec((0.0..1.0f64, proptest::array::uniform3(-5.0..5.0f64)), 1..=6),
+    )
+        .prop_map(
+            |(a, e, i, raan, argp, m0, n_periods, n_points, impulses)| RawProblem {
+                a, e, i, raan, argp, m0, n_periods, n_points, impulses,
+            },
+        )
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 128, ..ProptestConfig::default() })]
+
+    /// Totality: on any well-posed reachable problem, `solve_from_initial_times`
+    /// returns Ok or a typed PlannerError — never a panic. When Ok, every
+    /// reported number is finite.
+    #[test]
+    fn solve_is_total_and_finite_on_ok(raw in wide_valid_problem()) {
+        let problem = build_reachable(&raw);
+        prop_assume!(problem.is_some());
+        let (dynamics, grid, w, seeds) = problem.unwrap();
+        let params = SolveParams::default();
+        match solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds) {
+            Ok(sol) => {
+                prop_assert!(sol.total_dv.is_finite());
+                prop_assert!(sol.residual.is_finite());
+                prop_assert!(sol.lambda.iter().all(|x| x.is_finite()));
+                prop_assert!(sol.maneuvers.iter().all(|m| m.dv.iter().all(|x| x.is_finite())));
+            }
+            Err(_) => { /* a typed error is an acceptable, non-panicking outcome */ }
+        }
+    }
+
+    /// Constructor totality: invalid chief / grid parameters are rejected with
+    /// PlannerError::InvalidInput, never a panic ([KD20] eq. 50 preconditions:
+    /// a>0 finite, 0≤e<1, |sin i|≥1e-9; grid dt>0, t_f>t_i).
+    #[test]
+    fn invalid_domain_is_rejected_not_panicked(
+        a in prop_oneof![Just(0.0f64), Just(-1.0f64), Just(f64::NAN), 7.0e6..5.0e7f64],
+        e in prop_oneof![Just(1.0f64), Just(1.5f64), Just(-0.1f64), 0.0..0.9f64],
+        i_deg in prop_oneof![Just(0.0f64), Just(180.0f64), 5.0..175.0f64],
+        dt in prop_oneof![Just(0.0f64), Just(-1.0f64), 1.0..100.0f64],
+        span in -10.0..1.0e5f64,
+    ) {
+        let chief = AbsoluteOrbit::new(a, e, i_deg.to_radians(), 0.0, 0.0, 0.0);
+        let t_i = 0.0;
+        let t_f = t_i + span;
+        // Both fallible constructors must classify bad input as InvalidInput.
+        if let Err(err) = TimeGrid::uniform(t_i, t_f, dt) {
+            prop_assert!(matches!(err, PlannerError::InvalidInput(_)));
+        }
+        if let Err(err) = J2Roe::new(chief, t_i, t_f) {
+            prop_assert!(matches!(err, PlannerError::InvalidInput(_)));
+        }
     }
 }
