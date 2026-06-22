@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a7376c6c33816795bfd95a02792c5dff1818b7d54a3771ebd7c537b5dd5f1b3b # shrinks to raw = RawProblem { a: 20639283.959199563, e: 0.11518330149448608, i: 0.45048750680190197, raan: 0.0, argp: 0.0, m0: 5.353554508065233, n_periods: 2.593315255587248, n_points: 282, impulses: [(0.7191564731929108, [0.5594142074319951, 0.40393163721157027, -0.9851502199111916])] }
+cc 0ee1eefe936f58f0c0f6afd41e702ba37e0b03e0b0099be70246c21841b1a457 # shrinks to raw = RawProblem { a: 7000000.0, e: 0.3623741952179316, i: 0.17453292519943295, raan: 0.0, argp: 0.0, m0: 0.4458081025666376, n_periods: 2.2557529005061814, n_points: 596, impulses: [(0.976861150736748, [0.6053379315586991, 0.0, 0.3236146386541309])] }, alpha = 0.1
