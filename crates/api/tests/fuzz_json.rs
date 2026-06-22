@@ -75,17 +75,29 @@ fn malformed_literals_are_bad_request() {
         // missing the non-chief fields
         format!(r#"{{"chief":{valid_chief}}}"#),
         // w_metres wrong length (3, needs 6)
-        format!(r#"{{"chief":{valid_chief},"t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3],"cost":{{"type":"norm2"}}}}"#),
+        format!(
+            r#"{{"chief":{valid_chief},"t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3],"cost":{{"type":"norm2"}}}}"#
+        ),
         // NaN token (serde_json rejects non-finite literals)
-        format!(r#"{{"chief":{{"a":NaN,"e":0.1,"i":40,"raan":0,"argp":0,"mean_anom":0}},"t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#),
+        format!(
+            r#"{{"chief":{{"a":NaN,"e":0.1,"i":40,"raan":0,"argp":0,"mean_anom":0}},"t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
+        ),
         // Infinity token
-        format!(r#"{{"chief":{valid_chief},"t_i":0,"t_f":Infinity,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#),
+        format!(
+            r#"{{"chief":{valid_chief},"t_i":0,"t_f":Infinity,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
+        ),
         // unknown cost tag
-        format!(r#"{{"chief":{valid_chief},"t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"bogus"}}}}"#),
+        format!(
+            r#"{{"chief":{valid_chief},"t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"bogus"}}}}"#
+        ),
         // chief wrong type
-        format!(r#"{{"chief":"x","t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#),
+        format!(
+            r#"{{"chief":"x","t_i":0,"t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
+        ),
         // t_i wrong type
-        format!(r#"{{"chief":{valid_chief},"t_i":"now","t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#),
+        format!(
+            r#"{{"chief":{valid_chief},"t_i":"now","t_f":1,"dt":1,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}}}}"#
+        ),
         // truncated
         format!(r#"{{"chief":{valid_chief},"t_i":0,"t_f":1,"dt":1,"#),
     ];
@@ -118,15 +130,14 @@ fn stressful_inputs_never_crash() {
     );
 
     // Extreme exponents in scalar fields.
-    let extreme_vals = format!(
-        r#"{{"chief":{{"a":1e300,"e":0.999,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0}},"t_i":0.0,"t_f":1e9,"dt":1e-9,"w_metres":[1e9,1e9,1e9,1e9,1e9,1e9],"cost":{{"type":"facemax"}}}}"#
-    );
+    let extreme_vals = r#"{"chief":{"a":1e300,"e":0.999,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0},"t_i":0.0,"t_f":1e9,"dt":1e-9,"w_metres":[1e9,1e9,1e9,1e9,1e9,1e9],"cost":{"type":"facemax"}}"#.to_string();
 
     for c in [extreme_dt, oversized, extreme_vals] {
         if let Err(e) = run_json(&c) {
             assert!(
                 matches!(e.kind, ApiErrorKind::BadRequest | ApiErrorKind::Solver),
-                "unexpected kind {:?}", e.kind
+                "unexpected kind {:?}",
+                e.kind
             );
         }
     }
@@ -161,7 +172,8 @@ fn deeply_nested_unknown_field_is_skipped_without_crash() {
     if let Err(e) = run_json(&deep) {
         assert!(
             matches!(e.kind, ApiErrorKind::BadRequest | ApiErrorKind::Solver),
-            "unexpected kind {:?}", e.kind
+            "unexpected kind {:?}",
+            e.kind
         );
     }
 }
