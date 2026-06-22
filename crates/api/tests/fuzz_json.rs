@@ -169,6 +169,31 @@ fn stressful_inputs_never_crash() {
     }
 }
 
+/// An over-large request body is rejected before parsing on the uncapped
+/// library path (mirrors the HTTP server's body limit for run_json/py/wasm).
+#[test]
+fn oversized_request_body_is_rejected() {
+    use koenig_damico_planner_api::MAX_REQUEST_BYTES;
+    let valid_chief = r#"{"a":7000000.0,"e":0.1,"i":40.0,"raan":0.0,"argp":0.0,"mean_anom":0.0}"#;
+    // Pad initial_times until the body exceeds the cap.
+    let big = (0..)
+        .map(|k| (k % 100).to_string())
+        .scan(String::new(), |acc, s| {
+            if !acc.is_empty() {
+                acc.push(',');
+            }
+            acc.push_str(&s);
+            Some(acc.clone())
+        })
+        .find(|acc| acc.len() > MAX_REQUEST_BYTES)
+        .unwrap();
+    let body = format!(
+        r#"{{"chief":{valid_chief},"t_i":0.0,"t_f":6000.0,"dt":60.0,"w_metres":[1,2,3,4,5,6],"cost":{{"type":"norm2"}},"initial_times":[{big}]}}"#
+    );
+    let err = run_json(&body).expect_err("oversized body must reject");
+    assert_eq!(err.kind, ApiErrorKind::BadRequest);
+}
+
 /// Deeply nested JSON in an UNKNOWN field is now rejected up-front by
 /// `deny_unknown_fields` (added on the request DTOs), so the nest is never
 /// traversed. Previously the field was silently skipped via serde's IgnoredAny
