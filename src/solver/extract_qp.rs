@@ -23,6 +23,12 @@ use nalgebra::{SMatrix, SVector};
 /// for comparison against the SOCP.
 ///
 /// Ref: \[KD20\] Algorithm 3 (fixed-direction magnitude QP); eq. 42; eq. 32.
+///
+/// # Errors
+/// - [`PlannerError::InvalidInput`] if `ys` is empty (no maneuver directions) or
+///   if `budget` is negative or `NaN`.
+/// - [`PlannerError::SolverFailed`] if the clarabel QP fails to set up or does
+///   not reach a (near-)optimal status.
 pub fn extract_qp(
     w: &Pseudostate,
     ys: &[SVector<f64, N>],

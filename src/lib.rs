@@ -22,6 +22,9 @@
 //!   Impulsive Control with Application to Distributed Spacecraft," *Proc. IEEE
 //!   Aerospace Conference*, 2025.
 
+// Require every public fallible or panicking fn to document how it can fail.
+#![warn(clippy::missing_errors_doc, clippy::missing_panics_doc)]
+
 pub mod algorithm;
 pub mod cost;
 pub mod dynamics;

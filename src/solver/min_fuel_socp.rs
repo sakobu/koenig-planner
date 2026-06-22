@@ -39,6 +39,12 @@ pub struct MinFuelSolution {
 ///
 /// Ref: \[KD20\] eq. 4 (master min-fuel objective); eq. 33; eq. 9; \[CD18\] eq. 2
 /// (sum-of-norms).
+///
+/// # Errors
+/// - [`PlannerError::InvalidInput`] if `gammas` is empty or its length does not
+///   match `generators` (one generator per candidate time is required).
+/// - [`PlannerError::SolverFailed`] if the clarabel SOCP fails to set up or does
+///   not reach a (near-)optimal status.
 pub fn min_fuel_socp(
     w: &Pseudostate,
     gammas: &[SMatrix<f64, N, M>],

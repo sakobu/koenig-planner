@@ -33,6 +33,12 @@ pub struct RefineSolution {
 /// `c* = w . lambda` directly from the primal solution.
 ///
 /// Ref: \[KD20\] eq. 40 (the refinement SOCP); Algorithm 2; eq. 30.
+///
+/// # Errors
+/// - [`PlannerError::InvalidInput`] if `rows` is empty (no candidate times), for
+///   which the eq. 40 objective is unbounded.
+/// - [`PlannerError::SolverFailed`] if the clarabel SOCP fails to set up or does
+///   not reach a (near-)optimal status.
 pub fn refine_socp(w: &Pseudostate, rows: &[ConicRows]) -> Result<RefineSolution, PlannerError> {
     let n_linear: usize = rows.iter().map(|r| r.linear.len()).sum();
     let n_soc: usize = rows.iter().map(|r| r.soc.len()).sum();

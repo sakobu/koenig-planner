@@ -201,7 +201,16 @@ pub enum PlannerError {
         /// Eccentricity.
         e: f64,
     },
-    /// An input precondition was violated.
+    /// An input precondition was violated — an intentionally opaque catch-all.
+    ///
+    /// Many distinct preconditions across the planner (grid/window bounds, chief
+    /// orbit validity, eccentricity range, empty candidate or direction sets,
+    /// period and perigee-epoch sanity, …) all funnel into this one variant. The
+    /// wrapped `String` is a human-readable diagnostic and is the *only* payload:
+    /// it is meant to be read, logged, or shown to a caller fixing their input,
+    /// not matched on programmatically. Treat any `InvalidInput` uniformly as a
+    /// "bad request — correct the inputs" signal rather than branching on the
+    /// message text, which is not part of the stable contract.
     #[error("invalid input: {0}")]
     InvalidInput(String),
 }
