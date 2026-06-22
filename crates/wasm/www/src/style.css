@@ -150,6 +150,15 @@ select:focus-visible {
 input::placeholder {
   color: var(--faint);
 }
+/* Piecewise-only inputs (period / t_perigee0) — hidden by default, revealed
+   only when the piecewise cost model is selected (data-cost mirrored from the
+   form in main.ts). */
+.pw {
+  display: none;
+}
+form[data-cost="piecewise"] .pw {
+  display: flex;
+}
 
 /* ── Readout ─────────────────────────────────────────────────────── */
 #output {
@@ -347,6 +356,23 @@ input::placeholder {
   letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--red);
+}
+/* Typed error surface (bad_request | solver | internal). bad_request is a
+   caller-fixable input rejection — shown amber as a warning rather than a red
+   fault; solver/internal keep the red fault treatment with their own labels. */
+.error.bad_request {
+  border-color: var(--amber);
+  color: #ffe2bd;
+}
+.error.bad_request::before {
+  content: "bad request";
+  color: var(--amber);
+}
+.error.solver::before {
+  content: "solver fault";
+}
+.error.internal::before {
+  content: "internal error";
 }
 
 /* ── Responsive ──────────────────────────────────────────────────── */
