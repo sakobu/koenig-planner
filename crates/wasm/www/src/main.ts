@@ -46,6 +46,10 @@ function readCost(form: HTMLFormElement): CostSpec {
 }
 
 function readForm(form: HTMLFormElement): SolveRequest {
+  // `params` (solver tuning) and `initial_times` (manual candidate-time
+  // seeding) are deliberately omitted — the demo form exposes only the science
+  // inputs and lets the core apply its defaults. Both are optional request
+  // fields, so leaving them out is the documented default path.
   return {
     chief: {
       a: getNum(form, "a"),
@@ -70,6 +74,14 @@ function readForm(form: HTMLFormElement): SolveRequest {
   };
 }
 
+// Mirror the selected cost model onto the form's `data-cost` attribute so CSS
+// can reveal the piecewise-only inputs (.pw) for piecewise alone.
+function syncCost(form: HTMLFormElement) {
+  form.dataset.cost = (
+    form.elements.namedItem("cost") as HTMLSelectElement
+  ).value;
+}
+
 function debounce<T extends (...a: never[]) => void>(fn: T, ms: number): T {
   let id: number | undefined;
   return ((...a: never[]) => {
@@ -85,8 +97,13 @@ async function main() {
   const form = document.querySelector<HTMLFormElement>("#planner")!;
   writeForm(form, GOLDEN);
   const run = () => render(solve(readForm(form)));
-  form.addEventListener("input", debounce(run, 150));
-  run();
+  const debouncedRun = debounce(run, 150);
+  form.addEventListener("input", () => {
+    syncCost(form); // instant — toggle the piecewise-only inputs
+    debouncedRun(); // debounced — re-solve
+  });
+  syncCost(form); // initial visibility (GOLDEN defaults to piecewise)
+  run(); // initial render (instant)
 }
 
 main();
