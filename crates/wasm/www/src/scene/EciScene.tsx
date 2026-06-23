@@ -1,5 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls, Stars } from "@react-three/drei";
+import { BackSide } from "three";
 import type { ChiefGeometry } from "../wasm";
 import { scaleAll, type V3 } from "./vec";
 import { Arrow } from "./Arrow";
@@ -19,11 +20,24 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         <directionalLight position={[5, 5, 5]} intensity={0.8} />
         {/* Faint static starfield — instrument backdrop, not noise. */}
         <Stars radius={6} depth={8} count={1200} factor={0.15} saturation={0} fade speed={0} />
-        {/* Central body — schematic deep-instrument-blue wireframe. */}
-        <mesh>
-          <sphereGeometry args={[earthR, 32, 32]} />
-          <meshStandardMaterial color="#123a52" wireframe />
-        </mesh>
+        {/* Central body — schematic instrument globe: a solid dark core for
+            mass, a lighting-INDEPENDENT steel-cyan wireframe (meshBasic, so the
+            far side never goes dark against the near-black ground), and a faint
+            cyan atmosphere rim (back-face shell). */}
+        <group>
+          <mesh>
+            <sphereGeometry args={[earthR * 0.99, 32, 32]} />
+            <meshStandardMaterial color="#0d2336" />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[earthR, 24, 24]} />
+            <meshBasicMaterial color="#3f86b3" wireframe />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[earthR * 1.06, 24, 24]} />
+            <meshBasicMaterial color="#5cc8ff" transparent opacity={0.05} side={BackSide} />
+          </mesh>
+        </group>
         {/* ECI reference axes */}
         <axesHelper args={[1.6]} />
         {/* Chief orbit */}
