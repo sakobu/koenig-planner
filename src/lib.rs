@@ -40,8 +40,7 @@ pub use types::{InvalidInputKind, Maneuver, PlannerError, Solution, SolveParams,
 pub use cost::{CostModel, SublevelSet};
 pub use types::{Pseudostate, M, N};
 
-// --- Convex-encoding internals (advanced use; the solve path wraps these).
-// The fixed-direction QP encoding from the paper is available as
-// `solver::extract_qp`; it is not re-exported at the crate root. ---
-pub use solver::{min_fuel_socp, refine_socp, MinFuelSolution, RefineSolution};
-pub use types::{ConicRows, Dual, FuelGenerator};
+// --- Convex-encoding internals (advanced use; the solve path wraps these). These are reached via
+// their owning modules — `solver::{min_fuel_socp, refine_socp, extract_qp, MinFuelSolution,
+// RefineSolution}` and `types::{ConicRows, Dual, FuelGenerator}` — and are deliberately not
+// re-exported at the crate root, to keep the root surface small. ---

@@ -15,8 +15,9 @@
 use approx::{assert_abs_diff_eq, assert_relative_eq};
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
+use koenig_damico_planner::solver::refine_socp;
 use koenig_damico_planner::{
-    refine_socp, solve, CostModel, Dynamics, Maneuver, Pseudostate, SolveParams, TimeGrid,
+    solve, CostModel, Dynamics, Maneuver, Pseudostate, SolveParams, TimeGrid,
 };
 use nalgebra::SVector;
 use std::f64::consts::TAU;

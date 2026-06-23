@@ -17,7 +17,7 @@ use nalgebra::{SMatrix, SVector};
 /// `Maneuver` as `dv = alpha_j . s_j` applied at `t_j`.
 ///
 /// This is the paper's original fixed-support-direction magnitude QP. The
-/// `solve` path instead uses [`crate::min_fuel_socp()`], the direct full-3-DOF
+/// `solve` path instead uses [`crate::solver::min_fuel_socp()`], the direct full-3-DOF
 /// min-fuel SOCP, which is robust on the degenerate flat contacts where this
 /// magnitude QP under-spans `w`. This primitive is provided for direct use and
 /// for comparison against the SOCP.
@@ -229,7 +229,9 @@ mod tests {
         for bad in [-1.0, f64::NAN] {
             assert!(matches!(
                 extract_qp(&w, &[e(0)], &q, bad).unwrap_err(),
-                crate::types::PlannerError::InvalidInput(crate::types::InvalidInputKind::Budget { .. })
+                crate::types::PlannerError::InvalidInput(
+                    crate::types::InvalidInputKind::Budget { .. }
+                )
             ));
         }
     }

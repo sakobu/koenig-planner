@@ -2,7 +2,9 @@
 
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
-use koenig_damico_planner::{solve, solve_from_initial_times, InvalidInputKind, PlannerError, SolveParams, TimeGrid};
+use koenig_damico_planner::{
+    solve, solve_from_initial_times, InvalidInputKind, PlannerError, SolveParams, TimeGrid,
+};
 use nalgebra::{SMatrix, SVector};
 use std::f64::consts::TAU;
 
@@ -66,7 +68,10 @@ fn solve_rejects_zero_target() {
     let w = SVector::<f64, N>::zeros();
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(InvalidInputKind::Target)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Target)
+    ));
 }
 
 #[test]
@@ -80,7 +85,10 @@ fn solve_rejects_degenerate_grid() {
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(InvalidInputKind::Grid { .. })));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Grid { .. })
+    ));
 }
 
 #[test]
@@ -94,7 +102,10 @@ fn solve_rejects_nan_dt() {
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(InvalidInputKind::Grid { .. })));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Grid { .. })
+    ));
 }
 
 #[test]
@@ -108,7 +119,10 @@ fn solve_rejects_infinite_dt() {
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(InvalidInputKind::Grid { .. })));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Grid { .. })
+    ));
 }
 
 #[test]
@@ -118,7 +132,10 @@ fn solve_rejects_nan_target() {
     let w = SVector::<f64, N>::from_row_slice(&[f64::NAN, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(InvalidInputKind::Target)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Target)
+    ));
 }
 
 // Ref: [KD20] Algorithm 2; Table III.
@@ -193,7 +210,10 @@ fn solve_from_initial_times_rejects_empty_seed() {
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve_from_initial_times(&dynamics, &cost, w, grid, &SolveParams::default(), &[])
         .unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(InvalidInputKind::NoInitialTimesInRange)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::NoInitialTimesInRange)
+    ));
 }
 
 #[test]

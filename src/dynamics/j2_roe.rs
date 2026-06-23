@@ -124,7 +124,10 @@ mod tests {
             let err =
                 J2Roe::new(mk(bad), 0.0, 100.0).expect_err(&format!("a = {bad} must be rejected"));
             assert!(
-                matches!(err, PlannerError::InvalidInput(InvalidInputKind::ChiefSemimajorAxis { .. })),
+                matches!(
+                    err,
+                    PlannerError::InvalidInput(InvalidInputKind::ChiefSemimajorAxis { .. })
+                ),
                 "a = {bad} must be InvalidInput(ChiefSemimajorAxis), got {err:?}"
             );
         }

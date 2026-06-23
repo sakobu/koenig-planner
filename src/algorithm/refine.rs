@@ -4,7 +4,9 @@
 use super::contact_on_grid;
 use crate::cost::CostModel;
 use crate::solver::refine_socp;
-use crate::types::{ConicRows, Dual, InvalidInputKind, PlannerError, Pseudostate, SolveParams, TimeGrid, M, N};
+use crate::types::{
+    ConicRows, Dual, InvalidInputKind, PlannerError, Pseudostate, SolveParams, TimeGrid, M, N,
+};
 use nalgebra::SMatrix;
 
 /// Values within `PLATEAU_EPS` of each other are treated as a flat top.

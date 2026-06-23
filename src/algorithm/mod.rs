@@ -6,7 +6,9 @@ mod refine;
 
 use crate::cost::CostModel;
 use crate::dynamics::Dynamics;
-use crate::types::{Dual, InvalidInputKind, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N};
+use crate::types::{
+    Dual, InvalidInputKind, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N,
+};
 use nalgebra::{SMatrix, SVector};
 
 /// Contact value `g_{U(1,t)}(Γᵀ(t)·lambda)` at grid index `k`.

@@ -146,7 +146,9 @@ mod tests {
         let err = refine_socp(&w, &[]).unwrap_err();
         assert!(matches!(
             err,
-            crate::types::PlannerError::InvalidInput(crate::types::InvalidInputKind::EmptyCandidateSet)
+            crate::types::PlannerError::InvalidInput(
+                crate::types::InvalidInputKind::EmptyCandidateSet
+            )
         ));
     }
 

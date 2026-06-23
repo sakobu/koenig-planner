@@ -149,7 +149,7 @@ pub struct Solution {
 /// Conic rows encoding `g_{U(1,t)}(Gamma^T(t) lambda) <= 1` for one candidate time.
 ///
 /// Linear rows encode `a^T lambda <= b`; SOC rows encode `||G lambda||_2 <= h`.
-/// [`crate::refine_socp()`] assembles these into clarabel cones.
+/// [`crate::solver::refine_socp()`] assembles these into clarabel cones.
 #[derive(Debug, Clone, Default)]
 pub struct ConicRows {
     /// Linear rows `(a, b)` with `a^T lambda <= b`.
