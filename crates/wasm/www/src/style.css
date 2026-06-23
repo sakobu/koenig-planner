@@ -211,11 +211,12 @@ form[data-cost="piecewise"] .pw {
   gap: 1.1rem;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
-    "kpis     kpis"
-    "eci      rtn"
-    "play     play"
-    "timeline primer"
-    "rtncomp  rtncomp";
+    "kpis       kpis"
+    "eci        rtn"
+    "play       play"
+    "timeline   primer"
+    "rtncomp    rtncomp"
+    "primerrtn  primerrtn";
   align-content: start;
 }
 .kpis {
@@ -238,6 +239,9 @@ form[data-cost="piecewise"] .pw {
 }
 .panel:has(.chart-rtncomp) {
   grid-area: rtncomp;
+}
+.panel:has(.chart-primer-rtn) {
+  grid-area: primerrtn;
 }
 
 /* ── KPI telemetry strip — the numbers are the hero ──────────────── */
@@ -330,6 +334,9 @@ form[data-cost="piecewise"] .pw {
 .chart-rtncomp {
   max-width: 1180px;
 }
+.chart-primer-rtn {
+  max-width: 1180px;
+}
 
 /* ── Plot primitives (SVG) ───────────────────────────────────────── */
 .axis {
@@ -415,6 +422,10 @@ form[data-cost="piecewise"] .pw {
   stroke: var(--edge-bright);
   stroke-width: 1;
   stroke-dasharray: 2 3;
+}
+.primer-comp {
+  fill: none;
+  stroke-width: 1.5;
 }
 
 /* ── 3D viewports — the instrument signature ─────────────────────── */
@@ -569,7 +580,8 @@ header.fault .status-lamp {
       "play"
       "timeline"
       "primer"
-      "rtncomp";
+      "rtncomp"
+      "primerrtn";
   }
   .kpis {
     grid-template-columns: repeat(2, 1fr);
