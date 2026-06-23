@@ -435,3 +435,18 @@ form[data-cost="piecewise"] .pw {
     display: none;
   }
 }
+
+/* ── Synced range sliders (Plan 2) ───────────────────────────────── */
+.field {
+  display: grid;
+  gap: 0.3rem;
+}
+.field .slider {
+  width: 100%;
+  accent-color: var(--cyan);
+  background: transparent;
+}
+.field label {
+  /* number input keeps the existing label row layout */
+  margin: 0;
+}

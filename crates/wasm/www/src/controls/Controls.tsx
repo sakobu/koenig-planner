@@ -7,6 +7,7 @@ import {
   setPiecewise,
   type ChiefKey,
 } from "./request";
+import { NumberField } from "./NumberField";
 
 const CHIEF: { key: ChiefKey; label: string }[] = [
   { key: "a", label: "a [m]" },
@@ -18,6 +19,31 @@ const CHIEF: { key: ChiefKey; label: string }[] = [
 ];
 const W_LABELS = ["δa", "δλ", "δe_x", "δe_y", "δi_x", "δi_y"];
 
+// [min, max, step] per field. Ranges chosen for physical sensibility:
+// e guarded < 1; angles full-circle; a from a LEO floor to beyond GEO.
+const CHIEF_RANGE: Record<ChiefKey, [number, number, number]> = {
+  a: [6_778e3, 50_000e3, 1e3],
+  e: [0, 0.95, 0.01],
+  i: [0, 180, 0.5],
+  raan: [0, 360, 1],
+  argp: [0, 360, 1],
+  mean_anom: [0, 360, 1],
+};
+const WINDOW_RANGE: Record<"t_i" | "t_f" | "dt", [number, number, number]> = {
+  t_i: [0, 200_000, 100],
+  t_f: [0, 500_000, 100],
+  dt: [1, 600, 1],
+};
+// w components [m]: along-track (δλ) is the widest; e/i components are tighter.
+const W_RANGE: [number, number, number][] = [
+  [-10_000, 10_000, 10], // δa
+  [-10_000, 10_000, 10], // δλ
+  [-2_000, 2_000, 5], // δe_x
+  [-2_000, 2_000, 5], // δe_y
+  [-2_000, 2_000, 5], // δi_x
+  [-2_000, 2_000, 5], // δi_y
+];
+
 export function Controls({
   req,
   setReq,
@@ -25,7 +51,6 @@ export function Controls({
   req: SolveRequest;
   setReq: (r: SolveRequest) => void;
 }) {
-  const num = (v: string) => Number(v);
   const opt = (v: string) => (v.trim() === "" ? undefined : Number(v));
   const pw = req.cost.type === "piecewise" ? req.cost : null;
 
@@ -34,45 +59,45 @@ export function Controls({
       <fieldset>
         <legend>Chief orbit</legend>
         {CHIEF.map(({ key, label }) => (
-          <label key={key}>
-            {label}
-            <input
-              type="number"
-              step="any"
-              value={req.chief[key]}
-              onChange={(e) => setReq(setChief(req, key, num(e.target.value)))}
-            />
-          </label>
+          <NumberField
+            key={key}
+            label={label}
+            value={req.chief[key]}
+            onChange={(v) => setReq(setChief(req, key, v))}
+            min={CHIEF_RANGE[key][0]}
+            max={CHIEF_RANGE[key][1]}
+            step={CHIEF_RANGE[key][2]}
+          />
         ))}
       </fieldset>
 
       <fieldset>
         <legend>Window [s]</legend>
         {(["t_i", "t_f", "dt"] as const).map((key) => (
-          <label key={key}>
-            {key}
-            <input
-              type="number"
-              step="any"
-              value={req[key]}
-              onChange={(e) => setReq(setWindow(req, key, num(e.target.value)))}
-            />
-          </label>
+          <NumberField
+            key={key}
+            label={key}
+            value={req[key]}
+            onChange={(v) => setReq(setWindow(req, key, v))}
+            min={WINDOW_RANGE[key][0]}
+            max={WINDOW_RANGE[key][1]}
+            step={WINDOW_RANGE[key][2]}
+          />
         ))}
       </fieldset>
 
       <fieldset>
         <legend>Target pseudostate w [m]</legend>
         {W_LABELS.map((label, idx) => (
-          <label key={label}>
-            {label}
-            <input
-              type="number"
-              step="any"
-              value={req.w_metres[idx]}
-              onChange={(e) => setReq(setW(req, idx, num(e.target.value)))}
-            />
-          </label>
+          <NumberField
+            key={label}
+            label={label}
+            value={req.w_metres[idx]}
+            onChange={(v) => setReq(setW(req, idx, v))}
+            min={W_RANGE[idx][0]}
+            max={W_RANGE[idx][1]}
+            step={W_RANGE[idx][2]}
+          />
         ))}
       </fieldset>
 
