@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { Line, OrbitControls } from "@react-three/drei";
+import { Line, OrbitControls, Stars } from "@react-three/drei";
 import type { ChiefGeometry } from "../wasm";
 import { scaleAll, type V3 } from "./vec";
 import { Arrow } from "./Arrow";
@@ -15,12 +15,14 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
   return (
     <div className="canvas3d canvas-eci">
       <Canvas camera={{ position: [2.2, 1.4, 2.2], fov: 45, near: 0.01, far: 100 }}>
-        <ambientLight intensity={0.6} />
+        <ambientLight intensity={0.55} />
         <directionalLight position={[5, 5, 5]} intensity={0.8} />
-        {/* Central body */}
+        {/* Faint static starfield — instrument backdrop, not noise. */}
+        <Stars radius={6} depth={8} count={1200} factor={0.15} saturation={0} fade speed={0} />
+        {/* Central body — schematic deep-instrument-blue wireframe. */}
         <mesh>
           <sphereGeometry args={[earthR, 32, 32]} />
-          <meshStandardMaterial color="#16324a" wireframe />
+          <meshStandardMaterial color="#123a52" wireframe />
         </mesh>
         {/* ECI reference axes */}
         <axesHelper args={[1.6]} />

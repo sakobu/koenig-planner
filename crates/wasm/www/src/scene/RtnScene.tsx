@@ -13,7 +13,8 @@ export function RtnScene({ g }: { g: ChiefGeometry }) {
   return (
     <div className="canvas3d canvas-rtn">
       <Canvas camera={{ position: [2, 1.4, 2], fov: 45, near: 0.01, far: 100 }}>
-        <ambientLight intensity={0.7} />
+        {/* Lift ambient slightly for the darker console ground. */}
+        <ambientLight intensity={0.75} />
         {/* Chief at origin */}
         <mesh>
           <sphereGeometry args={[0.03, 16, 16]} />
