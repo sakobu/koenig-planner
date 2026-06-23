@@ -119,6 +119,9 @@ pub struct ChiefGeometry {
     pub perigee_arc_eci: Option<Vec<[f64; 3]>>,
     /// Deputy relative orbit in the chief RTN frame `[m]` (driven by `target_roe`).
     pub relative_trajectory_rtn: Vec<[f64; 3]>,
+    /// Deputy position in the chief RTN frame `[m]` at each `primer_times` sample
+    /// (the playback grid) — the deputy glyph that tracks the scrubber.
+    pub deputy_track_rtn: Vec<[f64; 3]>,
     /// Echo of the request `w_metres` `[m]` = `[δa, δλ, δeₓ, δe_y, δiₓ, δi_y]·a`.
     pub target_roe: [f64; 6],
 }

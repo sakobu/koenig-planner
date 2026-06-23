@@ -20,7 +20,7 @@ function OkReadout({ r }: { r: SolveResponse }) {
         <EciScene g={r.geometry} sampleIndex={Math.min(index, Math.max(0, sampleCount - 1))} />
       </Panel>
       <Panel title="Relative orbit (RTN, chief at origin)">
-        <RtnScene g={r.geometry} />
+        <RtnScene g={r.geometry} sampleIndex={Math.min(index, Math.max(0, sampleCount - 1))} />
       </Panel>
       <Panel title="Δv timeline">
         <Timeline r={r} />

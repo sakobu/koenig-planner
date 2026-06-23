@@ -137,6 +137,18 @@ pub fn chief_geometry(
         relative_trajectory_rtn.push(frames::eci_to_rtn(&c_t, rel_eci)?);
     }
 
+    // Deputy position in chief RTN at each playback (primer_times) sample, so the
+    // RTN view's glyph tracks the same scrubber as the ECI spacecraft.
+    let mut deputy_track_rtn = Vec::with_capacity(resp.primer_times.len());
+    for &t in &resp.primer_times {
+        let c_t = chief.propagate(t);
+        let d_t = deputy.propagate(t);
+        let r_c = frames::position_eci(&c_t)?;
+        let r_d = frames::position_eci(&d_t)?;
+        let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
+        deputy_track_rtn.push(frames::eci_to_rtn(&c_t, rel_eci)?);
+    }
+
     Ok(dto::ChiefGeometry {
         a: req.chief.a,
         e: req.chief.e,
@@ -148,6 +160,7 @@ pub fn chief_geometry(
         primer_eci,
         perigee_arc_eci,
         relative_trajectory_rtn,
+        deputy_track_rtn,
         target_roe: req.w_metres,
     })
 }
@@ -327,6 +340,30 @@ mod tests {
         for p in &g.relative_trajectory_rtn {
             let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
             assert!(r < 1e-3, "zero ROE ⇒ coincident orbits, got r={r}");
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn deputy_track_rtn_length_matches_primer_times() {
+        // resp_with gives primer_times of length 3.
+        let resp = resp_with(&[0.0]);
+        assert_eq!(resp.primer_times.len(), 3);
+        let g = chief_geometry(&req_with(dto::CostSpec::Norm2, 0.0), &resp).unwrap();
+        assert_eq!(
+            g.deputy_track_rtn.len(),
+            resp.primer_times.len(),
+            "deputy_track_rtn must be parallel to primer_times"
+        );
+    }
+
+    #[wasm_bindgen_test]
+    fn zero_roe_gives_zero_deputy_track_rtn() {
+        let mut req = req_with(dto::CostSpec::Norm2, 0.0);
+        req.w_metres = [0.0; 6];
+        let g = chief_geometry(&req, &resp_with(&[])).unwrap();
+        for p in &g.deputy_track_rtn {
+            let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+            assert!(r < 1e-3, "zero ROE ⇒ coincident orbits in track, got r={r}");
         }
     }
 
