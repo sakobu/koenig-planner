@@ -202,14 +202,25 @@ pub fn solve_from_initial_times<D: Dynamics, C: CostModel>(
 /// Primer-vector history sampled over a time grid.
 ///
 /// For each grid time `t_k`: `vectors[k] = Γᵀ(t_k)·λ ∈ ℝ³` is the primer vector
-/// (RTN — the optimal-thrust direction), and `magnitudes[k] =
-/// g_{U(1,t_k)}(vectors[k])` is its dual-gauge magnitude. The magnitude is
-/// dimensionless — `≤ 1` everywhere (`≤ 1 + eps_cost` at Algorithm 2's
-/// convergence tolerance) and `= 1` at the optimal maneuver times. This is the
-/// paper's Fig. 7 contact curve, paired with the underlying vector. Wherever the
-/// magnitude touches 1 but no burn is placed, the plan has flexibility.
+/// (\[KD20\] eq. 46 — the dual `λ` mapped into RTN control space), and
+/// `magnitudes[k] = g_{U(1,t_k)}(vectors[k])` is its dual-gauge magnitude
+/// (dimensionless). This is the paper's Fig. 7 contact curve, paired with the
+/// underlying vector.
 ///
-/// Ref: \[KD20\] Fig. 7 (contact curve); eq. 30 / 27.
+/// The magnitude is `≈ 1` at the optimal maneuver times and `≤ 1 + eps_cost`
+/// (Algorithm 2's tolerance) at every candidate time the solve converged over.
+/// Evaluated on a grid *denser* than the one solved over it may exceed that
+/// bound slightly between solved times, since dual feasibility is only enforced
+/// at the solved candidates. Wherever the magnitude touches 1 but no burn is
+/// placed, the plan has flexibility.
+///
+/// `vectors` is the primer, **not** the executed thrust direction in general:
+/// the optimal impulse fires along the support image `s_{U(1,t)}(Γᵀλ)`
+/// (\[KD20\] eq. 41–42), which is parallel to the primer only for the L2
+/// (`Norm2`) gauge; under the `FaceMax` / `Piecewise`-perigee polytope gauge it
+/// is a fixed tetrahedral thruster axis, generally not parallel to the primer.
+///
+/// Ref: \[KD20\] Fig. 7 (contact curve); eq. 30 / 27; eq. 41–42 / 46.
 #[derive(Debug, Clone)]
 pub struct PrimerHistory {
     /// Sample times `[s]`, one per grid point: `times[k] == grid.time(k)`.
@@ -227,6 +238,8 @@ pub struct PrimerHistory {
 /// reachable-set normal). The history is evaluated at every `grid` time via the
 /// same `Γ(t)` cache and gauge-contact computation Algorithm 2 uses internally,
 /// so passing a denser `grid` than the one solved over yields a smoother curve.
+/// It evaluates `Γ(t)` once per grid point (`O(grid.len())` dynamics
+/// evaluations), so a denser grid trades compute for smoothness.
 ///
 /// Ref: \[KD20\] Fig. 7 (contact curve `g(t)` over the candidate grid); eq. 30.
 ///

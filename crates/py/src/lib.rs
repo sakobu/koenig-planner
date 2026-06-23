@@ -89,12 +89,14 @@ struct Solution {
     /// from `t_i`: `primer_times[k] = t_i + k·dt`.
     #[pyo3(get)]
     primer_times: Vec<f64>,
-    /// Dual-gauge primer magnitude (dimensionless): `≤ 1` everywhere, `= 1` at the
-    /// optimal maneuver times.
+    /// Dual-gauge primer magnitude (dimensionless): `≤ 1 + eps_cost` everywhere
+    /// (Algorithm 2's tolerance), `≈ 1` at the optimal maneuver times.
     #[pyo3(get)]
     primer_magnitude: Vec<f64>,
-    /// Primer vector `p(t) = Γᵀ(t)·λ`, RTN components `(R, T, N)` — the
-    /// optimal-thrust direction at each time.
+    /// Primer vector `p(t) = Γᵀ(t)·λ`, RTN components `(R, T, N)` — the dual `λ`
+    /// mapped into control space. This is the primer, not the executed thrust
+    /// direction: the optimal impulse fires along the support image `s(Γᵀλ)`,
+    /// parallel to the primer only for the L2 (`norm2`) cost.
     #[pyo3(get)]
     primer_rtn: Vec<(f64, f64, f64)>,
 }

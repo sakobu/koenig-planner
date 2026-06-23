@@ -535,9 +535,11 @@ function primerMagnitude(r: SolveResponse): SVGSVGElement {
   return s;
 }
 
-// Primer vector p(t) = Γᵀ(t)·λ, RTN components over time. The direction at each
-// touch of the bound is the optimal thrust direction; reading it alongside the
-// magnitude panel shows *which way* a maneuver could shift.
+// Primer vector p(t) = Γᵀ(t)·λ, RTN components over time. This is the primer
+// (the dual mapped into control space), not the executed thrust direction — the
+// optimal impulse fires along the support image s(Γᵀλ), parallel to the primer
+// only for the L2 cost. Reading it alongside the magnitude panel shows which
+// way the dual rewards thrust at each time.
 function primerComponents(r: SolveResponse): SVGSVGElement {
   const W = 760,
     H = 280;

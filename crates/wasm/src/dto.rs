@@ -107,8 +107,9 @@ pub struct SolveResponse {
     /// Primer-vector history (the paper's Fig. 7), sampled at every grid time.
     /// The three arrays are parallel and equal length. `primer_times[k]` is the
     /// sample time `[s]`; `primer_magnitude[k]` is the dimensionless dual-gauge
-    /// magnitude (`≤ 1`, `= 1` at maneuver times); `primer_rtn[k]` is the primer
-    /// vector `p(t) = Γᵀ(t)·λ` in RTN. Touch-1-away-from-a-burn ⇒ plan flexibility.
+    /// magnitude (`≤ 1 + eps_cost`, `≈ 1` at maneuver times); `primer_rtn[k]` is
+    /// the primer vector `p(t) = Γᵀ(t)·λ` in RTN (not the executed thrust
+    /// direction). Touch-1-away-from-a-burn ⇒ plan flexibility.
     pub primer_times: Vec<f64>,
     pub primer_magnitude: Vec<f64>,
     pub primer_rtn: Vec<[f64; 3]>,
