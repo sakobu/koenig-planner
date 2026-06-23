@@ -6,7 +6,7 @@ use super::b_matrix::control_input_matrix;
 use super::orbit::AbsoluteOrbit;
 use super::stm::state_transition;
 use super::Dynamics;
-use crate::types::{PlannerError, M, N};
+use crate::types::{InvalidInputKind, PlannerError, M, N};
 use nalgebra::SMatrix;
 
 /// J2 mean-ROE dynamics for a fixed chief orbit and control window `[t_i, t_f]`.
@@ -39,29 +39,25 @@ impl J2Roe {
         // the NaN propagates silently through `Gamma` and is mis-reported as a
         // solver failure instead of the caller-fixable input error it is.
         if !chief_ti.a.is_finite() || chief_ti.a <= 0.0 {
-            return Err(PlannerError::InvalidInput(format!(
-                "J2Roe: chief semimajor axis must be finite and positive (a > 0), \
-                 got a = {}",
-                chief_ti.a
-            )));
+            return Err(PlannerError::InvalidInput(
+                InvalidInputKind::ChiefSemimajorAxis { a: chief_ti.a },
+            ));
         }
         if !(0.0..1.0).contains(&chief_ti.e) {
-            return Err(PlannerError::InvalidInput(format!(
-                "J2Roe: chief must be elliptic (0 <= e < 1), got e = {}",
-                chief_ti.e
-            )));
+            return Err(PlannerError::InvalidInput(InvalidInputKind::Eccentricity {
+                e: chief_ti.e,
+            }));
         }
         if chief_ti.i.sin().abs() < 1e-9 {
-            return Err(PlannerError::InvalidInput(format!(
-                "J2Roe: chief inclination must be bounded away from 0 and pi \
-                 (B(t) has a 1/tan(i) singularity), got i = {} rad",
-                chief_ti.i
-            )));
+            return Err(PlannerError::InvalidInput(
+                InvalidInputKind::ChiefInclination { i: chief_ti.i },
+            ));
         }
         if !t_i.is_finite() || !t_f.is_finite() || t_f <= t_i {
-            return Err(PlannerError::InvalidInput(
-                "J2Roe: window must satisfy finite t_i, t_f and t_f > t_i".into(),
-            ));
+            return Err(PlannerError::InvalidInput(InvalidInputKind::Window {
+                t_i,
+                t_f,
+            }));
         }
         Ok(Self { chief_ti, t_i, t_f })
     }

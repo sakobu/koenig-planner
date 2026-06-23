@@ -1,7 +1,7 @@
 //! Public-API smoke tests for the crate's exported types and constants.
 
 use approx::assert_abs_diff_eq;
-use koenig_damico_planner::{Maneuver, PlannerError, SolveParams, TimeGrid, M, N};
+use koenig_damico_planner::{InvalidInputKind, Maneuver, PlannerError, SolveParams, TimeGrid, M, N};
 use nalgebra::SVector;
 
 // Ref: [KD20] eq. 51 (N=6, M=3).
@@ -31,7 +31,9 @@ fn default_params_are_table_iii() {
 
 #[test]
 fn error_displays_message() {
-    let e = PlannerError::InvalidInput("bad w".into());
+    let e = PlannerError::InvalidInput(InvalidInputKind::Other {
+        message: "bad w".into(),
+    });
     assert!(e.to_string().contains("bad w"));
 }
 

@@ -55,10 +55,11 @@ impl TimeGrid {
     /// in which case `len`/`time`/`times` assume that same invariant.
     pub fn uniform(t_i: f64, t_f: f64, dt: f64) -> Result<Self, PlannerError> {
         if !t_i.is_finite() || !t_f.is_finite() || !dt.is_finite() || dt <= 0.0 || t_f <= t_i {
-            return Err(PlannerError::InvalidInput(format!(
-                "TimeGrid::uniform requires finite t_i,t_f,dt with dt > 0 and \
-                 t_f > t_i (got t_i={t_i}, t_f={t_f}, dt={dt})"
-            )));
+            return Err(PlannerError::InvalidInput(InvalidInputKind::Grid {
+                t_i,
+                t_f,
+                dt,
+            }));
         }
         Ok(Self { t_i, t_f, dt })
     }
@@ -176,6 +177,57 @@ pub enum FuelGenerator {
     Polytope(Vec<SVector<f64, M>>),
 }
 
+/// Classifies an [`PlannerError::InvalidInput`] and carries the offending value(s), so callers can
+/// branch on the failure mode and read the diagnostic numbers without parsing a message string.
+///
+/// This enum is `#[non_exhaustive]`: match it with a trailing `_` arm so future kinds do not break
+/// downstream code.
+#[derive(Debug, Clone, PartialEq, Error)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[non_exhaustive]
+pub enum InvalidInputKind {
+    /// Time-grid parameters out of range.
+    #[error("grid requires finite t_i, t_f, dt with dt > 0 and t_f > t_i (got t_i={t_i}, t_f={t_f}, dt={dt})")]
+    Grid { t_i: f64, t_f: f64, dt: f64 },
+    /// `n_init` or `n_coarse` was zero.
+    #[error("n_init and n_coarse must both be >= 1 (got n_init={n_init}, n_coarse={n_coarse})")]
+    SolverParams { n_init: usize, n_coarse: usize },
+    /// Target pseudostate `w` was zero or non-finite.
+    #[error("target pseudostate w must be nonzero and finite")]
+    Target,
+    /// Eccentricity outside the elliptic range.
+    #[error("eccentricity must satisfy 0 <= e < 1 (elliptic), got e = {e}")]
+    Eccentricity { e: f64 },
+    /// Chief semimajor axis non-finite or non-positive.
+    #[error("J2Roe: chief semimajor axis must be finite and positive (a > 0), got a = {a}")]
+    ChiefSemimajorAxis { a: f64 },
+    /// Chief inclination too close to 0 or pi.
+    #[error("J2Roe: chief inclination must be bounded away from 0 and pi (B(t) has a 1/tan(i) singularity), got i = {i} rad")]
+    ChiefInclination { i: f64 },
+    /// Chief propagation window non-finite or `t_f <= t_i`.
+    #[error("J2Roe: window must satisfy finite t_i, t_f and t_f > t_i (got t_i={t_i}, t_f={t_f})")]
+    Window { t_i: f64, t_f: f64 },
+    /// Orbital period non-finite/`<= 0`, or non-finite perigee epoch.
+    #[error("Piecewise requires a finite period > 0 and a finite perigee epoch (got period={period}, t_perigee0={t_perigee0})")]
+    Period { period: f64, t_perigee0: f64 },
+    /// A maneuver budget was negative or NaN.
+    #[error("extract_qp: budget must be non-negative, got {budget}")]
+    Budget { budget: f64 },
+    /// A candidate-time / generator set was empty or malformed.
+    #[error("candidate-time set is empty or malformed")]
+    EmptyCandidateSet,
+    /// No maneuver directions supplied to the QP extraction.
+    #[error("extract_qp: no maneuver directions")]
+    NoDirections,
+    /// No supplied initial time was finite and in range after snapping.
+    #[error("solve_from_initial_times: no finite initial times in range")]
+    NoInitialTimesInRange,
+    /// An error fitting none of the planner's own preconditions — e.g. from an external
+    /// `Dynamics`/`CostModel` implementation. Mirrors [`std::io::ErrorKind::Other`].
+    #[error("{message}")]
+    Other { message: String },
+}
+
 /// Errors surfaced by the planner.
 #[derive(Debug, Error)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -201,18 +253,11 @@ pub enum PlannerError {
         /// Eccentricity.
         e: f64,
     },
-    /// An input precondition was violated — an intentionally opaque catch-all.
-    ///
-    /// Many distinct preconditions across the planner (grid/window bounds, chief
-    /// orbit validity, eccentricity range, empty candidate or direction sets,
-    /// period and perigee-epoch sanity, …) all funnel into this one variant. The
-    /// wrapped `String` is a human-readable diagnostic and is the *only* payload:
-    /// it is meant to be read, logged, or shown to a caller fixing their input,
-    /// not matched on programmatically. Treat any `InvalidInput` uniformly as a
-    /// "bad request — correct the inputs" signal rather than branching on the
-    /// message text, which is not part of the stable contract.
+    /// An input precondition was violated. The wrapped [`InvalidInputKind`] classifies the cause and
+    /// carries the offending value(s); match on it to branch on the failure mode. Treat any
+    /// `InvalidInput` uniformly as a "bad request — correct the inputs" signal.
     #[error("invalid input: {0}")]
-    InvalidInput(String),
+    InvalidInput(InvalidInputKind),
 }
 
 #[cfg(test)]

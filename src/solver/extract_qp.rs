@@ -2,7 +2,7 @@
 //! weighted pseudostate residual.
 
 use crate::solver::{check_status, silent_settings};
-use crate::types::{PlannerError, Pseudostate, N};
+use crate::types::{InvalidInputKind, PlannerError, Pseudostate, N};
 use clarabel::algebra::CscMatrix;
 use clarabel::solver::{DefaultSolver, IPSolver, NonnegativeConeT, SupportedConeT};
 use nalgebra::{SMatrix, SVector};
@@ -37,16 +37,14 @@ pub fn extract_qp(
 ) -> Result<Vec<f64>, PlannerError> {
     let k = ys.len();
     if k == 0 {
-        return Err(PlannerError::InvalidInput(
-            "extract_qp: no maneuver directions".into(),
-        ));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::NoDirections));
     }
     // Reject negative and NaN budgets (NaN slips past `< 0.0` since all NaN
     // comparisons are false); +inf is harmless (a non-binding budget).
     if budget < 0.0 || budget.is_nan() {
-        return Err(PlannerError::InvalidInput(format!(
-            "extract_qp: budget must be non-negative, got {budget}"
-        )));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::Budget {
+            budget,
+        }));
     }
 
     // Symmetrize Q defensively so the triu(P) packing cannot drop an

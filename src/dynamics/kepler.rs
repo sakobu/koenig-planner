@@ -3,7 +3,7 @@
 //! from standard astrodynamics (Vallado) and verified by round-trip identity
 //! and known `M -> nu` pairs, not by a PDF cross-check.
 
-use crate::types::PlannerError;
+use crate::types::{InvalidInputKind, PlannerError};
 use std::f64::consts::PI;
 
 /// Reduce an angle `[rad]` to the interval `[-pi, pi)`.
@@ -25,9 +25,9 @@ pub fn wrap_to_pi(x: f64) -> f64 {
 ///   guard so a future regression cannot silently return a wrong-but-finite `E`).
 pub fn mean_to_eccentric(m: f64, e: f64) -> Result<f64, PlannerError> {
     if !(0.0..1.0).contains(&e) {
-        return Err(PlannerError::InvalidInput(format!(
-            "Kepler solve is elliptic-only: require 0 <= e < 1, got e = {e}"
-        )));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::Eccentricity {
+            e,
+        }));
     }
     let m = wrap_to_pi(m);
     let mut ecc = m + e * m.sin();

@@ -34,7 +34,7 @@ pub mod types;
 // --- Core API: the entry points and results most users need. ---
 pub use algorithm::{primer_history, solve, solve_from_initial_times, PrimerHistory};
 pub use dynamics::Dynamics;
-pub use types::{Maneuver, PlannerError, Solution, SolveParams, TimeGrid};
+pub use types::{InvalidInputKind, Maneuver, PlannerError, Solution, SolveParams, TimeGrid};
 
 // --- Problem-definition types. ---
 pub use cost::{CostModel, SublevelSet};

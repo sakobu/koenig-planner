@@ -6,7 +6,7 @@ mod refine;
 
 use crate::cost::CostModel;
 use crate::dynamics::Dynamics;
-use crate::types::{Dual, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N};
+use crate::types::{Dual, InvalidInputKind, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N};
 use nalgebra::{SMatrix, SVector};
 
 /// Contact value `g_{U(1,t)}(Γᵀ(t)·lambda)` at grid index `k`.
@@ -73,20 +73,21 @@ fn validate_inputs(
         || !grid.t_i.is_finite()
         || grid.t_f <= grid.t_i
     {
-        return Err(PlannerError::InvalidInput(
-            "grid must satisfy dt > 0 and t_f > t_i (finite)".into(),
-        ));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::Grid {
+            t_i: grid.t_i,
+            t_f: grid.t_f,
+            dt: grid.dt,
+        }));
     }
     if params.n_init == 0 || params.n_coarse == 0 {
-        return Err(PlannerError::InvalidInput(
-            "n_init and n_coarse must be >= 1".into(),
-        ));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::SolverParams {
+            n_init: params.n_init,
+            n_coarse: params.n_coarse,
+        }));
     }
     let w_norm = w.norm();
     if !w_norm.is_finite() || w_norm <= 0.0 {
-        return Err(PlannerError::InvalidInput(
-            "target pseudostate w must be nonzero and finite".into(),
-        ));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::Target));
     }
     Ok(())
 }
@@ -193,7 +194,7 @@ pub fn solve_from_initial_times<D: Dynamics, C: CostModel>(
     let t_est = nearest_grid_indices(&grid, initial_times);
     if t_est.is_empty() {
         return Err(PlannerError::InvalidInput(
-            "solve_from_initial_times: no finite initial times in range".into(),
+            InvalidInputKind::NoInitialTimesInRange,
         ));
     }
     run_pipeline(cost, &grid, &gammas, &w, params, t_est)

@@ -2,7 +2,7 @@
 //! Norm2 elsewhere (T2).
 
 use super::{CostModel, FaceMax, Norm2, SublevelSet};
-use crate::types::PlannerError;
+use crate::types::{InvalidInputKind, PlannerError};
 
 /// Piecewise eq.-49 selector. `T1 = { t : dist(t, nearest perigee center) < half_width }`
 /// with `half_width = 1 hr` (eq. 49's 2-hr windows) and perigee centers at
@@ -53,10 +53,10 @@ impl Piecewise {
     /// `FaceMax` everywhere). Both drop the intended perigee-windowed behavior.
     pub fn with_perigee_epoch(period: f64, t_perigee0: f64) -> Result<Self, PlannerError> {
         if !period.is_finite() || period <= 0.0 || !t_perigee0.is_finite() {
-            return Err(PlannerError::InvalidInput(format!(
-                "Piecewise requires a finite period > 0 and a finite perigee epoch \
-                 (got period={period}, t_perigee0={t_perigee0})"
-            )));
+            return Err(PlannerError::InvalidInput(InvalidInputKind::Period {
+                period,
+                t_perigee0,
+            }));
         }
         Ok(Self {
             norm2: Norm2,

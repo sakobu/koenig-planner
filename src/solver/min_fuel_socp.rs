@@ -10,7 +10,7 @@
 //! group-sparse, so few maneuvers come out nonzero.
 
 use crate::solver::{check_status, silent_settings};
-use crate::types::{FuelGenerator, PlannerError, Pseudostate, M, N};
+use crate::types::{FuelGenerator, InvalidInputKind, PlannerError, Pseudostate, M, N};
 use clarabel::algebra::CscMatrix;
 use clarabel::solver::{
     DefaultSolver, IPSolver, NonnegativeConeT, SecondOrderConeT, SupportedConeT, ZeroConeT,
@@ -53,7 +53,7 @@ pub fn min_fuel_socp(
     let k = gammas.len();
     if k == 0 || k != generators.len() {
         return Err(PlannerError::InvalidInput(
-            "min_fuel_socp: need >= 1 candidate time and matching generators".into(),
+            InvalidInputKind::EmptyCandidateSet,
         ));
     }
 

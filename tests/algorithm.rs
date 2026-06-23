@@ -2,7 +2,7 @@
 
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
-use koenig_damico_planner::{solve, solve_from_initial_times, PlannerError, SolveParams, TimeGrid};
+use koenig_damico_planner::{solve, solve_from_initial_times, InvalidInputKind, PlannerError, SolveParams, TimeGrid};
 use nalgebra::{SMatrix, SVector};
 use std::f64::consts::TAU;
 
@@ -203,14 +203,19 @@ fn solve_propagates_dynamics_gamma_error() {
     struct FailDyn;
     impl Dynamics for FailDyn {
         fn gamma(&self, _t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
-            Err(PlannerError::InvalidInput("boom".into()))
+            Err(PlannerError::InvalidInput(InvalidInputKind::Other {
+                message: "boom".into(),
+            }))
         }
     }
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&FailDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(m) if m == "boom"));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Other { message }) if message == "boom"
+    ));
 }
 
 #[test]
