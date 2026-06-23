@@ -118,6 +118,27 @@ pub fn eci_to_rtn(orbit: &AbsoluteOrbit, v_eci: [f64; 3]) -> Result<[f64; 3], Pl
     Ok([dot(v_eci, r), dot(v_eci, t), dot(v_eci, n)])
 }
 
+/// Reconstruct the deputy's mean absolute orbit from the chief and a
+/// dimensionless quasi-nonsingular ROE offset `[δa, δλ, δeₓ, δe_y, δiₓ, δi_y]`
+/// (`[KD20]` eq. 51; `u = M + ω`). This is the exact algebraic inverse of the
+/// ROE definition — not a linearization — so the resulting deputy `propagate`s
+/// with the same core dynamics as the chief.
+#[allow(dead_code)]
+pub fn deputy_from_roe(chief: &AbsoluteOrbit, roe: [f64; 6]) -> AbsoluteOrbit {
+    let [da, dl, dex, dey, dix, diy] = roe;
+    let a_d = chief.a * (1.0 + da);
+    let i_d = chief.i + dix;
+    let raan_d = chief.raan + diy / chief.i.sin();
+    let ex_d = chief.e * chief.argp.cos() + dex;
+    let ey_d = chief.e * chief.argp.sin() + dey;
+    let e_d = (ex_d * ex_d + ey_d * ey_d).sqrt();
+    let argp_d = ey_d.atan2(ex_d);
+    let u_c = chief.argp + chief.mean_anom;
+    let u_d = u_c + dl - (raan_d - chief.raan) * chief.i.cos();
+    let mean_anom_d = u_d - argp_d;
+    AbsoluteOrbit::new(a_d, e_d, i_d, raan_d, argp_d, mean_anom_d)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,5 +241,71 @@ mod tests {
         for k in 0..3 {
             assert!((back[k] - v[k]).abs() < 1e-12, "k={k}");
         }
+    }
+
+    fn chief_fixture() -> AbsoluteOrbit {
+        AbsoluteOrbit::new(
+            A,
+            E,
+            40f64.to_radians(),
+            358f64.to_radians(),
+            0.0,
+            180f64.to_radians(),
+        )
+    }
+
+    // Forward quasi-nonsingular ROE (deputy − chief), [KD20] eq. 51, u = M + ω.
+    fn roe_of(chief: &AbsoluteOrbit, deputy: &AbsoluteOrbit) -> [f64; 6] {
+        let da = (deputy.a - chief.a) / chief.a;
+        let dix = deputy.i - chief.i;
+        let diy = (deputy.raan - chief.raan) * chief.i.sin();
+        let dex = deputy.e * deputy.argp.cos() - chief.e * chief.argp.cos();
+        let dey = deputy.e * deputy.argp.sin() - chief.e * chief.argp.sin();
+        let uc = chief.argp + chief.mean_anom;
+        let ud = deputy.argp + deputy.mean_anom;
+        let dl = (ud - uc) + (deputy.raan - chief.raan) * chief.i.cos();
+        [da, dl, dex, dey, dix, diy]
+    }
+
+    #[wasm_bindgen_test]
+    fn zero_roe_reproduces_chief() {
+        let c = chief_fixture();
+        let d = deputy_from_roe(&c, [0.0; 6]);
+        assert!((d.a - c.a).abs() < 1e-6);
+        assert!((d.e - c.e).abs() < 1e-15);
+        assert!((d.i - c.i).abs() < 1e-15);
+        assert!((d.raan - c.raan).abs() < 1e-15);
+        assert!((d.argp - c.argp).abs() < 1e-15);
+        assert!((d.mean_anom - c.mean_anom).abs() < 1e-15);
+    }
+
+    #[wasm_bindgen_test]
+    fn pure_delta_a_scales_semimajor_only() {
+        let c = chief_fixture();
+        let d = deputy_from_roe(&c, [1e-4, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert!((d.a - c.a * (1.0 + 1e-4)).abs() < 1e-6);
+        assert!((d.i - c.i).abs() < 1e-15 && (d.raan - c.raan).abs() < 1e-15);
+    }
+
+    #[wasm_bindgen_test]
+    fn deputy_from_roe_is_exact_inverse_of_roe_of() {
+        // Build an arbitrary deputy, take its ROE, reconstruct — must round-trip.
+        let c = chief_fixture();
+        let deputy = AbsoluteOrbit::new(
+            A * (1.0 + 2e-4),
+            0.705,
+            40.01f64.to_radians(),
+            358.02f64.to_radians(),
+            0.05,
+            180.1f64.to_radians(),
+        );
+        let roe = roe_of(&c, &deputy);
+        let back = deputy_from_roe(&c, roe);
+        assert!((back.a - deputy.a).abs() < 1e-3, "a");
+        assert!((back.e - deputy.e).abs() < 1e-12, "e");
+        assert!((back.i - deputy.i).abs() < 1e-12, "i");
+        assert!((back.raan - deputy.raan).abs() < 1e-12, "raan");
+        assert!((back.argp - deputy.argp).abs() < 1e-12, "argp");
+        assert!((back.mean_anom - deputy.mean_anom).abs() < 1e-12, "M");
     }
 }
