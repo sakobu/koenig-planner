@@ -7,7 +7,7 @@ mod refine;
 use crate::cost::CostModel;
 use crate::dynamics::Dynamics;
 use crate::types::{Dual, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N};
-use nalgebra::SMatrix;
+use nalgebra::{SMatrix, SVector};
 
 /// Contact value `g_{U(1,t)}(Γᵀ(t)·lambda)` at grid index `k`.
 ///
@@ -197,6 +197,77 @@ pub fn solve_from_initial_times<D: Dynamics, C: CostModel>(
         ));
     }
     run_pipeline(cost, &grid, &gammas, &w, params, t_est)
+}
+
+/// Primer-vector history sampled over a time grid.
+///
+/// For each grid time `t_k`: `vectors[k] = Γᵀ(t_k)·λ ∈ ℝ³` is the primer vector
+/// (\[KD20\] eq. 46 — the dual `λ` mapped into RTN control space), and
+/// `magnitudes[k] = g_{U(1,t_k)}(vectors[k])` is its dual-gauge magnitude
+/// (dimensionless). This is the paper's Fig. 7 contact curve, paired with the
+/// underlying vector.
+///
+/// The magnitude is `≈ 1` at the optimal maneuver times and `≤ 1 + eps_cost`
+/// (Algorithm 2's tolerance) at every candidate time the solve converged over.
+/// Evaluated on a grid *denser* than the one solved over it may exceed that
+/// bound slightly between solved times, since dual feasibility is only enforced
+/// at the solved candidates. Wherever the magnitude touches 1 but no burn is
+/// placed, the plan has flexibility.
+///
+/// `vectors` is the primer, **not** the executed thrust direction in general:
+/// the optimal impulse fires along the support image `s_{U(1,t)}(Γᵀλ)`
+/// (\[KD20\] eq. 41–42), which is parallel to the primer only for the L2
+/// (`Norm2`) gauge; under the `FaceMax` / `Piecewise`-perigee polytope gauge it
+/// is a fixed tetrahedral thruster axis, generally not parallel to the primer.
+///
+/// Ref: \[KD20\] Fig. 7 (contact curve); eq. 30 / 27; eq. 41–42 / 46.
+#[derive(Debug, Clone)]
+pub struct PrimerHistory {
+    /// Sample times `[s]`, one per grid point: `times[k] == grid.time(k)`.
+    pub times: Vec<f64>,
+    /// Primer vector `p(t_k) = Γᵀ(t_k)·λ`, RTN components `(R, T, N)`.
+    pub vectors: Vec<SVector<f64, M>>,
+    /// Dual-gauge magnitude `g_{U(1,t_k)}(p(t_k))` (dimensionless).
+    pub magnitudes: Vec<f64>,
+}
+
+/// Reconstruct the primer-vector history from a converged dual `lambda` over a
+/// time grid.
+///
+/// `lambda` is [`Solution::lambda`] from a [`solve`] call (the eq. 40 dual, the
+/// reachable-set normal). The history is evaluated at every `grid` time via the
+/// same `Γ(t)` cache and gauge-contact computation Algorithm 2 uses internally,
+/// so passing a denser `grid` than the one solved over yields a smoother curve.
+/// It evaluates `Γ(t)` once per grid point (`O(grid.len())` dynamics
+/// evaluations), so a denser grid trades compute for smoothness.
+///
+/// Ref: \[KD20\] Fig. 7 (contact curve `g(t)` over the candidate grid); eq. 30.
+///
+/// # Errors
+/// Propagates the first [`Dynamics::gamma`] failure — an out-of-domain chief
+/// whose Kepler solve diverges ([`PlannerError::KeplerDivergence`]) or is
+/// rejected as non-elliptic ([`PlannerError::InvalidInput`]). Unreachable on the
+/// built-in `J2Roe`, which validates its chief in `new`.
+pub fn primer_history<D: Dynamics, C: CostModel>(
+    dynamics: &D,
+    cost: &C,
+    grid: &TimeGrid,
+    lambda: &Dual,
+) -> Result<PrimerHistory, PlannerError> {
+    let gammas = cache_gamma(dynamics, grid)?;
+    let times: Vec<f64> = grid.times().collect();
+    let mut vectors = Vec::with_capacity(gammas.len());
+    let mut magnitudes = Vec::with_capacity(gammas.len());
+    for (g, &t) in gammas.iter().zip(&times) {
+        let p = g.transpose() * lambda; // p(t) = Γᵀ(t)·λ ∈ ℝ³, same as `contact_at`
+        magnitudes.push(cost.at(t).contact(p));
+        vectors.push(p);
+    }
+    Ok(PrimerHistory {
+        times,
+        vectors,
+        magnitudes,
+    })
 }
 
 #[cfg(test)]

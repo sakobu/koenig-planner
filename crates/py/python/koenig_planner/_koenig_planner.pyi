@@ -52,6 +52,13 @@ class Solution:
     iterations: int
     residual: float
     lambda_: list[float]
+    # Primer-vector history (paper's Fig. 7 contact curve), parallel arrays, one
+    # entry per grid point. Times in [s] from t_i; magnitude is dimensionless
+    # (<= 1 + eps_cost, ~= 1 at maneuver times); primer_rtn is the primer vector
+    # p(t) = Gamma^T(t)*lambda in RTN (not the executed thrust direction).
+    primer_times: list[float]
+    primer_magnitude: list[float]
+    primer_rtn: list[tuple[float, float, float]]
 
 def solve(
     chief: Orbit,

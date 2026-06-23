@@ -32,7 +32,7 @@ pub mod solver;
 pub mod types;
 
 // --- Core API: the entry points and results most users need. ---
-pub use algorithm::{solve, solve_from_initial_times};
+pub use algorithm::{primer_history, solve, solve_from_initial_times, PrimerHistory};
 pub use dynamics::Dynamics;
 pub use types::{Maneuver, PlannerError, Solution, SolveParams, TimeGrid};
 

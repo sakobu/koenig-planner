@@ -137,6 +137,22 @@ pub struct SolveResponse {
     pub residual: f64,
     /// Optimal dual variable `λ_opt ∈ ℝ⁶`.
     pub lambda: [f64; 6],
+    /// Primer-vector history — the paper's Fig. 7 contact curve, sampled at every
+    /// grid time. The three arrays are parallel and equal length (one entry per
+    /// grid point). Wherever the magnitude touches 1 away from a maneuver, the
+    /// plan has flexibility.
+    ///
+    /// Sample times `[s]` from `t_i`: `primer_times[k] = t_i + k·dt`.
+    pub primer_times: Vec<f64>,
+    /// Dual-gauge primer magnitude `g_{U(1,t)}(Γᵀ(t)·λ)` (dimensionless): `≤ 1`
+    /// everywhere (`≤ 1 + eps_cost` at Algorithm 2's tolerance), `≈ 1` at the
+    /// optimal maneuver times.
+    pub primer_magnitude: Vec<f64>,
+    /// Primer vector `p(t) = Γᵀ(t)·λ`, RTN components `[R, T, N]` — the dual `λ`
+    /// mapped into control space. This is the primer, **not** the executed
+    /// thrust direction: the optimal impulse fires along the support image
+    /// `s(Γᵀλ)`, which is parallel to the primer only for the L2 (`norm2`) cost.
+    pub primer_rtn: Vec<[f64; 3]>,
 }
 
 // ── Error ───────────────────────────────────────────────────────────────────

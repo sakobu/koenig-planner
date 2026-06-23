@@ -88,6 +88,9 @@ pub(crate) fn solution_to_py(py: Python<'_>, resp: SolveResponse) -> PyResult<So
         iterations,
         residual,
         lambda,
+        primer_times,
+        primer_magnitude,
+        primer_rtn,
     } = resp;
     let maneuvers = maneuvers
         .iter()
@@ -102,11 +105,18 @@ pub(crate) fn solution_to_py(py: Python<'_>, resp: SolveResponse) -> PyResult<So
             )
         })
         .collect::<PyResult<Vec<_>>>()?;
+    let primer_rtn = primer_rtn
+        .iter()
+        .map(|p| (p[0], p[1], p[2]))
+        .collect::<Vec<_>>();
     Ok(Solution {
         maneuvers,
         total_dv,
         iterations,
         residual,
         lambda: lambda.to_vec(),
+        primer_times,
+        primer_magnitude,
+        primer_rtn,
     })
 }

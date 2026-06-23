@@ -37,7 +37,8 @@ use convert::{bad_request, map_dispatch_error, resolve_params};
 use koenig_damico_planner::cost::{FaceMax, Norm2, Piecewise, SublevelSet};
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
 use koenig_damico_planner::{
-    solve, solve_from_initial_times, CostModel, Solution, SolveParams, TimeGrid,
+    primer_history, solve, solve_from_initial_times, CostModel, PrimerHistory, Solution,
+    SolveParams, TimeGrid,
 };
 use koenig_damico_planner::{PlannerError, Pseudostate};
 use std::f64::consts::TAU;
@@ -69,11 +70,15 @@ impl CostModel for ConstFaceMax {
     }
 }
 
-/// Monomorphize `solve`/`solve_from_initial_times` over a concrete cost type.
+/// Monomorphize `solve`/`solve_from_initial_times` over a concrete cost type,
+/// then reconstruct the primer-vector history from the converged dual.
 ///
 /// This private helper avoids repeating the dispatch body for each cost
 /// variant.  `dyn CostModel` is intentionally not used here: it does not
 /// satisfy the `C: CostModel` bound required by the generic `solve` functions.
+/// It is also the single point that still holds the concrete `cost` and `grid`
+/// (`TimeGrid` is `Copy`, so `solve` consumes a copy), so the primer history is
+/// computed here rather than at the response seam.
 fn dispatch<C: CostModel>(
     dyn_: &J2Roe,
     cost: &C,
@@ -81,11 +86,13 @@ fn dispatch<C: CostModel>(
     grid: TimeGrid,
     params: &SolveParams,
     initial_times: Option<&[f64]>,
-) -> Result<Solution, PlannerError> {
-    match initial_times {
+) -> Result<(Solution, PrimerHistory), PlannerError> {
+    let sol = match initial_times {
         Some(ts) => solve_from_initial_times(dyn_, cost, w, grid, params, ts),
         None => solve(dyn_, cost, w, grid, params),
-    }
+    }?;
+    let primer = primer_history(dyn_, cost, &grid, &sol.lambda)?;
+    Ok((sol, primer))
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -156,9 +163,10 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
     // 5. Merge optional parameter overrides with Table III defaults.
     let params = resolve_params(req.params);
 
-    // 6. Dispatch per cost model (monomorphize per match arm).
+    // 6. Dispatch per cost model (monomorphize per match arm). Each arm returns
+    //    the solution paired with its primer-vector history.
     let its = req.initial_times.as_deref();
-    let sol = match req.cost {
+    let (sol, primer) = match req.cost {
         CostSpec::Norm2 => dispatch(&dyn_, &ConstNorm2(Norm2), w, grid, &params, its),
         CostSpec::FaceMax => dispatch(&dyn_, &ConstFaceMax(FaceMax), w, grid, &params, its),
         CostSpec::Piecewise { period, t_perigee0 } => {
@@ -176,7 +184,8 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
     }
     .map_err(map_dispatch_error)?;
 
-    // 7. Finite-guard: serde_json renders non-finite f64 as `null`.
+    // 7. Finite-guard: serde_json renders non-finite f64 as `null`. Covers the
+    //    solution and the primer-vector history (magnitudes and RTN components).
     if !sol.total_dv.is_finite()
         || !sol.residual.is_finite()
         || sol
@@ -184,6 +193,11 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
             .iter()
             .any(|m| !m.dv.iter().all(|x| x.is_finite()))
         || !sol.lambda.iter().all(|x| x.is_finite())
+        || !primer.magnitudes.iter().all(|g| g.is_finite())
+        || primer
+            .vectors
+            .iter()
+            .any(|p| !p.iter().all(|x| x.is_finite()))
     {
         return Err(ApiError {
             kind: ApiErrorKind::Solver,
@@ -191,9 +205,9 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
         });
     }
 
-    // 8. Map Solution → SolveResponse via the field-exhaustive `From` in
-    //    convert.rs: a new core field becomes a compile error here.
-    Ok(sol.into())
+    // 8. Map (Solution, PrimerHistory) → SolveResponse via the field-exhaustive
+    //    `From` in convert.rs: a new field on either becomes a compile error here.
+    Ok((sol, primer).into())
 }
 
 /// Parse a JSON [`SolveRequest`], run it, and serialize the [`SolveResponse`] to JSON.
