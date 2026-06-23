@@ -3,6 +3,7 @@ import { Kpis } from "./charts/Kpis";
 import { Timeline } from "./charts/Timeline";
 import { PrimerMagnitude } from "./charts/PrimerMagnitude";
 import { Panel } from "./charts/Panel";
+import { EciScene } from "./scene/EciScene";
 
 export function Readout({ outcome }: { outcome: SolveOutcome | null }) {
   if (!outcome) return <section id="output" />;
@@ -19,13 +20,16 @@ export function Readout({ outcome }: { outcome: SolveOutcome | null }) {
   return (
     <section id="output">
       <Kpis r={r} />
+      <Panel title="Orbit (ECI)">
+        <EciScene g={r.geometry} />
+      </Panel>
       <Panel title="Δv timeline">
         <Timeline r={r} />
       </Panel>
       <Panel title="Primer magnitude vs time">
         <PrimerMagnitude r={r} />
       </Panel>
-      {/* 3D scene panels are inserted in Phase D / Task 14 layout. */}
+
     </section>
   );
 }

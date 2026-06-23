@@ -450,3 +450,14 @@ form[data-cost="piecewise"] .pw {
   /* number input keeps the existing label row layout */
   margin: 0;
 }
+
+/* ── 3D canvases (Plan 2) ────────────────────────────────────────── */
+.canvas3d {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 320px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: #05080c;
+  overflow: hidden;
+}
