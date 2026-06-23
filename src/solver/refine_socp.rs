@@ -2,7 +2,7 @@
 //! each time's `cone_constraints`), maximize -> minimize.
 
 use crate::solver::{check_status, silent_settings};
-use crate::types::{ConicRows, Dual, PlannerError, Pseudostate, M, N};
+use crate::types::{ConicRows, Dual, InvalidInputKind, PlannerError, Pseudostate, M, N};
 use clarabel::algebra::CscMatrix;
 use clarabel::solver::{
     DefaultSolver, IPSolver, NonnegativeConeT, SecondOrderConeT, SupportedConeT,
@@ -45,7 +45,7 @@ pub fn refine_socp(w: &Pseudostate, rows: &[ConicRows]) -> Result<RefineSolution
     let total_rows = n_linear + (M + 1) * n_soc;
     if total_rows == 0 {
         return Err(PlannerError::InvalidInput(
-            "refine_socp: empty candidate-time set (objective is unbounded)".into(),
+            InvalidInputKind::EmptyCandidateSet,
         ));
     }
 
@@ -144,7 +144,12 @@ mod tests {
     fn empty_candidate_set_is_invalid_input() {
         let w = w6([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         let err = refine_socp(&w, &[]).unwrap_err();
-        assert!(matches!(err, crate::types::PlannerError::InvalidInput(_)));
+        assert!(matches!(
+            err,
+            crate::types::PlannerError::InvalidInput(
+                crate::types::InvalidInputKind::EmptyCandidateSet
+            )
+        ));
     }
 
     // Ref: [KD20] eq. 40; Table II.

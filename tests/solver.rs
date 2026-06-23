@@ -2,7 +2,7 @@
 
 use approx::assert_relative_eq;
 use koenig_damico_planner::cost::{FaceMax, Norm2, SublevelSet};
-use koenig_damico_planner::{refine_socp, solver::extract_qp};
+use koenig_damico_planner::solver::{extract_qp, refine_socp};
 use nalgebra::{SMatrix, SVector};
 
 const N: usize = 6;

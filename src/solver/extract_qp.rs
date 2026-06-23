@@ -2,7 +2,7 @@
 //! weighted pseudostate residual.
 
 use crate::solver::{check_status, silent_settings};
-use crate::types::{PlannerError, Pseudostate, N};
+use crate::types::{InvalidInputKind, PlannerError, Pseudostate, N};
 use clarabel::algebra::CscMatrix;
 use clarabel::solver::{DefaultSolver, IPSolver, NonnegativeConeT, SupportedConeT};
 use nalgebra::{SMatrix, SVector};
@@ -17,7 +17,7 @@ use nalgebra::{SMatrix, SVector};
 /// `Maneuver` as `dv = alpha_j . s_j` applied at `t_j`.
 ///
 /// This is the paper's original fixed-support-direction magnitude QP. The
-/// `solve` path instead uses [`crate::min_fuel_socp()`], the direct full-3-DOF
+/// `solve` path instead uses [`crate::solver::min_fuel_socp()`], the direct full-3-DOF
 /// min-fuel SOCP, which is robust on the degenerate flat contacts where this
 /// magnitude QP under-spans `w`. This primitive is provided for direct use and
 /// for comparison against the SOCP.
@@ -37,16 +37,14 @@ pub fn extract_qp(
 ) -> Result<Vec<f64>, PlannerError> {
     let k = ys.len();
     if k == 0 {
-        return Err(PlannerError::InvalidInput(
-            "extract_qp: no maneuver directions".into(),
-        ));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::NoDirections));
     }
     // Reject negative and NaN budgets (NaN slips past `< 0.0` since all NaN
     // comparisons are false); +inf is harmless (a non-binding budget).
     if budget < 0.0 || budget.is_nan() {
-        return Err(PlannerError::InvalidInput(format!(
-            "extract_qp: budget must be non-negative, got {budget}"
-        )));
+        return Err(PlannerError::InvalidInput(InvalidInputKind::Budget {
+            budget,
+        }));
     }
 
     // Symmetrize Q defensively so the triu(P) packing cannot drop an
@@ -125,7 +123,10 @@ mod tests {
         let w = w6([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         let q = SMatrix::<f64, N, N>::identity();
         let err = extract_qp(&w, &[], &q, 10.0).unwrap_err();
-        assert!(matches!(err, crate::types::PlannerError::InvalidInput(_)));
+        assert!(matches!(
+            err,
+            crate::types::PlannerError::InvalidInput(crate::types::InvalidInputKind::NoDirections)
+        ));
     }
 
     // Ref: [KD20] Algorithm 3.
@@ -228,7 +229,9 @@ mod tests {
         for bad in [-1.0, f64::NAN] {
             assert!(matches!(
                 extract_qp(&w, &[e(0)], &q, bad).unwrap_err(),
-                crate::types::PlannerError::InvalidInput(_)
+                crate::types::PlannerError::InvalidInput(
+                    crate::types::InvalidInputKind::Budget { .. }
+                )
             ));
         }
     }

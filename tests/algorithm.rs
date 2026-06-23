@@ -2,7 +2,9 @@
 
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
-use koenig_damico_planner::{solve, solve_from_initial_times, PlannerError, SolveParams, TimeGrid};
+use koenig_damico_planner::{
+    solve, solve_from_initial_times, InvalidInputKind, PlannerError, SolveParams, TimeGrid,
+};
 use nalgebra::{SMatrix, SVector};
 use std::f64::consts::TAU;
 
@@ -66,7 +68,10 @@ fn solve_rejects_zero_target() {
     let w = SVector::<f64, N>::zeros();
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(_)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Target)
+    ));
 }
 
 #[test]
@@ -80,7 +85,10 @@ fn solve_rejects_degenerate_grid() {
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(_)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Grid { .. })
+    ));
 }
 
 #[test]
@@ -94,7 +102,10 @@ fn solve_rejects_nan_dt() {
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(_)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Grid { .. })
+    ));
 }
 
 #[test]
@@ -108,7 +119,10 @@ fn solve_rejects_infinite_dt() {
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(_)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Grid { .. })
+    ));
 }
 
 #[test]
@@ -118,7 +132,10 @@ fn solve_rejects_nan_target() {
     let w = SVector::<f64, N>::from_row_slice(&[f64::NAN, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&dynamics, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(_)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Target)
+    ));
 }
 
 // Ref: [KD20] Algorithm 2; Table III.
@@ -193,7 +210,10 @@ fn solve_from_initial_times_rejects_empty_seed() {
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve_from_initial_times(&dynamics, &cost, w, grid, &SolveParams::default(), &[])
         .unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(_)));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::NoInitialTimesInRange)
+    ));
 }
 
 #[test]
@@ -203,14 +223,19 @@ fn solve_propagates_dynamics_gamma_error() {
     struct FailDyn;
     impl Dynamics for FailDyn {
         fn gamma(&self, _t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
-            Err(PlannerError::InvalidInput("boom".into()))
+            Err(PlannerError::InvalidInput(InvalidInputKind::Other {
+                message: "boom".into(),
+            }))
         }
     }
     let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
     let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
     let cost = Piecewise::new(1.0e12).unwrap();
     let err = solve(&FailDyn, &cost, w, grid, &SolveParams::default()).unwrap_err();
-    assert!(matches!(err, PlannerError::InvalidInput(m) if m == "boom"));
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::Other { message }) if message == "boom"
+    ));
 }
 
 #[test]
@@ -304,4 +329,57 @@ fn solve_reports_solver_failed_on_unreachable_target() {
         matches!(err, PlannerError::SolverFailed(_)),
         "expected SolverFailed, got {err:?}"
     );
+}
+
+#[test]
+fn solve_rejects_zero_n_init_with_solver_params_kind() {
+    let dynamics = SpinDyn { rate: 0.05 };
+    let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
+    let w = SVector::<f64, N>::from_row_slice(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    let cost = Piecewise::new(1.0e12).unwrap();
+    let params = SolveParams {
+        n_init: 0,
+        ..SolveParams::default()
+    };
+    let err = solve(&dynamics, &cost, w, grid, &params).unwrap_err();
+    assert!(matches!(
+        err,
+        PlannerError::InvalidInput(InvalidInputKind::SolverParams { n_init: 0, .. })
+    ));
+}
+
+#[test]
+fn j2roe_rejects_equatorial_chief_capturing_inclination() {
+    const A_C: f64 = 25_000e3;
+    let chief = AbsoluteOrbit::new(
+        A_C,
+        0.7,
+        0.0, // equatorial -> B(t) 1/tan(i) singularity
+        358.0_f64.to_radians(),
+        0.0,
+        180.0_f64.to_radians(),
+    );
+    let err = J2Roe::new(chief, 0.0, 117_990.0).unwrap_err();
+    let PlannerError::InvalidInput(InvalidInputKind::ChiefInclination { i }) = err else {
+        panic!("expected ChiefInclination, got {err:?}");
+    };
+    assert_eq!(i, 0.0);
+}
+
+#[test]
+fn j2roe_rejects_degenerate_window_capturing_endpoints() {
+    const A_C: f64 = 25_000e3;
+    let chief = AbsoluteOrbit::new(
+        A_C,
+        0.7,
+        40.0_f64.to_radians(),
+        358.0_f64.to_radians(),
+        0.0,
+        180.0_f64.to_radians(),
+    );
+    let err = J2Roe::new(chief, 100.0, 100.0).unwrap_err();
+    let PlannerError::InvalidInput(InvalidInputKind::Window { t_i, t_f }) = err else {
+        panic!("expected Window, got {err:?}");
+    };
+    assert_eq!((t_i, t_f), (100.0, 100.0));
 }
