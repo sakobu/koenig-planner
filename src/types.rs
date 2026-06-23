@@ -177,7 +177,7 @@ pub enum FuelGenerator {
     Polytope(Vec<SVector<f64, M>>),
 }
 
-/// Classifies an [`PlannerError::InvalidInput`] and carries the offending value(s), so callers can
+/// Classifies a [`PlannerError::InvalidInput`] and carries the offending value(s), so callers can
 /// branch on the failure mode and read the diagnostic numbers without parsing a message string.
 ///
 /// This enum is `#[non_exhaustive]`: match it with a trailing `_` arm so future kinds do not break
