@@ -84,6 +84,19 @@ struct Solution {
     /// `lambda` is a Python keyword.
     #[pyo3(get, name = "lambda_")]
     lambda: Vec<f64>,
+    /// Primer-vector history — the paper's Fig. 7 contact curve. The three arrays
+    /// are parallel and equal length (one entry per grid point). Sample times `[s]`
+    /// from `t_i`: `primer_times[k] = t_i + k·dt`.
+    #[pyo3(get)]
+    primer_times: Vec<f64>,
+    /// Dual-gauge primer magnitude (dimensionless): `≤ 1` everywhere, `= 1` at the
+    /// optimal maneuver times.
+    #[pyo3(get)]
+    primer_magnitude: Vec<f64>,
+    /// Primer vector `p(t) = Γᵀ(t)·λ`, RTN components `(R, T, N)` — the
+    /// optimal-thrust direction at each time.
+    #[pyo3(get)]
+    primer_rtn: Vec<(f64, f64, f64)>,
 }
 
 #[pymethods]

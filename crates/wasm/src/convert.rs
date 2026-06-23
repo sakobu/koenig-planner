@@ -100,6 +100,9 @@ impl From<(api::SolveResponse, dto::ChiefGeometry)> for dto::SolveResponse {
             iterations,
             residual,
             lambda,
+            primer_times,
+            primer_magnitude,
+            primer_rtn,
         } = resp;
         dto::SolveResponse {
             maneuvers: maneuvers.iter().map(Into::into).collect(),
@@ -107,6 +110,9 @@ impl From<(api::SolveResponse, dto::ChiefGeometry)> for dto::SolveResponse {
             iterations,
             residual,
             lambda,
+            primer_times,
+            primer_magnitude,
+            primer_rtn,
             geometry, // presentation-only field merged in
         }
     }
@@ -207,6 +213,9 @@ mod tests {
             iterations: 2,
             residual: 1e-9,
             lambda: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            primer_times: vec![0.0, 7.0],
+            primer_magnitude: vec![0.4, 1.0],
+            primer_rtn: vec![[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
         };
         let geom = dto::ChiefGeometry {
             a: 25_000e3,
@@ -222,6 +231,9 @@ mod tests {
         assert_eq!(got.iterations, 2);
         assert_eq!(got.residual, 1e-9);
         assert_eq!(got.lambda, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        assert_eq!(got.primer_times, vec![0.0, 7.0]);
+        assert_eq!(got.primer_magnitude, vec![0.4, 1.0]);
+        assert_eq!(got.primer_rtn, vec![[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]);
         assert_eq!(got.geometry.a, 25_000e3);
         assert_eq!(got.geometry.e, 0.7);
         assert_eq!(got.geometry.maneuver_nu, vec![0.5]);

@@ -127,8 +127,9 @@ cd crates/wasm/www && npm install && npm run dev
 ```
 
 The included demo (TypeScript + Vite) takes a chief orbit, target ROEs, and a cost model and visualizes
-the plan client-side: a Δv timeline, per-maneuver RTN components, and an orbit-geometry panel (maneuvers
-placed at their true anomaly via the core's own Kepler solver). See
+the plan client-side: a Δv timeline, per-maneuver RTN components, an orbit-geometry panel (maneuvers
+placed at their true anomaly via the core's own Kepler solver), and primer-vector panels (the primer
+magnitude vs time with the `|p| = 1` optimality bound, plus the RTN primer components). See
 [`crates/wasm/README.md`](crates/wasm/README.md).
 
 ## Workspace layout

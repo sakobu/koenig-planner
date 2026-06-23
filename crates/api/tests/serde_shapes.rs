@@ -84,11 +84,14 @@ fn solve_params_dto_defaults_round_trip() {
     assert_eq!(params, back);
 }
 
-/// The JSON shape of `SolveResponse` has `lambda` as a 6-element array and
-/// `maneuvers[i].dv` as a 3-element array.
+/// The JSON shape of `SolveResponse` has `lambda` as a 6-element array,
+/// `maneuvers[i].dv` as a 3-element array, and the three primer-vector arrays
+/// present, parallel, and with `primer_rtn` entries of length 3. This is also
+/// the only test that runs the standalone `Norm2` cost path, so it doubles as
+/// the Norm2-gauge primer regression.
 #[test]
 fn solve_response_json_shapes() {
-    let req = minimal_request();
+    let req = minimal_request(); // CostSpec::Norm2
     let resp = run(req).expect("should solve");
     let json = serde_json::to_string(&resp).expect("serialize");
     let v: serde_json::Value = serde_json::from_str(&json).expect("parse");
@@ -101,6 +104,31 @@ fn solve_response_json_shapes() {
         let dv = m["dv"].as_array().expect("dv must be an array");
         assert_eq!(dv.len(), 3, "maneuver[{i}].dv must have 3 elements");
     }
+
+    // Primer-vector history: three parallel, non-empty arrays; `primer_rtn`
+    // entries are 3-vectors; the magnitude reaches the `|p| = 1` bound and never
+    // exceeds `1 + eps_cost`.
+    let times = v["primer_times"].as_array().expect("primer_times array");
+    let mags = v["primer_magnitude"]
+        .as_array()
+        .expect("primer_magnitude array");
+    let rtn = v["primer_rtn"].as_array().expect("primer_rtn array");
+    assert!(!times.is_empty(), "primer_times must be non-empty");
+    assert_eq!(times.len(), mags.len(), "primer arrays must be parallel");
+    assert_eq!(times.len(), rtn.len(), "primer arrays must be parallel");
+    assert_eq!(
+        rtn[0].as_array().expect("primer_rtn[0] array").len(),
+        3,
+        "primer_rtn entries must be 3-vectors"
+    );
+    let max_g = mags
+        .iter()
+        .map(|g| g.as_f64().expect("magnitude is a number"))
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert!(
+        (1.0 - 1e-3..=1.0 + 0.01 + 1e-6).contains(&max_g),
+        "primer max = {max_g} should reach ~1 without exceeding 1 + eps_cost"
+    );
 }
 
 /// An invalid request (t_f < t_i) maps to `kind == "bad_request"`.

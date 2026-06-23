@@ -166,9 +166,11 @@ form[data-cost="piecewise"] .pw {
   gap: 1.1rem;
   grid-template-columns: minmax(0, 1fr) 360px;
   grid-template-areas:
-    "kpis     kpis"
-    "timeline orbit"
-    "rtn      rtn";
+    "kpis      kpis"
+    "timeline  orbit"
+    "rtn       rtn"
+    "primer    primer"
+    "primerrtn primerrtn";
   align-content: start;
 }
 .kpis {
@@ -182,6 +184,12 @@ form[data-cost="piecewise"] .pw {
 }
 .panel:has(.chart-rtn) {
   grid-area: rtn;
+}
+.panel:has(.chart-primer) {
+  grid-area: primer;
+}
+.panel:has(.chart-primer-rtn) {
+  grid-area: primerrtn;
 }
 
 /* KPI telemetry strip — the numbers are the hero. */
@@ -250,6 +258,10 @@ form[data-cost="piecewise"] .pw {
   max-width: 900px;
 }
 .chart-rtn {
+  max-width: 1180px;
+}
+.chart-primer,
+.chart-primer-rtn {
   max-width: 1180px;
 }
 
@@ -336,6 +348,29 @@ form[data-cost="piecewise"] .pw {
   fill: var(--amber);
 }
 
+/* Primer-vector instrument (Fig. 7). The curve is cyan; the |p| = 1 optimality
+   bound is the amber reference; maneuver times are faint vertical guides so you
+   can see the curve touch the bound exactly at each burn. */
+.primer-curve {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+.primer-ref {
+  stroke: var(--amber);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.primer-mnvr {
+  stroke: var(--faint);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.primer-comp {
+  fill: none;
+  stroke-width: 1.5;
+}
+
 /* ── Fault arm ───────────────────────────────────────────────────── */
 .error {
   grid-column: 1 / -1;
@@ -386,7 +421,9 @@ form[data-cost="piecewise"] .pw {
       "kpis"
       "timeline"
       "orbit"
-      "rtn";
+      "rtn"
+      "primer"
+      "primerrtn";
   }
   .kpis {
     grid-template-columns: repeat(2, 1fr);

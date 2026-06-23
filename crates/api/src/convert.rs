@@ -5,7 +5,7 @@
 //! merge. `From` is used where it fits; error/param mappers are plain fns.
 
 use crate::dto::{ApiError, ApiErrorKind, ManeuverDto, SolveParamsDto, SolveResponse};
-use koenig_damico_planner::{Maneuver, PlannerError, Solution, SolveParams};
+use koenig_damico_planner::{Maneuver, PlannerError, PrimerHistory, Solution, SolveParams};
 
 /// Map a [`PlannerError`] to a `"bad_request"` [`ApiError`].
 pub(crate) fn bad_request(e: PlannerError) -> ApiError {
@@ -70,8 +70,12 @@ impl From<&Maneuver> for ManeuverDto {
     }
 }
 
-impl From<Solution> for SolveResponse {
-    fn from(sol: Solution) -> Self {
+/// Build the wire response from the core [`Solution`] plus its
+/// [`PrimerHistory`] (computed in `run` from the converged dual). Both sources
+/// are destructured with no `..`, so a new field on either forces a decision
+/// here at compile time.
+impl From<(Solution, PrimerHistory)> for SolveResponse {
+    fn from((sol, primer): (Solution, PrimerHistory)) -> Self {
         let Solution {
             maneuvers,
             total_dv,
@@ -79,6 +83,11 @@ impl From<Solution> for SolveResponse {
             residual,
             lambda,
         } = sol;
+        let PrimerHistory {
+            times,
+            vectors,
+            magnitudes,
+        } = primer;
         SolveResponse {
             maneuvers: maneuvers.iter().map(ManeuverDto::from).collect(),
             total_dv,
@@ -87,6 +96,9 @@ impl From<Solution> for SolveResponse {
             lambda: [
                 lambda[0], lambda[1], lambda[2], lambda[3], lambda[4], lambda[5],
             ],
+            primer_times: times,
+            primer_magnitude: magnitudes,
+            primer_rtn: vectors.iter().map(|p| [p[0], p[1], p[2]]).collect(),
         }
     }
 }
@@ -94,7 +106,7 @@ impl From<Solution> for SolveResponse {
 #[cfg(test)]
 mod tests {
     use crate::dto::SolveResponse;
-    use koenig_damico_planner::{Maneuver, Solution};
+    use koenig_damico_planner::{Maneuver, PrimerHistory, Solution};
     use nalgebra::{SVector, Vector3};
 
     #[test]
@@ -109,7 +121,12 @@ mod tests {
             residual: 1e-12,
             lambda: SVector::<f64, 6>::from_row_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
         };
-        let resp: SolveResponse = sol.into();
+        let primer = PrimerHistory {
+            times: vec![0.0, 30.0],
+            vectors: vec![Vector3::new(0.1, 0.2, 0.3), Vector3::new(0.4, 0.5, 0.6)],
+            magnitudes: vec![0.5, 1.0],
+        };
+        let resp: SolveResponse = (sol, primer).into();
         assert_eq!(resp.maneuvers.len(), 1);
         assert_eq!(resp.maneuvers[0].t, 12.0);
         assert_eq!(resp.maneuvers[0].dv, [1.0, 2.0, 3.0]);
@@ -117,5 +134,8 @@ mod tests {
         assert_eq!(resp.iterations, 4);
         assert_eq!(resp.residual, 1e-12);
         assert_eq!(resp.lambda, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        assert_eq!(resp.primer_times, [0.0, 30.0]);
+        assert_eq!(resp.primer_magnitude, [0.5, 1.0]);
+        assert_eq!(resp.primer_rtn, [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]);
     }
 }

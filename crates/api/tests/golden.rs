@@ -81,6 +81,40 @@ fn golden_worked_example() {
             m.dv
         );
     }
+
+    // Primer-vector history (Fig. 7) rides on the response: three parallel,
+    // grid-aligned arrays (3934 points for this grid), dual-feasible, finite,
+    // and ≈ 1 at each optimal maneuver time (complementary slackness).
+    assert_eq!(resp.primer_times.len(), 3934, "primer sampled on the grid");
+    assert_eq!(resp.primer_magnitude.len(), resp.primer_times.len());
+    assert_eq!(resp.primer_rtn.len(), resp.primer_times.len());
+    let max_g = resp
+        .primer_magnitude
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert!(
+        (1.0 - 1e-3..=1.0 + 0.01 + 1e-6).contains(&max_g),
+        "primer max = {max_g} should reach ~1 and not exceed 1 + eps_cost"
+    );
+    assert!(resp.primer_magnitude.iter().all(|g| g.is_finite()));
+    assert!(resp
+        .primer_rtn
+        .iter()
+        .all(|p| p.iter().all(|x| x.is_finite())));
+    for m in &resp.maneuvers {
+        let k = resp
+            .primer_times
+            .iter()
+            .position(|&t| (t - m.t).abs() < 1e-6)
+            .expect("maneuver time is on the primer grid");
+        assert!(
+            (0.98..=1.0 + 0.02).contains(&resp.primer_magnitude[k]),
+            "primer at maneuver t={} is {} (expected ~1)",
+            m.t,
+            resp.primer_magnitude[k]
+        );
+    }
 }
 
 /// FaceMax cost model dispatch — exercises the `ConstFaceMax` adapter via

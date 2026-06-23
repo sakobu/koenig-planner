@@ -70,6 +70,22 @@ fn solve_golden_is_ok_within_bands() {
             assert_eq!(value.geometry.maneuver_nu.len(), value.maneuvers.len());
             assert!(value.geometry.maneuver_nu.iter().all(|x| x.is_finite()));
             assert!(value.geometry.perigee_window.is_some());
+            // Primer-vector history is present, grid-aligned (3934 pts on this
+            // grid), parallel, finite, and reaches the |p| = 1 bound.
+            assert_eq!(value.primer_times.len(), 3934);
+            assert_eq!(value.primer_magnitude.len(), value.primer_times.len());
+            assert_eq!(value.primer_rtn.len(), value.primer_times.len());
+            assert!(value.primer_magnitude.iter().all(|g| g.is_finite()));
+            assert!(value
+                .primer_rtn
+                .iter()
+                .all(|p| p.iter().all(|x| x.is_finite())));
+            let max_g = value
+                .primer_magnitude
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max);
+            assert!((0.999..=1.010_001).contains(&max_g), "primer max = {max_g}");
         }
         SolveOutcome::Err { error } => {
             panic!("expected Ok, got err: {:?} {}", error.kind, error.message)
@@ -96,6 +112,9 @@ fn solve_outcome_status_tags_are_stable() {
             iterations: 0,
             residual: 0.0,
             lambda: [0.0; 6],
+            primer_times: vec![],
+            primer_magnitude: vec![],
+            primer_rtn: vec![],
             geometry: ChiefGeometry {
                 a: 0.0,
                 e: 0.0,

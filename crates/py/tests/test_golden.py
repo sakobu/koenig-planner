@@ -19,11 +19,36 @@ def test_golden_worked_example():
         assert math.isfinite(m.t)
         assert len(m.dv) == 3 and all(math.isfinite(c) for c in m.dv)
 
+    # Primer-vector history: three parallel, non-empty arrays; primer_rtn entries
+    # are 3-tuples; magnitude reaches the |p| = 1 bound without exceeding
+    # 1 + eps_cost (default 0.01), and is ~1 at each maneuver (complementary
+    # slackness). This pins the PyO3 getters and the tuple shape the stub promises.
+    n = len(sol.primer_times)
+    assert n > 0
+    assert len(sol.primer_magnitude) == n
+    assert len(sol.primer_rtn) == n
+    assert all(math.isfinite(g) for g in sol.primer_magnitude)
+    assert all(
+        len(p) == 3 and all(math.isfinite(c) for c in p) for p in sol.primer_rtn
+    )
+    max_g = max(sol.primer_magnitude)
+    assert 1.0 - 1e-3 <= max_g <= 1.0 + 0.01 + 1e-6
+    grid_times = sol.primer_times
+    for m in sol.maneuvers:
+        k = min(range(n), key=lambda i: abs(grid_times[i] - m.t))
+        assert abs(grid_times[k] - m.t) < 1e-6
+        assert 0.98 <= sol.primer_magnitude[k] <= 1.0 + 2e-2
+
 
 def test_facemax_runs():
     sol = kp.solve(CHIEF, *WINDOW, W, "facemax")
     assert 1 <= len(sol.maneuvers) <= 6
     assert math.isfinite(sol.total_dv) and sol.total_dv > 0.0
+    # Primer history is populated on the FaceMax path too (parallel arrays).
+    assert len(sol.primer_times) > 0
+    assert len(sol.primer_magnitude) == len(sol.primer_times)
+    assert len(sol.primer_rtn) == len(sol.primer_times)
+    assert all(len(p) == 3 for p in sol.primer_rtn)
 
 
 def test_n_coarse_zero_is_value_error():

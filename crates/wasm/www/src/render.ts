@@ -386,6 +386,269 @@ function orbit(g: ChiefGeometry): SVGSVGElement {
   return s;
 }
 
+// Build an SVG path through (xs, ys), striding so a dense grid (thousands of
+// points) stays a light path while always including the final sample.
+function pathFor(
+  xs: number[],
+  ys: number[],
+  x: (t: number) => number,
+  y: (v: number) => number,
+): string {
+  const n = xs.length;
+  if (n === 0) return "";
+  const stride = Math.max(1, Math.ceil(n / 760));
+  let d = "";
+  for (let i = 0; i < n; i += stride) {
+    d += `${d === "" ? "M" : "L"} ${x(xs[i]).toFixed(2)} ${y(ys[i]).toFixed(2)} `;
+  }
+  const last = n - 1;
+  if (last % stride !== 0)
+    d += `L ${x(xs[last]).toFixed(2)} ${y(ys[last]).toFixed(2)} `;
+  return d;
+}
+
+// Primer-vector magnitude g(t) = g_{U(1,t)}(Γᵀ(t)·λ) over the full solve window
+// (the paper's Fig. 7). The curve sits at or below the |p| = 1 optimality bound
+// and touches it at every maneuver — and wherever it touches 1 *without* a burn,
+// the plan has flexibility (an alternate optimal could place a burn there).
+function primerMagnitude(r: SolveResponse): SVGSVGElement {
+  const W = 760,
+    H = 300;
+  const padL = 58,
+    padR = 30,
+    padT = 40,
+    padB = 44;
+  const yBase = H - padB,
+    yTop = padT;
+  const plotH = yBase - yTop,
+    plotW = W - padL - padR;
+  const s = svg(W, H, "chart chart-primer");
+  const times = r.primer_times,
+    mags = r.primer_magnitude;
+  const n = times.length;
+  const t0 = n ? times[0] : 0;
+  const t1 = n ? times[n - 1] : 1;
+  const span = Math.max(1e-9, t1 - t0);
+  // Keep the |p| = 1 bound in view; the curve can sit just above it (≤ 1 + eps).
+  const peak = mags.reduce((a, b) => Math.max(a, b), 1.0);
+  const domainMax = Math.max(1.12, peak + 0.08);
+  const x = (t: number) => padL + ((t - t0) / span) * plotW;
+  const y = (m: number) => yBase - (m / domainMax) * plotH;
+
+  for (const v of [0, 0.25, 0.5, 0.75]) {
+    const gy = y(v);
+    s.appendChild(
+      el("line", {
+        x1: padL,
+        y1: gy,
+        x2: W - padR,
+        y2: gy,
+        class: v === 0 ? "axis" : "grid",
+      }),
+    );
+    s.appendChild(
+      el(
+        "text",
+        { x: padL - 10, y: gy + 3.5, class: "axis-label", "text-anchor": "end" },
+        v.toFixed(2),
+      ),
+    );
+  }
+  // The |p| = 1 optimality bound — the line the curve touches at every burn.
+  const yRef = y(1);
+  s.appendChild(
+    el("line", {
+      x1: padL,
+      y1: yRef,
+      x2: W - padR,
+      y2: yRef,
+      class: "primer-ref",
+    }),
+  );
+  s.appendChild(
+    el(
+      "text",
+      { x: W - padR, y: yRef - 5, class: "axis-label", "text-anchor": "end" },
+      "|p| = 1",
+    ),
+  );
+  s.appendChild(
+    el(
+      "text",
+      { x: 6, y: 15, class: "axis-title", "text-anchor": "start" },
+      "primer |p|",
+    ),
+  );
+  // X-axis endpoints span the full solve window (not just the burn times).
+  s.appendChild(
+    el(
+      "text",
+      { x: x(t0), y: yBase + 18, class: "axis-label", "text-anchor": "middle" },
+      t0.toFixed(0),
+    ),
+  );
+  s.appendChild(
+    el(
+      "text",
+      { x: x(t1), y: yBase + 18, class: "axis-label", "text-anchor": "middle" },
+      t1.toFixed(0),
+    ),
+  );
+  s.appendChild(
+    el(
+      "text",
+      {
+        x: padL + plotW / 2,
+        y: yBase + 35,
+        class: "axis-title",
+        "text-anchor": "middle",
+      },
+      "time  [s]",
+    ),
+  );
+  // Maneuver guides under the curve.
+  for (const m of r.maneuvers) {
+    const mx = x(m.t);
+    s.appendChild(
+      el("line", { x1: mx, y1: yTop, x2: mx, y2: yBase, class: "primer-mnvr" }),
+    );
+  }
+  s.appendChild(
+    el("path", { d: pathFor(times, mags, x, y), class: "primer-curve" }),
+  );
+  // Burn dots at the exact primer value, tagged with the same index the other
+  // panels use.
+  r.maneuvers.forEach((m, j) => {
+    const idx = times.findIndex((t) => Math.abs(t - m.t) < 1e-6);
+    const g = idx >= 0 ? mags[idx] : 1.0;
+    const mx = x(m.t),
+      my = y(g);
+    s.appendChild(el("circle", { cx: mx, cy: my, r: 4, class: "stem-dot" }));
+    s.appendChild(
+      el(
+        "text",
+        { x: mx, y: my - 9, class: "mnvr-tag", "text-anchor": "middle" },
+        `mnvr ${j + 1}`,
+      ),
+    );
+  });
+  return s;
+}
+
+// Primer vector p(t) = Γᵀ(t)·λ, RTN components over time. The direction at each
+// touch of the bound is the optimal thrust direction; reading it alongside the
+// magnitude panel shows *which way* a maneuver could shift.
+function primerComponents(r: SolveResponse): SVGSVGElement {
+  const W = 760,
+    H = 280;
+  const padL = 58,
+    padR = 30,
+    padT = 40,
+    padB = 44;
+  const s = svg(W, H, "chart chart-primer-rtn");
+  const times = r.primer_times,
+    rtn = r.primer_rtn;
+  const n = times.length;
+  const t0 = n ? times[0] : 0;
+  const t1 = n ? times[n - 1] : 1;
+  const span = Math.max(1e-9, t1 - t0);
+  const maxComp = Math.max(1e-12, ...rtn.flatMap((p) => p.map(Math.abs)));
+  const domainMax = maxComp * 1.1;
+  const cy0 = padT + (H - padT - padB) / 2; // zero axis
+  const half = (H - padT - padB) / 2;
+  const x = (t: number) => padL + ((t - t0) / span) * (W - padL - padR);
+  const y = (v: number) => cy0 - (v / domainMax) * half;
+
+  // Color key (radial / tangential / normal) — shared scheme with the Δv panel.
+  const lstep = (W - padR - 120 - padL) / 2;
+  (["R", "T", "N"] as const).forEach((comp, k) => {
+    const lx = padL + k * lstep;
+    s.appendChild(
+      el("rect", {
+        x: lx,
+        y: padT - 30,
+        width: 11,
+        height: 11,
+        rx: 2,
+        fill: RTN_COLORS[comp],
+      }),
+    );
+    s.appendChild(
+      el(
+        "text",
+        { x: lx + 17, y: padT - 20, class: "legend-label" },
+        RTN_NAME[comp],
+      ),
+    );
+  });
+  // Centered zero axis.
+  s.appendChild(
+    el("line", { x1: padL, y1: cy0, x2: W - padR, y2: cy0, class: "zero-axis" }),
+  );
+  s.appendChild(
+    el(
+      "text",
+      { x: padL - 10, y: cy0 + 3.5, class: "axis-label", "text-anchor": "end" },
+      "0",
+    ),
+  );
+  s.appendChild(
+    el(
+      "text",
+      {
+        x: x(t0),
+        y: H - padB + 18,
+        class: "axis-label",
+        "text-anchor": "middle",
+      },
+      t0.toFixed(0),
+    ),
+  );
+  s.appendChild(
+    el(
+      "text",
+      {
+        x: x(t1),
+        y: H - padB + 18,
+        class: "axis-label",
+        "text-anchor": "middle",
+      },
+      t1.toFixed(0),
+    ),
+  );
+  s.appendChild(
+    el(
+      "text",
+      {
+        x: padL + (W - padL - padR) / 2,
+        y: H - padB + 35,
+        class: "axis-title",
+        "text-anchor": "middle",
+      },
+      "time  [s]",
+    ),
+  );
+  // Maneuver guides.
+  for (const m of r.maneuvers) {
+    const mx = x(m.t);
+    s.appendChild(
+      el("line", { x1: mx, y1: padT, x2: mx, y2: H - padB, class: "primer-mnvr" }),
+    );
+  }
+  // Three component traces (RTN), colored to match the legend.
+  (["R", "T", "N"] as const).forEach((comp, k) => {
+    const ys = rtn.map((p) => p[k]);
+    s.appendChild(
+      el("path", {
+        d: pathFor(times, ys, x, y),
+        class: "primer-comp",
+        stroke: RTN_COLORS[comp],
+      }),
+    );
+  });
+  return s;
+}
+
 function panel(title: string, body: Node): HTMLElement {
   const p = document.createElement("section");
   p.className = "panel";
@@ -414,4 +677,6 @@ export function render(outcome: SolveOutcome): void {
   out.appendChild(panel("Δv timeline", timeline(r, t_i, t_f)));
   out.appendChild(panel("Δv components (R/T/N)", rtnBars(r)));
   out.appendChild(panel("Orbit geometry", orbit(r.geometry)));
+  out.appendChild(panel("Primer magnitude vs time", primerMagnitude(r)));
+  out.appendChild(panel("Primer vector (R/T/N) vs time", primerComponents(r)));
 }

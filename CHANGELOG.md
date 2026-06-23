@@ -19,6 +19,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (defense-in-depth, alongside the `MAX_REQUEST_BYTES` cap above).
 
 ### Added
+- Primer-vector history on every solve (the paper's Fig. 7): the new public
+  `primer_history(dynamics, cost, grid, lambda) -> PrimerHistory` reconstructs the
+  primer `p(t) = Γᵀ(t)·λ` and its dual-gauge magnitude `g_{U(1,t)}(p(t))` at each
+  grid time from the converged dual. The HTTP/Python/WASM `SolveResponse` now
+  carries three parallel, grid-aligned arrays — `primer_times`, `primer_magnitude`
+  (dimensionless, `≤ 1`, `= 1` at maneuver times), and `primer_rtn` (the RTN primer
+  direction). The WASM demo plots both (magnitude-vs-time with the `|p| = 1` bound
+  and per-burn markers, plus the RTN components), and a `crates/py` matplotlib
+  example does the same. Touch-1-away-from-a-burn reveals plan flexibility. The
+  core solve path and `Solution` are unchanged, so the Monte-Carlo harness is
+  unaffected.
 - Tight snapshot regressions for the worked-example solutions (Koenig Table III and the
   Hunter L2 cross-check): total Δv, residual ceiling, maneuver count, and per-maneuver
   times/magnitudes are now pinned alongside the existing paper-bound bands, so silent

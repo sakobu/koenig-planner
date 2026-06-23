@@ -7,7 +7,7 @@ mod refine;
 use crate::cost::CostModel;
 use crate::dynamics::Dynamics;
 use crate::types::{Dual, PlannerError, Pseudostate, Solution, SolveParams, TimeGrid, M, N};
-use nalgebra::SMatrix;
+use nalgebra::{SMatrix, SVector};
 
 /// Contact value `g_{U(1,t)}(Γᵀ(t)·lambda)` at grid index `k`.
 ///
@@ -197,6 +197,64 @@ pub fn solve_from_initial_times<D: Dynamics, C: CostModel>(
         ));
     }
     run_pipeline(cost, &grid, &gammas, &w, params, t_est)
+}
+
+/// Primer-vector history sampled over a time grid.
+///
+/// For each grid time `t_k`: `vectors[k] = Γᵀ(t_k)·λ ∈ ℝ³` is the primer vector
+/// (RTN — the optimal-thrust direction), and `magnitudes[k] =
+/// g_{U(1,t_k)}(vectors[k])` is its dual-gauge magnitude. The magnitude is
+/// dimensionless — `≤ 1` everywhere (`≤ 1 + eps_cost` at Algorithm 2's
+/// convergence tolerance) and `= 1` at the optimal maneuver times. This is the
+/// paper's Fig. 7 contact curve, paired with the underlying vector. Wherever the
+/// magnitude touches 1 but no burn is placed, the plan has flexibility.
+///
+/// Ref: \[KD20\] Fig. 7 (contact curve); eq. 30 / 27.
+#[derive(Debug, Clone)]
+pub struct PrimerHistory {
+    /// Sample times `[s]`, one per grid point: `times[k] == grid.time(k)`.
+    pub times: Vec<f64>,
+    /// Primer vector `p(t_k) = Γᵀ(t_k)·λ`, RTN components `(R, T, N)`.
+    pub vectors: Vec<SVector<f64, M>>,
+    /// Dual-gauge magnitude `g_{U(1,t_k)}(p(t_k))` (dimensionless).
+    pub magnitudes: Vec<f64>,
+}
+
+/// Reconstruct the primer-vector history from a converged dual `lambda` over a
+/// time grid.
+///
+/// `lambda` is [`Solution::lambda`] from a [`solve`] call (the eq. 40 dual, the
+/// reachable-set normal). The history is evaluated at every `grid` time via the
+/// same `Γ(t)` cache and gauge-contact computation Algorithm 2 uses internally,
+/// so passing a denser `grid` than the one solved over yields a smoother curve.
+///
+/// Ref: \[KD20\] Fig. 7 (contact curve `g(t)` over the candidate grid); eq. 30.
+///
+/// # Errors
+/// Propagates the first [`Dynamics::gamma`] failure — an out-of-domain chief
+/// whose Kepler solve diverges ([`PlannerError::KeplerDivergence`]) or is
+/// rejected as non-elliptic ([`PlannerError::InvalidInput`]). Unreachable on the
+/// built-in `J2Roe`, which validates its chief in `new`.
+pub fn primer_history<D: Dynamics, C: CostModel>(
+    dynamics: &D,
+    cost: &C,
+    grid: &TimeGrid,
+    lambda: &Dual,
+) -> Result<PrimerHistory, PlannerError> {
+    let gammas = cache_gamma(dynamics, grid)?;
+    let times: Vec<f64> = grid.times().collect();
+    let mut vectors = Vec::with_capacity(gammas.len());
+    let mut magnitudes = Vec::with_capacity(gammas.len());
+    for (g, &t) in gammas.iter().zip(&times) {
+        let p = g.transpose() * lambda; // p(t) = Γᵀ(t)·λ ∈ ℝ³, same as `contact_at`
+        magnitudes.push(cost.at(t).contact(p));
+        vectors.push(p);
+    }
+    Ok(PrimerHistory {
+        times,
+        vectors,
+        magnitudes,
+    })
 }
 
 #[cfg(test)]
