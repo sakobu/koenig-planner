@@ -78,6 +78,46 @@ pub fn position_eci(orbit: &AbsoluteOrbit) -> Result<[f64; 3], PlannerError> {
     ))
 }
 
+/// Orthonormal RTN basis at the orbit's current position, as ECI column
+/// vectors `[R̂, T̂, N̂]`: `R̂` radial (position direction), `N̂` orbit-normal
+/// (the `Ŵ` column of `perifocal_to_eci`, eccentricity-independent), and
+/// `T̂ = N̂ × R̂` along-track. Right-handed.
+///
+/// # Errors
+/// Propagates [`position_eci`]'s error.
+#[allow(dead_code)]
+pub fn rtn_basis_eci(orbit: &AbsoluteOrbit) -> Result<[[f64; 3]; 3], PlannerError> {
+    let r_hat = normalize(position_eci(orbit)?);
+    let [_, _, n_hat] = perifocal_to_eci(orbit.i, orbit.raan, orbit.argp);
+    let t_hat = cross(n_hat, r_hat);
+    Ok([r_hat, t_hat, n_hat])
+}
+
+/// Rotate an RTN vector `(R, T, N)` into ECI using the basis at `orbit`.
+///
+/// # Errors
+/// Propagates [`rtn_basis_eci`]'s error.
+#[allow(dead_code)]
+pub fn rtn_to_eci(orbit: &AbsoluteOrbit, v_rtn: [f64; 3]) -> Result<[f64; 3], PlannerError> {
+    let [r, t, n] = rtn_basis_eci(orbit)?;
+    Ok([
+        r[0] * v_rtn[0] + t[0] * v_rtn[1] + n[0] * v_rtn[2],
+        r[1] * v_rtn[0] + t[1] * v_rtn[1] + n[1] * v_rtn[2],
+        r[2] * v_rtn[0] + t[2] * v_rtn[1] + n[2] * v_rtn[2],
+    ])
+}
+
+/// Project an ECI vector into the chief's RTN frame at `orbit` (transpose of
+/// [`rtn_to_eci`]: components along `R̂, T̂, N̂`).
+///
+/// # Errors
+/// Propagates [`rtn_basis_eci`]'s error.
+#[allow(dead_code)]
+pub fn eci_to_rtn(orbit: &AbsoluteOrbit, v_eci: [f64; 3]) -> Result<[f64; 3], PlannerError> {
+    let [r, t, n] = rtn_basis_eci(orbit)?;
+    Ok([dot(v_eci, r), dot(v_eci, t), dot(v_eci, n)])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,5 +170,55 @@ mod tests {
             (A * (1.0 - E) - 1.0..=A * (1.0 + E) + 1.0).contains(&r),
             "r={r}"
         );
+    }
+
+    #[wasm_bindgen_test]
+    fn rtn_basis_is_orthonormal_right_handed() {
+        let o = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), 0.3, 1.2);
+        let [r, t, n] = rtn_basis_eci(&o).unwrap();
+        for v in [r, t, n] {
+            assert!((norm(v) - 1.0).abs() < 1e-12);
+        }
+        assert!(dot(r, t).abs() < 1e-12 && dot(t, n).abs() < 1e-12 && dot(n, r).abs() < 1e-12);
+        // right-handed: R̂ × T̂ = N̂
+        let rt = cross(r, t);
+        for k in 0..3 {
+            assert!((rt[k] - n[k]).abs() < 1e-12, "k={k}");
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn radial_axis_points_along_position() {
+        let o = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), 0.3, 1.2);
+        let [r, _, _] = rtn_basis_eci(&o).unwrap();
+        let pos_hat = normalize(position_eci(&o).unwrap());
+        for k in 0..3 {
+            assert!((r[k] - pos_hat[k]).abs() < 1e-12, "k={k}");
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn normal_axis_is_equatorial_z_for_zero_inclination() {
+        let o = AbsoluteOrbit::new(A, E, 0.0, 0.0, 0.0, 1.2);
+        let [_, _, n] = rtn_basis_eci(&o).unwrap();
+        assert!(n[0].abs() < 1e-12 && n[1].abs() < 1e-12 && (n[2] - 1.0).abs() < 1e-12);
+    }
+
+    #[wasm_bindgen_test]
+    fn rtn_to_eci_preserves_magnitude() {
+        let o = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), 0.3, 1.2);
+        let v: [f64; 3] = [1.5, -2.5, 0.75];
+        let mag = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        assert!((norm(rtn_to_eci(&o, v).unwrap()) - mag).abs() < 1e-12);
+    }
+
+    #[wasm_bindgen_test]
+    fn rtn_eci_round_trip() {
+        let o = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), 0.3, 1.2);
+        let v: [f64; 3] = [1.5, -2.5, 0.75];
+        let back = eci_to_rtn(&o, rtn_to_eci(&o, v).unwrap()).unwrap();
+        for k in 0..3 {
+            assert!((back[k] - v[k]).abs() < 1e-12, "k={k}");
+        }
     }
 }
