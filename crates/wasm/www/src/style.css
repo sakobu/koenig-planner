@@ -70,20 +70,6 @@ header h1 {
   letter-spacing: 0.08em;
   color: var(--muted);
 }
-/* Status indicator (CSS-driven by body.fault) — a quiet dot + label, no pulse. */
-header::after {
-  content: "● plan nominal";
-  margin-left: auto;
-  align-self: center;
-  font-size: var(--eyebrow);
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--green);
-}
-body.fault header::after {
-  content: "● solve fault";
-  color: var(--red);
-}
 
 /* ── Deck ────────────────────────────────────────────────────────── */
 main {
@@ -164,32 +150,31 @@ form[data-cost="piecewise"] .pw {
 #output {
   display: grid;
   gap: 1.1rem;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
-    "kpis      kpis"
-    "timeline  orbit"
-    "rtn       rtn"
-    "primer    primer"
-    "primerrtn primerrtn";
+    "kpis     kpis"
+    "eci      rtn"
+    "play     play"
+    "timeline primer";
   align-content: start;
 }
 .kpis {
   grid-area: kpis;
 }
+.panel:has(.canvas-eci) {
+  grid-area: eci;
+}
+.panel:has(.canvas-rtn) {
+  grid-area: rtn;
+}
+.panel:has(.playback) {
+  grid-area: play;
+}
 .panel:has(.chart-timeline) {
   grid-area: timeline;
 }
-.panel:has(.chart-orbit) {
-  grid-area: orbit;
-}
-.panel:has(.chart-rtn) {
-  grid-area: rtn;
-}
 .panel:has(.chart-primer) {
   grid-area: primer;
-}
-.panel:has(.chart-primer-rtn) {
-  grid-area: primerrtn;
 }
 
 /* KPI telemetry strip — the numbers are the hero. */
@@ -419,20 +404,17 @@ form[data-cost="piecewise"] .pw {
     grid-template-columns: 1fr;
     grid-template-areas:
       "kpis"
-      "timeline"
-      "orbit"
+      "eci"
       "rtn"
-      "primer"
-      "primerrtn";
+      "play"
+      "timeline"
+      "primer";
   }
   .kpis {
     grid-template-columns: repeat(2, 1fr);
   }
   .kpi:nth-child(3) {
     border-left: none;
-  }
-  header::after {
-    display: none;
   }
 }
 
@@ -460,4 +442,34 @@ form[data-cost="piecewise"] .pw {
   border-radius: 6px;
   background: #05080c;
   overflow: hidden;
+}
+
+/* ── Status lamp + playback (Plan 2) ────────────────────────────── */
+.status-lamp {
+  margin-left: auto;
+  align-self: center;
+  font-size: var(--eyebrow);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+header.fault .status-lamp {
+  color: var(--red);
+}
+.playback {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.playback button {
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+}
+.playback input[type="range"] {
+  flex: 1;
+  accent-color: var(--cyan);
 }
