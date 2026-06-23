@@ -214,7 +214,8 @@ form[data-cost="piecewise"] .pw {
     "kpis     kpis"
     "eci      rtn"
     "play     play"
-    "timeline primer";
+    "timeline primer"
+    "rtncomp  rtncomp";
   align-content: start;
 }
 .kpis {
@@ -234,6 +235,9 @@ form[data-cost="piecewise"] .pw {
 }
 .panel:has(.chart-primer) {
   grid-area: primer;
+}
+.panel:has(.chart-rtncomp) {
+  grid-area: rtncomp;
 }
 
 /* ── KPI telemetry strip — the numbers are the hero ──────────────── */
@@ -323,6 +327,9 @@ form[data-cost="piecewise"] .pw {
 .chart-primer {
   max-width: 1180px;
 }
+.chart-rtncomp {
+  max-width: 1180px;
+}
 
 /* ── Plot primitives (SVG) ───────────────────────────────────────── */
 .axis {
@@ -353,6 +360,28 @@ form[data-cost="piecewise"] .pw {
 /* Numeric readouts inside the plots — brighter than their axes. */
 .stem-label {
   fill: var(--ink);
+}
+/* Zero-axis on diverging bar charts — slightly brighter than the faint grid. */
+.zero-axis {
+  stroke: var(--edge-bright);
+  stroke-width: 1;
+}
+/* RTN bar chart — row labels, per-bar value readouts, and the legend. */
+.row-label,
+.val-label,
+.legend-label {
+  fill: var(--ink-dim);
+  font: 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+/* Value and legend labels are primary-ink bright. */
+.val-label,
+.legend-label {
+  fill: var(--ink);
+}
+.val-label {
+  font-size: 11px;
 }
 /* Per-stem maneuver tag on the timeline — an eyebrow over the value. */
 .mnvr-tag {
@@ -539,7 +568,8 @@ header.fault .status-lamp {
       "rtn"
       "play"
       "timeline"
-      "primer";
+      "primer"
+      "rtncomp";
   }
   .kpis {
     grid-template-columns: repeat(2, 1fr);

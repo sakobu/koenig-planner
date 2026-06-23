@@ -3,6 +3,7 @@ import type { SolveOutcome, SolveResponse } from "./wasm";
 import { Kpis } from "./charts/Kpis";
 import { Timeline } from "./charts/Timeline";
 import { PrimerMagnitude } from "./charts/PrimerMagnitude";
+import { RtnComponents } from "./charts/RtnComponents";
 import { Panel } from "./charts/Panel";
 import { EciScene } from "./scene/EciScene";
 import { RtnScene } from "./scene/RtnScene";
@@ -25,6 +26,9 @@ function OkReadout({ r }: { r: SolveResponse }) {
       </Panel>
       <Panel title="Primer magnitude vs time">
         <PrimerMagnitude r={r} />
+      </Panel>
+      <Panel title="Δv components (R/T/N)">
+        <RtnComponents r={r} />
       </Panel>
       <Panel title="Playback">
         <Playback count={sampleCount} index={index} setIndex={setIndex} />
