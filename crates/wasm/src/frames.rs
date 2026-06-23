@@ -7,14 +7,10 @@
 use koenig_damico_planner_api::core::dynamics::AbsoluteOrbit;
 use koenig_damico_planner_api::core::PlannerError;
 
-// Private helpers are defined here for reuse in later geometry tasks; suppress
-// dead_code until they are wired up.
-#[allow(dead_code)]
 fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
-#[allow(dead_code)]
 fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [
         a[1] * b[2] - a[2] * b[1],
@@ -23,12 +19,10 @@ fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     ]
 }
 
-#[allow(dead_code)]
 fn norm(a: [f64; 3]) -> f64 {
     dot(a, a).sqrt()
 }
 
-#[allow(dead_code)]
 fn normalize(a: [f64; 3]) -> [f64; 3] {
     let n = norm(a);
     [a[0] / n, a[1] / n, a[2] / n]
@@ -38,7 +32,6 @@ fn normalize(a: [f64; 3]) -> [f64; 3] {
 /// angles `(i, Ω, ω)` `[rad]`, returned as the ECI column unit vectors
 /// `[P̂, Q̂, Ŵ]` (perigee / semi-latus / orbit-normal). Standard 3-1-3 rotation
 /// (e.g. Vallado, *Fundamentals of Astrodynamics*, perifocal-to-IJK DCM).
-#[allow(dead_code)]
 fn perifocal_to_eci(i: f64, raan: f64, argp: f64) -> [[f64; 3]; 3] {
     let (co, so) = (raan.cos(), raan.sin());
     let (cw, sw) = (argp.cos(), argp.sin());
@@ -83,7 +76,6 @@ pub fn position_eci(orbit: &AbsoluteOrbit) -> Result<[f64; 3], PlannerError> {
 ///
 /// # Errors
 /// Propagates [`position_eci`]'s error.
-#[allow(dead_code)]
 pub fn rtn_basis_eci(orbit: &AbsoluteOrbit) -> Result<[[f64; 3]; 3], PlannerError> {
     let r_hat = normalize(position_eci(orbit)?);
     let [_, _, n_hat] = perifocal_to_eci(orbit.i, orbit.raan, orbit.argp);
@@ -109,7 +101,6 @@ pub fn rtn_to_eci(orbit: &AbsoluteOrbit, v_rtn: [f64; 3]) -> Result<[f64; 3], Pl
 ///
 /// # Errors
 /// Propagates [`rtn_basis_eci`]'s error.
-#[allow(dead_code)]
 pub fn eci_to_rtn(orbit: &AbsoluteOrbit, v_eci: [f64; 3]) -> Result<[f64; 3], PlannerError> {
     let [r, t, n] = rtn_basis_eci(orbit)?;
     Ok([dot(v_eci, r), dot(v_eci, t), dot(v_eci, n)])
@@ -120,7 +111,6 @@ pub fn eci_to_rtn(orbit: &AbsoluteOrbit, v_eci: [f64; 3]) -> Result<[f64; 3], Pl
 /// (`[KD20]` eq. 51; `u = M + ω`). This is the exact algebraic inverse of the
 /// ROE definition — not a linearization — so the resulting deputy `propagate`s
 /// with the same core dynamics as the chief.
-#[allow(dead_code)]
 pub fn deputy_from_roe(chief: &AbsoluteOrbit, roe: [f64; 6]) -> AbsoluteOrbit {
     let [da, dl, dex, dey, dix, diy] = roe;
     let a_d = chief.a * (1.0 + da);
