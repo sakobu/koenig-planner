@@ -6,7 +6,7 @@ import { Arrow } from "./Arrow";
 
 const EARTH_RADIUS_M = 6.378e6;
 
-export function EciScene({ g }: { g: ChiefGeometry }) {
+export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
   const k = 1 / g.a; // metres → scene units (a ≈ 1)
   const orbit = scaleAll(g.orbit_eci as V3[], k);
   const arc = g.perigee_arc_eci ? scaleAll(g.perigee_arc_eci as V3[], k) : null;
@@ -41,20 +41,23 @@ export function EciScene({ g }: { g: ChiefGeometry }) {
             </group>
           );
         })}
-        {/* Primer arrow at the first burn (static) — amber, DISTINCT from thrust.
-            Playback (Task 13) sweeps it along the track. */}
-        {g.primer_eci.length > 0 && g.chief_track_eci.length > 0 && (
-          <Arrow
-            origin={[
-              g.chief_track_eci[0][0] * k,
-              g.chief_track_eci[0][1] * k,
-              g.chief_track_eci[0][2] * k,
-            ]}
-            dir={g.primer_eci[0] as V3}
-            length={0.5}
-            color="#ffb454"
-          />
-        )}
+        {/* Spacecraft + swept primer at the current playback sample. */}
+        {g.chief_track_eci.length > 0 &&
+          (() => {
+            const i = Math.min(sampleIndex, g.chief_track_eci.length - 1);
+            const c = g.chief_track_eci[i];
+            const pos: V3 = [c[0] * k, c[1] * k, c[2] * k];
+            const primer = g.primer_eci[i] ?? g.primer_eci[0];
+            return (
+              <group>
+                <mesh position={pos}>
+                  <sphereGeometry args={[0.03, 16, 16]} />
+                  <meshStandardMaterial color="#dce6f0" />
+                </mesh>
+                {primer && <Arrow origin={pos} dir={primer as V3} length={0.5} color="#ffb454" />}
+              </group>
+            );
+          })()}
         <OrbitControls enablePan enableZoom enableRotate />
       </Canvas>
     </div>
