@@ -120,6 +120,13 @@ fn solve_outcome_status_tags_are_stable() {
                 e: 0.0,
                 maneuver_nu: vec![],
                 perigee_window: None,
+                orbit_eci: vec![],
+                chief_track_eci: vec![],
+                maneuver_eci: vec![],
+                primer_eci: vec![],
+                perigee_arc_eci: None,
+                relative_trajectory_rtn: vec![],
+                target_roe: [0.0; 6],
             },
         },
     };

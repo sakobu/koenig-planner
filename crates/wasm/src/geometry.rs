@@ -64,6 +64,13 @@ pub fn chief_geometry(
         e: req.chief.e,
         maneuver_nu,
         perigee_window,
+        orbit_eci: Vec::new(),
+        chief_track_eci: Vec::new(),
+        maneuver_eci: Vec::new(),
+        primer_eci: Vec::new(),
+        perigee_arc_eci: None,
+        relative_trajectory_rtn: Vec::new(),
+        target_roe: req.w_metres,
     })
 }
 

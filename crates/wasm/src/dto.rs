@@ -80,10 +80,24 @@ pub struct ManeuverDto {
     pub dv: [f64; 3],
 }
 
+/// A maneuver expressed in ECI for the 3D scene: the burn position on the chief
+/// orbit and the executed Δv direction (RTN→ECI rotated). Presentation-only.
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+pub struct ManeuverEciDto {
+    /// Burn position in ECI `[m]`.
+    pub position_eci: [f64; 3],
+    /// Executed Δv in ECI `[m/s]` (the thrust direction — distinct from the
+    /// primer vector except under the `norm2` cost).
+    pub dv_eci: [f64; 3],
+}
+
 /// Presentation-only geometry derived from the chief via the core's verified
 /// Kepler solver (see `geometry.rs`). `maneuver_nu[j]` is the true anomaly at
 /// maneuver `j`; `perigee_window` (piecewise only) is the FaceMax band `[lo, hi]`
-/// in true anomaly.
+/// in true anomaly. The `*_eci` fields are metric ECI samples for the 3D scene;
+/// `relative_trajectory_rtn` is the deputy's relative orbit (metres) in the
+/// chief RTN frame; `target_roe` echoes the request `w_metres`.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 pub struct ChiefGeometry {
@@ -92,6 +106,21 @@ pub struct ChiefGeometry {
     pub maneuver_nu: Vec<f64>,
     #[tsify(optional)]
     pub perigee_window: Option<[f64; 2]>,
+    /// Closed-loop chief-orbit samples in ECI `[m]` (orbit-shape curve).
+    pub orbit_eci: Vec<[f64; 3]>,
+    /// Chief position in ECI `[m]` at each `primer_times` sample (playback track).
+    pub chief_track_eci: Vec<[f64; 3]>,
+    /// Burn position + Δv direction in ECI, one per maneuver.
+    pub maneuver_eci: Vec<ManeuverEciDto>,
+    /// Primer vector in ECI at each `primer_times` sample (dimensionless dir).
+    pub primer_eci: Vec<[f64; 3]>,
+    /// ECI samples of the FaceMax perigee-window arc (piecewise cost only).
+    #[tsify(optional)]
+    pub perigee_arc_eci: Option<Vec<[f64; 3]>>,
+    /// Deputy relative orbit in the chief RTN frame `[m]` (driven by `target_roe`).
+    pub relative_trajectory_rtn: Vec<[f64; 3]>,
+    /// Echo of the request `w_metres` `[m]` = `[δa, δλ, δeₓ, δe_y, δiₓ, δi_y]·a`.
+    pub target_roe: [f64; 6],
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -140,6 +169,9 @@ pub struct ApiError {
 
 /// Outcome modeled as a value so the error type survives into the `.d.ts`
 /// (a wasm `Result` would erase `Err` into an untyped JS throw).
+// SolveResponse is a wasm boundary type serialised immediately; stack size is
+// not a concern here — suppress the large_enum_variant lint.
+#[allow(clippy::large_enum_variant)]
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(tag = "status")]
