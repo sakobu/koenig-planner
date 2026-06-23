@@ -1,0 +1,59 @@
+import type { SolveResponse } from "../wasm";
+import { niceStep } from "./svgUtil";
+
+export function Timeline({ r }: { r: SolveResponse }) {
+  const W = 760,
+    H = 300;
+  const padL = 58,
+    padR = 30,
+    padT = 46,
+    padB = 44;
+  const yBase = H - padB;
+  const plotH = yBase - padT;
+  const plotW = W - padL - padR;
+
+  const mags = r.maneuvers.map((m) => Math.hypot(m.dv[0], m.dv[1], m.dv[2]));
+  const maxMag = Math.max(1e-12, ...mags);
+  const step = niceStep(maxMag / 4);
+  const domainMax = Math.max(step, Math.ceil(maxMag / step) * step);
+
+  const tVals = r.maneuvers.map((m) => m.t);
+  const t_i = tVals.length ? Math.min(...tVals) : 0;
+  const t_f = tVals.length ? Math.max(...tVals) : 1;
+  const inset = 0.1 * plotW;
+  const span = Math.max(1e-9, t_f - t_i);
+  const x = (t: number) => padL + inset + ((t - t_i) / span) * (plotW - 2 * inset);
+  const y = (mag: number) => yBase - (mag / domainMax) * plotH;
+
+  const ticks: number[] = [];
+  for (let v = 0; v <= domainMax + step / 2; v += step) ticks.push(v);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
+      {ticks.map((v) => (
+        <g key={v}>
+          <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} className={v === 0 ? "axis" : "grid"} />
+          <text x={padL - 10} y={y(v) + 3.5} className="axis-label" textAnchor="end">
+            {v.toFixed(4)}
+          </text>
+        </g>
+      ))}
+      <text x={6} y={15} className="axis-title" textAnchor="start">|Δv|  [m/s]</text>
+      <text x={x(t_i)} y={yBase + 18} className="axis-label" textAnchor="middle">{t_i.toFixed(0)}</text>
+      <text x={x(t_f)} y={yBase + 18} className="axis-label" textAnchor="middle">{t_f.toFixed(0)}</text>
+      <text x={padL + plotW / 2} y={yBase + 35} className="axis-title" textAnchor="middle">burn time  [s]</text>
+      {r.maneuvers.map((m, j) => {
+        const mx = x(m.t);
+        const my = y(mags[j]);
+        return (
+          <g key={j}>
+            <line x1={mx} y1={yBase} x2={mx} y2={my} className="stem" />
+            <circle cx={mx} cy={my} r={4} className="stem-dot" />
+            <text x={mx} y={my - 11} className="stem-label" textAnchor="middle">{mags[j].toFixed(4)}</text>
+            <text x={mx} y={my - 25} className="mnvr-tag" textAnchor="middle">{`mnvr ${j + 1}`}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
