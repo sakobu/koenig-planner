@@ -3,6 +3,7 @@ import { initWasm, version, type SolveRequest } from "./wasm";
 import { GOLDEN } from "./defaults";
 import { useSolveOutcome } from "./useSolve";
 import { Controls } from "./controls/Controls";
+import { Readout } from "./Readout";
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -23,15 +24,7 @@ export default function App() {
       </header>
       <main>
         <Controls req={req} setReq={setReq} />
-        <section id="output">
-          <pre style={{ gridColumn: "1 / -1", fontSize: "0.7rem", color: "#7c8b9a" }}>
-            {outcome
-              ? outcome.status === "ok"
-                ? `ok — ${outcome.value.maneuvers.length} maneuvers, Δv ${outcome.value.total_dv.toFixed(4)} m/s`
-                : `${outcome.error.kind}: ${outcome.error.message}`
-              : "solving…"}
-          </pre>
-        </section>
+        <Readout outcome={outcome} />
       </main>
     </>
   );
