@@ -123,7 +123,10 @@ mod tests {
         let w = w6([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         let q = SMatrix::<f64, N, N>::identity();
         let err = extract_qp(&w, &[], &q, 10.0).unwrap_err();
-        assert!(matches!(err, crate::types::PlannerError::InvalidInput(_)));
+        assert!(matches!(
+            err,
+            crate::types::PlannerError::InvalidInput(crate::types::InvalidInputKind::NoDirections)
+        ));
     }
 
     // Ref: [KD20] Algorithm 3.
@@ -226,7 +229,7 @@ mod tests {
         for bad in [-1.0, f64::NAN] {
             assert!(matches!(
                 extract_qp(&w, &[e(0)], &q, bad).unwrap_err(),
-                crate::types::PlannerError::InvalidInput(_)
+                crate::types::PlannerError::InvalidInput(crate::types::InvalidInputKind::Budget { .. })
             ));
         }
     }

@@ -231,11 +231,11 @@ mod tests {
         let w = w6([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         assert!(matches!(
             min_fuel_socp(&w, &[], &[]).unwrap_err(),
-            PlannerError::InvalidInput(_)
+            PlannerError::InvalidInput(InvalidInputKind::EmptyCandidateSet)
         ));
         assert!(matches!(
             min_fuel_socp(&w, &[gamma_top_identity()], &[]).unwrap_err(),
-            PlannerError::InvalidInput(_)
+            PlannerError::InvalidInput(InvalidInputKind::EmptyCandidateSet)
         ));
     }
 

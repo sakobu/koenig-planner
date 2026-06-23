@@ -93,7 +93,9 @@ mod tests {
         assert!(mean_to_eccentric(0.5, -0.1).is_err()); // negative
         assert!(mean_to_eccentric(0.5, f64::NAN).is_err());
         match mean_to_eccentric(0.5, 2.0) {
-            Err(crate::types::PlannerError::InvalidInput(_)) => {}
+            Err(crate::types::PlannerError::InvalidInput(
+                crate::types::InvalidInputKind::Eccentricity { .. },
+            )) => {}
             other => panic!("expected InvalidInput, got {other:?}"),
         }
     }

@@ -176,4 +176,14 @@ mod tests {
         // Valid period + finite epoch accepted.
         assert!(Piecewise::with_perigee_epoch(40_000.0, 20_000.0).is_ok());
     }
+
+    #[test]
+    fn nonpositive_period_captures_period_kind() {
+        let err = Piecewise::with_perigee_epoch(0.0, 0.0).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::types::PlannerError::InvalidInput(crate::types::InvalidInputKind::Period { period, .. })
+                if period == 0.0
+        ));
+    }
 }

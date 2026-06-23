@@ -144,7 +144,10 @@ mod tests {
     fn empty_candidate_set_is_invalid_input() {
         let w = w6([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         let err = refine_socp(&w, &[]).unwrap_err();
-        assert!(matches!(err, crate::types::PlannerError::InvalidInput(_)));
+        assert!(matches!(
+            err,
+            crate::types::PlannerError::InvalidInput(crate::types::InvalidInputKind::EmptyCandidateSet)
+        ));
     }
 
     // Ref: [KD20] eq. 40; Table II.
