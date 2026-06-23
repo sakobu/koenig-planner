@@ -33,20 +33,17 @@ pub fn version() -> String {
 pub fn solve(req: dto::SolveRequest) -> dto::SolveOutcome {
     let api_req: koenig_damico_planner_api::SolveRequest = (&req).into();
     match koenig_damico_planner_api::run(api_req) {
-        Ok(resp) => {
-            let times: Vec<f64> = resp.maneuvers.iter().map(|m| m.t).collect();
-            match geometry::chief_geometry(&req, &times) {
-                Ok(geom) => dto::SolveOutcome::Ok {
-                    value: (resp, geom).into(),
+        Ok(resp) => match geometry::chief_geometry(&req, &resp) {
+            Ok(geom) => dto::SolveOutcome::Ok {
+                value: (resp, geom).into(),
+            },
+            Err(e) => dto::SolveOutcome::Err {
+                error: dto::ApiError {
+                    kind: dto::ApiErrorKind::Solver,
+                    message: e.to_string(),
                 },
-                Err(e) => dto::SolveOutcome::Err {
-                    error: dto::ApiError {
-                        kind: dto::ApiErrorKind::Solver,
-                        message: e.to_string(),
-                    },
-                },
-            }
-        }
+            },
+        },
         Err(e) => dto::SolveOutcome::Err { error: e.into() },
     }
 }

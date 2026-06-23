@@ -53,7 +53,6 @@ fn perifocal_to_eci(i: f64, raan: f64, argp: f64) -> [[f64; 3]; 3] {
 /// for the instantaneous elements `(a, e, i, raan, argp)`. Orbit-*shape*
 /// sampling: `r = a(1-e²)/(1 + e·cosν)`, `r_pqw = [r cosν, r sinν, 0]`, rotated
 /// by `perifocal_to_eci`. No propagation.
-#[allow(dead_code)]
 pub fn orbit_point_eci(a: f64, e: f64, i: f64, raan: f64, argp: f64, nu: f64) -> [f64; 3] {
     let r = a * (1.0 - e * e) / (1.0 + e * nu.cos());
     let (xp, yp) = (r * nu.cos(), r * nu.sin());
@@ -70,7 +69,6 @@ pub fn orbit_point_eci(a: f64, e: f64, i: f64, raan: f64, argp: f64, nu: f64) ->
 ///
 /// # Errors
 /// Propagates [`AbsoluteOrbit::true_anomaly`]'s error (non-elliptic `e`).
-#[allow(dead_code)]
 pub fn position_eci(orbit: &AbsoluteOrbit) -> Result<[f64; 3], PlannerError> {
     let nu = orbit.true_anomaly()?;
     Ok(orbit_point_eci(
@@ -97,7 +95,6 @@ pub fn rtn_basis_eci(orbit: &AbsoluteOrbit) -> Result<[[f64; 3]; 3], PlannerErro
 ///
 /// # Errors
 /// Propagates [`rtn_basis_eci`]'s error.
-#[allow(dead_code)]
 pub fn rtn_to_eci(orbit: &AbsoluteOrbit, v_rtn: [f64; 3]) -> Result<[f64; 3], PlannerError> {
     let [r, t, n] = rtn_basis_eci(orbit)?;
     Ok([
