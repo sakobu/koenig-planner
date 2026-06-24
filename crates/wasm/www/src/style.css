@@ -100,29 +100,40 @@ form,
 .controls {
   display: grid;
   gap: 1rem;
-  /* Distribute the cards over the full column height so the rail bottom
-     aligns with the readout — but never let a tall readout pull them apart
-     past a comfortable rhythm. */
-  align-content: space-between;
+  /* Stack the cards from the top so collapsing a section pulls the rest up
+     rather than redistributing the gaps. */
+  align-content: start;
   background: var(--bg-rail);
   border-right: 1px solid var(--edge);
   /* Pull the rail surface to the deck edge while keeping inner rhythm. */
   margin: -1.5rem 0 -2.5rem;
   padding: 1.5rem 1.25rem 2.5rem;
 }
-fieldset {
+/* Collapsible rail sections (native <details>/<summary>): the card look the
+   fieldsets carried, plus a clickable header with a rotating chevron. */
+.section {
   margin: 0;
   border: 1px solid var(--edge);
   border-radius: 4px;
   background: var(--bg-panel);
-  padding: 0.95rem 0.85rem 1rem;
+  padding: 0.85rem 0.85rem 0.95rem;
   display: grid;
   gap: 0.55rem;
 }
-legend {
+/* Collapsed: only the summary shows — drop the content gap. */
+.section:not([open]) {
+  gap: 0;
+}
+.section > summary {
   position: relative;
-  padding: 0 0.4rem 0 0.95rem;
-  margin-left: -0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  white-space: nowrap; /* keep the header on one line; chevron never crowds it */
+  padding-left: 0.95rem;
+  list-style: none; /* hide the native disclosure triangle (Firefox) */
+  cursor: pointer;
   font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 500;
@@ -130,16 +141,46 @@ legend {
   text-transform: uppercase;
   color: var(--ink-dim);
 }
-/* Instrument cue: a short leading cyan tick on every fieldset legend. */
-legend::before {
+.section > summary::-webkit-details-marker {
+  display: none; /* hide the native disclosure triangle (WebKit/Blink) */
+}
+.section > summary:hover {
+  color: var(--ink);
+}
+.section > summary:focus-visible {
+  outline: none;
+  color: var(--ink);
+  box-shadow: var(--glow-cyan);
+  border-radius: 3px;
+}
+/* Instrument cue: the same short leading cyan tick the legends carried. */
+.section > summary::before {
   content: "";
   position: absolute;
-  left: 0.4rem;
+  left: 0;
   top: 50%;
   width: 10px;
   height: 1px;
   background: var(--cyan);
   transform: translateY(-50%);
+}
+/* Chevron: points right when collapsed, rotates down when the section is open. */
+.section > summary::after {
+  content: "";
+  flex: none; /* never let the chevron shrink or get squeezed by the title */
+  width: 6px;
+  height: 6px;
+  margin-right: 2px;
+  border-right: 1.5px solid var(--ink-faint);
+  border-bottom: 1.5px solid var(--ink-faint);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.section[open] > summary::after {
+  transform: rotate(45deg);
+}
+.section > summary:hover::after {
+  border-color: var(--ink-dim);
 }
 label {
   display: flex;

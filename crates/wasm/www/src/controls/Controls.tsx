@@ -56,8 +56,8 @@ export function Controls({
 
   return (
     <form className="controls" onSubmit={(e) => e.preventDefault()}>
-      <fieldset>
-        <legend>Chief orbit</legend>
+      <details className="section" open>
+        <summary>Chief orbit</summary>
         {CHIEF.map(({ key, label }) => (
           <NumberField
             key={key}
@@ -69,10 +69,10 @@ export function Controls({
             step={CHIEF_RANGE[key][2]}
           />
         ))}
-      </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>Window [s]</legend>
+      <details className="section">
+        <summary>Window [s]</summary>
         {(["t_i", "t_f", "dt"] as const).map((key) => (
           <NumberField
             key={key}
@@ -84,10 +84,10 @@ export function Controls({
             step={WINDOW_RANGE[key][2]}
           />
         ))}
-      </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>Target pseudostate w [m]</legend>
+      <details className="section">
+        <summary>Target w [m]</summary>
         {W_LABELS.map((label, idx) => (
           <NumberField
             key={label}
@@ -99,10 +99,10 @@ export function Controls({
             step={W_RANGE[idx][2]}
           />
         ))}
-      </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>Cost model</legend>
+      <details className="section">
+        <summary>Cost model</summary>
         <label>
           type
           <select
@@ -142,7 +142,7 @@ export function Controls({
             </label>
           </>
         )}
-      </fieldset>
+      </details>
     </form>
   );
 }
