@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Stale docs refreshed to match the shipped 0.2.0 frontends (docs-only — no API,
+  behavior, or wire change): the root README's WASM-demo section now describes the
+  React + React-Three-Fiber 3D console (two interactive 3D scenes plus a playback
+  scrubber) instead of the superseded flat SVG demo; the
+  `koenig-damico-planner-api` README and manifest no longer call the HTTP and WASM
+  frontends "planned" and correctly attribute `run_json` to the Python/WASM
+  `solve_json` escape hatches (the typed `solve` and the HTTP server call `run`);
+  the public `Maneuver.t` rustdoc documents it as an absolute grid time
+  (`t_i + k·dt`), not "measured from `t_i`"; and the `solver` module doc lists all
+  three solver wrappers and attributes Algorithm 3 to `min_fuel_socp` (not the
+  legacy `extract_qp`).
+
 ## [0.2.0] — 2026-06-24
 
 > **Migrating from 0.1.0.** This is the first release with breaking changes for

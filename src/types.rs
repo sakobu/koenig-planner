@@ -20,7 +20,8 @@ pub type Dual = SVector<f64, N>;
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Maneuver {
-    /// Application time `[s]`, measured from `t_i`.
+    /// Application time `[s]`: an absolute grid time `grid.time(k) = t_i + k·dt`
+    /// (the same axis as the grid, equal to `t_i` at the first sample).
     pub t: f64,
     /// Delta-v [m/s], RTN components (R, T, N).
     pub dv: SVector<f64, M>,
