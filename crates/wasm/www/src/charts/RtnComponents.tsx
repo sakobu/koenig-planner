@@ -2,7 +2,7 @@ import type { SolveResponse } from "../wasm";
 import { niceStep } from "./svgUtil";
 
 const RTN_COLORS = { R: "#ff6b6b", T: "#4dd2ff", N: "#ffb454" } as const;
-const RTN_NAME = { R: "radial", T: "tangential", N: "normal" } as const;
+const RTN_NAME = { R: "radial", T: "transverse", N: "normal" } as const;
 
 export function RtnComponents({ r }: { r: SolveResponse }) {
   const n = r.maneuvers.length;

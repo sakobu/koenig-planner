@@ -6,7 +6,7 @@
 import type { SolveResponse } from "../wasm";
 
 const RTN_COLORS = { R: "#ff6b6b", T: "#4dd2ff", N: "#ffb454" } as const;
-const RTN_NAME = { R: "radial", T: "tangential", N: "normal" } as const;
+const RTN_NAME = { R: "radial", T: "transverse", N: "normal" } as const;
 
 function pathFor(times: number[], ys: number[], x: (t: number) => number, y: (v: number) => number): string {
   if (times.length === 0) return "";
