@@ -1,5 +1,7 @@
-//! Convex-solver wrappers around `clarabel`: the refinement SOCP (eq. 40) and
-//! the extraction QP (Algorithm 3), plus shared settings/status helpers.
+//! Convex-solver wrappers around `clarabel`: the refinement SOCP (eq. 40,
+//! `refine_socp`), the direct min-fuel SOCP that the live extraction path runs
+//! (Algorithm 3, `min_fuel_socp`), and the legacy fixed-direction extraction QP
+//! (`extract_qp`), plus shared settings/status helpers.
 
 pub mod extract_qp;
 pub mod min_fuel_socp;
