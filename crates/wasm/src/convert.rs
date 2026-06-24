@@ -222,6 +222,17 @@ mod tests {
             e: 0.7,
             maneuver_nu: vec![0.5],
             perigee_window: Some([0.1, 0.2]),
+            orbit_eci: vec![[1.0, 2.0, 3.0]],
+            chief_track_eci: vec![[4.0, 5.0, 6.0]],
+            maneuver_eci: vec![dto::ManeuverEciDto {
+                position_eci: [7.0, 8.0, 9.0],
+                dv_eci: [0.1, 0.2, 0.3],
+            }],
+            primer_eci: vec![[0.4, 0.5, 0.6]],
+            perigee_arc_eci: Some(vec![[1.1, 1.2, 1.3]]),
+            relative_trajectory_rtn: vec![[10.0, 20.0, 30.0]],
+            deputy_track_rtn: vec![[1.0, 2.0, 3.0]],
+            target_roe: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         };
         let got: dto::SolveResponse = (resp, geom).into();
         assert_eq!(got.maneuvers.len(), 1);

@@ -1,30 +1,48 @@
 /*
- * Koenig-D'Amico Maneuver Planner — flight-console readout.
+ * Koenig-D'Amico Maneuver Planner — "Flight Dynamics Console".
  *
- * Restraint over ornament: flat dark surfaces, ONE cyan accent, monospace
- * tabular numerics treated as the hero, and functional R/T/N data color. The
- * plots are the focus; the chrome stays quiet. Layout is a real console split —
- * a command rail on the left, a telemetry readout on the right.
+ * An instrument-grade flight-dynamics console: a deep navy-black ground,
+ * precise telemetry typography (Saira chrome over IBM Plex Mono data), hairline
+ * instrument grids, and the signature element — the 3D panels framed as
+ * instrument viewports with cyan corner reticles. Restraint everywhere except
+ * that viewport signature. The functional data-color language is preserved:
+ * cyan = Δv/thrust + primary accent, amber = window/primer, green = nominal,
+ * red = fault, and the RTN axis triad R/T/N.
  */
 :root {
-  --bg: #0a0e13;
-  --panel: #0f151c;
-  --edge: #1d2935;
-  --ink: #dce6f0;
-  --muted: #7c8b9a;
-  --faint: #46566a;
+  /* ── Surfaces (deep → shallow) ──────────────────────────────────── */
+  --bg: #060a11; /* console ground — deep navy-black */
+  --bg-rail: #0a0f18; /* controls rail + header surface */
+  --bg-panel: #0b111c; /* panel surface */
+  --bg-canvas: #04070d; /* 3D viewport interior (deepest) */
+  --bg-input: #0e1623; /* input fields */
 
-  /* Functional channels — also the data-encoding colors in the plots. */
-  --cyan: #5cc8ff; /* primary accent + T (tangential) */
-  --amber: #ffb454; /* perigee / FaceMax window + N (normal) */
-  --red: #ff6b6b; /* fault + R (radial) */
+  /* ── Ink ─────────────────────────────────────────────────────────── */
+  --ink: #e3ebf6; /* primary text */
+  --ink-dim: #8496ad; /* secondary labels / eyebrows */
+  --ink-faint: #51637c; /* captions, grid lines, axis ticks */
+
+  /* ── Edges ───────────────────────────────────────────────────────── */
+  --edge: #18222f; /* hairline borders */
+  --edge-bright: #2c3c52; /* emphasis edges */
+
+  /* ── Functional channels (also the plot data-encoding colors) ────── */
+  --cyan: #5cc8ff; /* primary accent / Δv-thrust */
+  --cyan-deep: #15384e; /* low-intensity cyan for tracks/fills */
+  --amber: #ffb454; /* window / primer */
   --green: #5ef2a8; /* nominal */
+  --red: #ff6b6b; /* fault */
+  --rtn-r: #ff6b6b;
+  --rtn-t: #4dd2ff;
+  --rtn-n: #ffb454;
+  --glow-cyan: 0 0 12px rgba(92, 200, 255, 0.3);
 
-  --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas,
-    monospace;
-  --eyebrow: 0.62rem;
+  /* ── Type ────────────────────────────────────────────────────────── */
+  --font-ui: "Saira", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --eyebrow: 0.7rem;
 
-  font-family: var(--mono);
+  font-family: var(--font-ui);
   color-scheme: dark;
 }
 
@@ -36,53 +54,34 @@ body {
   margin: 0;
   color: var(--ink);
   background: var(--bg);
+  font-family: var(--font-ui);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Shared eyebrow label (section titles, KPI labels, status). */
-.kpi .k-label,
-.panel h2,
-legend,
-.status {
-  font-size: var(--eyebrow);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-/* ── Header ──────────────────────────────────────────────────────── */
+/* ── Header — console title bar ──────────────────────────────────── */
 header {
   display: flex;
   align-items: baseline;
   gap: 0.85rem;
   padding: 1.05rem 2rem;
+  background: var(--bg-rail);
   border-bottom: 1px solid var(--edge);
 }
 header h1 {
   margin: 0;
-  font-size: 0.88rem;
+  font-family: var(--font-ui);
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.26em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
+  color: var(--ink);
 }
 .version {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-/* Status indicator (CSS-driven by body.fault) — a quiet dot + label, no pulse. */
-header::after {
-  content: "● plan nominal";
-  margin-left: auto;
-  align-self: center;
-  font-size: var(--eyebrow);
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--green);
-}
-body.fault header::after {
-  content: "● solve fault";
-  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
 }
 
 /* ── Deck ────────────────────────────────────────────────────────── */
@@ -96,47 +95,113 @@ main {
   padding: 1.5rem 2rem 2.5rem;
 }
 
-/* ── Command rail (form) ─────────────────────────────────────────── */
-form {
+/* ── Command rail (form / .controls) ─────────────────────────────── */
+form,
+.controls {
   display: grid;
   gap: 1rem;
-  /* Distribute the cards over the full column height so the rail bottom
-     aligns with the readout — but never let a tall readout pull them apart
-     past a comfortable rhythm. */
-  align-content: space-between;
+  /* Stack the cards from the top so collapsing a section pulls the rest up
+     rather than redistributing the gaps. */
+  align-content: start;
+  background: var(--bg-rail);
+  border-right: 1px solid var(--edge);
+  /* Pull the rail surface to the deck edge while keeping inner rhythm. */
+  margin: -1.5rem 0 -2.5rem;
+  padding: 1.5rem 1.25rem 2.5rem;
 }
-fieldset {
+/* Collapsible rail sections (native <details>/<summary>): the card look the
+   fieldsets carried, plus a clickable header with a rotating chevron. */
+.section {
   margin: 0;
   border: 1px solid var(--edge);
-  border-radius: 8px;
-  background: var(--panel);
-  padding: 0.9rem 0.85rem;
+  border-radius: 4px;
+  background: var(--bg-panel);
+  padding: 0.85rem 0.85rem 0.95rem;
   display: grid;
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
-legend {
-  color: var(--cyan);
-  padding: 0 0.4rem;
-  margin-left: -0.2rem;
+/* Collapsed: only the summary shows — drop the content gap. */
+.section:not([open]) {
+  gap: 0;
+}
+.section > summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  white-space: nowrap; /* keep the header on one line; chevron never crowds it */
+  padding-left: 0.95rem;
+  list-style: none; /* hide the native disclosure triangle (Firefox) */
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.section > summary::-webkit-details-marker {
+  display: none; /* hide the native disclosure triangle (WebKit/Blink) */
+}
+.section > summary:hover {
+  color: var(--ink);
+}
+.section > summary:focus-visible {
+  outline: none;
+  color: var(--ink);
+  box-shadow: var(--glow-cyan);
+  border-radius: 3px;
+}
+/* Instrument cue: the same short leading cyan tick the legends carried. */
+.section > summary::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 10px;
+  height: 1px;
+  background: var(--cyan);
+  transform: translateY(-50%);
+}
+/* Chevron: points right when collapsed, rotates down when the section is open. */
+.section > summary::after {
+  content: "";
+  flex: none; /* never let the chevron shrink or get squeezed by the title */
+  width: 6px;
+  height: 6px;
+  margin-right: 2px;
+  border-right: 1.5px solid var(--ink-faint);
+  border-bottom: 1.5px solid var(--ink-faint);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.section[open] > summary::after {
+  transform: rotate(45deg);
+}
+.section > summary:hover::after {
+  border-color: var(--ink-dim);
 }
 label {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  font-size: 0.74rem;
-  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-dim);
 }
 input,
 select {
   width: 7.5rem;
   flex: none;
-  background: var(--bg);
+  background: var(--bg-input);
   color: var(--ink);
   border: 1px solid var(--edge);
-  border-radius: 4px;
-  padding: 0.26rem 0.5rem;
-  font: inherit;
+  border-radius: 3px;
+  padding: 0.28rem 0.5rem;
+  font-family: var(--font-mono);
   font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
@@ -145,14 +210,14 @@ input:focus-visible,
 select:focus-visible {
   outline: none;
   border-color: var(--cyan);
-  box-shadow: 0 0 0 2px rgba(92, 200, 255, 0.25);
+  box-shadow: var(--glow-cyan);
 }
 input::placeholder {
-  color: var(--faint);
+  color: var(--ink-faint);
 }
 /* Piecewise-only inputs (period / t_perigee0) — hidden by default, revealed
    only when the piecewise cost model is selected (data-cost mirrored from the
-   form in main.ts). */
+   form in the React layer). */
 .pw {
   display: none;
 }
@@ -160,145 +225,205 @@ form[data-cost="piecewise"] .pw {
   display: flex;
 }
 
-/* ── Readout ─────────────────────────────────────────────────────── */
+/* ── Synced range sliders ────────────────────────────────────────── */
+.field {
+  display: grid;
+  gap: 0.32rem;
+}
+.field .slider,
+.slider {
+  width: 100%;
+  accent-color: var(--cyan);
+  background: transparent;
+}
+.slider:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-cyan);
+  border-radius: 3px;
+}
+.field label {
+  /* number input keeps the existing label row layout */
+  margin: 0;
+}
+
+/* ── Readout — Layout B dual-stage console grid ──────────────────── */
 #output {
   display: grid;
   gap: 1.1rem;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
-    "kpis      kpis"
-    "timeline  orbit"
-    "rtn       rtn"
-    "primer    primer"
-    "primerrtn primerrtn";
+    "kpis       kpis"
+    "eci        rtn"
+    "play       play"
+    "timeline   primer"
+    "rtncomp    rtncomp"
+    "primerrtn  primerrtn";
   align-content: start;
 }
 .kpis {
   grid-area: kpis;
 }
+.panel:has(.canvas-eci) {
+  grid-area: eci;
+}
+.panel:has(.canvas-rtn) {
+  grid-area: rtn;
+}
+.panel:has(.playback) {
+  grid-area: play;
+}
 .panel:has(.chart-timeline) {
   grid-area: timeline;
 }
-.panel:has(.chart-orbit) {
-  grid-area: orbit;
-}
-.panel:has(.chart-rtn) {
-  grid-area: rtn;
-}
 .panel:has(.chart-primer) {
   grid-area: primer;
+}
+.panel:has(.chart-rtncomp) {
+  grid-area: rtncomp;
 }
 .panel:has(.chart-primer-rtn) {
   grid-area: primerrtn;
 }
 
-/* KPI telemetry strip — the numbers are the hero. */
+/* ── KPI telemetry strip — the numbers are the hero ──────────────── */
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  background: var(--bg-panel);
   border: 1px solid var(--edge);
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
 }
 .kpi {
   padding: 0.85rem 1rem;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.45rem;
   border-left: 1px solid var(--edge);
 }
 .kpi:first-child {
   border-left: none;
 }
 .k-label {
-  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: var(--eyebrow);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
 }
 .k-value {
-  font-size: 1.55rem;
+  font-family: var(--font-mono);
+  font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1;
+  color: var(--ink);
 }
-/* Primary readout (total Δv) gets the accent. */
+/* Primary readout (Δv cost) gets the cyan accent. */
 .kpi:first-child .k-value {
   color: var(--cyan);
 }
 
 /* ── Instrument panels ───────────────────────────────────────────── */
 .panel {
-  background: var(--panel);
+  background: var(--bg-panel);
   border: 1px solid var(--edge);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.9rem 1.1rem 1.1rem;
   display: flex;
   flex-direction: column;
 }
 .panel h2 {
+  position: relative;
   flex: none;
   margin: 0 0 0.9rem;
-  padding-bottom: 0.55rem;
+  padding: 0 0 0.55rem 0.95rem;
   border-bottom: 1px solid var(--edge);
-  color: var(--cyan);
-  font-weight: 600;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+/* Instrument cue: leading cyan tick on every panel title. */
+.panel h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.36em;
+  width: 10px;
+  height: 1px;
+  background: var(--cyan);
 }
 
-/* Charts fill their panel width and center in any spare height; the square
-   orbit is capped so it can't dominate the deck. */
+/* ── Charts ──────────────────────────────────────────────────────── */
 .chart {
   display: block;
   width: 100%;
   height: auto;
   margin: auto;
 }
-.chart-orbit {
-  max-width: 320px;
-}
 /* Caps so the panels don't balloon on ultra-wide displays; the charts center
    in any spare width. */
 .chart-timeline {
   max-width: 900px;
 }
-.chart-rtn {
+.chart-primer {
   max-width: 1180px;
 }
-.chart-primer,
+.chart-rtncomp {
+  max-width: 1180px;
+}
 .chart-primer-rtn {
   max-width: 1180px;
 }
 
-/* ── Plot primitives (consumed by render.ts) ─────────────────────── */
+/* ── Plot primitives (SVG) ───────────────────────────────────────── */
 .axis {
-  stroke: var(--faint);
+  stroke: var(--edge-bright);
   stroke-width: 1;
 }
 .grid {
-  stroke: var(--edge);
+  stroke: var(--ink-faint);
   stroke-width: 1;
   stroke-dasharray: 2 4;
-}
-.zero-axis {
-  stroke: var(--muted);
-  stroke-width: 1;
+  opacity: 0.35;
 }
 .axis-label,
 .axis-title,
-.row-label,
-.mnvr-label,
-.stem-label,
-.val-label,
-.legend-label {
-  fill: var(--muted);
-  font: 12px var(--mono);
+.stem-label {
+  fill: var(--ink-dim);
+  font: 12px var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
 }
 /* Section-title eyebrows for the chart axes. */
 .axis-title {
+  fill: var(--ink-faint);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 11px;
 }
 /* Numeric readouts inside the plots — brighter than their axes. */
-.stem-label,
+.stem-label {
+  fill: var(--ink);
+}
+/* Zero-axis on diverging bar charts — slightly brighter than the faint grid. */
+.zero-axis {
+  stroke: var(--edge-bright);
+  stroke-width: 1;
+}
+/* RTN bar chart — row labels, per-bar value readouts, and the legend. */
+.row-label,
+.val-label,
+.legend-label {
+  fill: var(--ink-dim);
+  font: 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+/* Value and legend labels are primary-ink bright. */
 .val-label,
 .legend-label {
   fill: var(--ink);
@@ -308,8 +433,8 @@ form[data-cost="piecewise"] .pw {
 }
 /* Per-stem maneuver tag on the timeline — an eyebrow over the value. */
 .mnvr-tag {
-  fill: var(--muted);
-  font: 10px var(--mono);
+  fill: var(--ink-faint);
+  font: 10px var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -319,33 +444,6 @@ form[data-cost="piecewise"] .pw {
 }
 .stem-dot {
   fill: var(--cyan);
-}
-.mnvr-marker {
-  fill: var(--cyan);
-  stroke: var(--panel);
-  stroke-width: 1.5;
-}
-.mnvr-label {
-  fill: var(--ink);
-  font-weight: 600;
-}
-
-/* Orbit instrument. */
-.orbit {
-  fill: none;
-  stroke: var(--faint);
-  stroke-width: 1.5;
-}
-.perigee-window {
-  fill: rgba(255, 180, 84, 0.14);
-  stroke: var(--amber);
-  stroke-width: 1;
-}
-.chief {
-  fill: var(--ink);
-}
-.perigee {
-  fill: var(--amber);
 }
 
 /* Primer-vector instrument (Fig. 7). The curve is cyan; the |p| = 1 optimality
@@ -362,7 +460,7 @@ form[data-cost="piecewise"] .pw {
   stroke-dasharray: 4 3;
 }
 .primer-mnvr {
-  stroke: var(--faint);
+  stroke: var(--edge-bright);
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
@@ -371,24 +469,116 @@ form[data-cost="piecewise"] .pw {
   stroke-width: 1.5;
 }
 
-/* ── Fault arm ───────────────────────────────────────────────────── */
+/* ── 3D viewports — the instrument signature ─────────────────────── */
+.canvas3d {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 320px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: var(--bg-canvas);
+  overflow: hidden;
+}
+/* SIGNATURE — cyan corner reticles. Four L-shaped brackets drawn as eight
+   thin gradient bars (a 14×1 horizontal + 1×14 vertical at each corner) via a
+   single ::after overlay. This is the page's memorable element. */
+.canvas3d::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image:
+    /* top-left */
+    linear-gradient(var(--cyan), var(--cyan)),
+    linear-gradient(var(--cyan), var(--cyan)),
+    /* top-right */ linear-gradient(var(--cyan), var(--cyan)),
+    linear-gradient(var(--cyan), var(--cyan)),
+    /* bottom-left */ linear-gradient(var(--cyan), var(--cyan)),
+    linear-gradient(var(--cyan), var(--cyan)),
+    /* bottom-right */ linear-gradient(var(--cyan), var(--cyan)),
+    linear-gradient(var(--cyan), var(--cyan));
+  background-repeat: no-repeat;
+  background-size:
+    14px 1px, 1px 14px /* top-left: H, V */, 14px 1px, 1px 14px /* top-right */,
+    14px 1px, 1px 14px /* bottom-left */, 14px 1px, 1px 14px /* bottom-right */;
+  background-position:
+    8px 8px, 8px 8px /* top-left */, calc(100% - 8px) 8px,
+    calc(100% - 8px) 8px /* top-right */, 8px calc(100% - 8px),
+    8px calc(100% - 8px) /* bottom-left */, calc(100% - 8px) calc(100% - 8px),
+    calc(100% - 8px) calc(100% - 8px) /* bottom-right */;
+}
+
+/* ── Status lamp ─────────────────────────────────────────────────── */
+.status-lamp {
+  margin-left: auto;
+  align-self: center;
+  font-family: var(--font-ui);
+  font-size: var(--eyebrow);
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--green);
+  text-shadow: 0 0 12px rgba(94, 242, 168, 0.35);
+}
+header.fault .status-lamp {
+  color: var(--red);
+  text-shadow: 0 0 12px rgba(255, 107, 107, 0.4);
+}
+
+/* ── Playback ────────────────────────────────────────────────────── */
+.playback {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.playback button {
+  background: var(--bg-input);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  padding: 0.22rem 0.65rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.playback button:focus-visible {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+.playback input[type="range"] {
+  flex: 1;
+  accent-color: var(--cyan);
+}
+.playback input[type="range"]:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-cyan);
+  border-radius: 3px;
+}
+
+/* ── Fault arm — typed error surface ─────────────────────────────── */
 .error {
   grid-column: 1 / -1;
-  background: var(--panel);
+  background: var(--bg-panel);
   border: 1px solid var(--red);
   border-left: 3px solid var(--red);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 1rem 1.1rem;
   color: #ffc4c4;
   white-space: pre-wrap;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
 }
 .error::before {
   content: "fault";
   display: block;
   margin-bottom: 0.45rem;
+  font-family: var(--font-ui);
   font-size: var(--eyebrow);
-  letter-spacing: 0.26em;
+  font-weight: 500;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--red);
 }
@@ -415,14 +605,23 @@ form[data-cost="piecewise"] .pw {
   main {
     grid-template-columns: 1fr;
   }
+  form,
+  .controls {
+    /* Restore the rail to a flat block when it stacks above the readout. */
+    margin: -1.5rem 0 0;
+    border-right: none;
+    border-bottom: 1px solid var(--edge);
+  }
   #output {
     grid-template-columns: 1fr;
     grid-template-areas:
       "kpis"
-      "timeline"
-      "orbit"
+      "eci"
       "rtn"
+      "play"
+      "timeline"
       "primer"
+      "rtncomp"
       "primerrtn";
   }
   .kpis {
@@ -431,7 +630,14 @@ form[data-cost="piecewise"] .pw {
   .kpi:nth-child(3) {
     border-left: none;
   }
-  header::after {
-    display: none;
+}
+
+/* ── Reduced motion — neutralize transitions (no ambient animation) ─ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }
