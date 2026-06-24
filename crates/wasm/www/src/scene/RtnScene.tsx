@@ -4,19 +4,24 @@ import type { ChiefGeometry } from "../wasm";
 import { maxRadius, rtnToView, scaleAll, type V3 } from "./vec";
 
 export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
-  const rel = g.relative_trajectory_rtn as V3[];
-  const rmax = Math.max(1e-6, maxRadius(rel)); // rotation-invariant, so map order is irrelevant
+  // The deputy track is sampled on the playback grid over the FULL mission
+  // window (several chief periods), and is BOTH the drawn curve and the glyph
+  // source — so the glyph rides the line exactly for the entire scrub. A
+  // non-zero δa gives the deputy a slightly different period, so the curve is an
+  // open, drifting spiral rather than a single closed loop: that secular
+  // along-track drift is real physics, shown honestly rather than hidden.
+  const track = g.deputy_track_rtn as V3[];
+  const rmax = Math.max(1e-6, maxRadius(track)); // rotation-invariant, so map order is irrelevant
   const k = 1 / rmax; // auto-fit metres → ~unit scene
   // Orient with the conventional radial-up / transverse-right / normal-depth
   // axes (see rtnToView), viewed obliquely so the genuinely 3D shape reads
   // honestly: an in-plane-dominated orbit shows the tilted 2:1 ellipse, a
   // cross-track-dominated one (e.g. the paper's δi-heavy example) reads as a 3D
   // loop. Data stays [radial, transverse, normal]; only the mapping changes.
-  const curve = scaleAll(rel.map(rtnToView), k);
+  const curve = scaleAll(track.map(rtnToView), k);
   const axis = 0.8; // reference-gnomon length; kept short so labels stay inside the viewport
 
-  // Deputy glyph: position at the current playback sample, same scale/mapping as the loop.
-  const track = g.deputy_track_rtn as V3[];
+  // Deputy glyph: position at the current playback sample, same scale/mapping as the curve.
   const clampedIdx = Math.min(sampleIndex, Math.max(0, track.length - 1));
   let deputyPos: V3 | null = null;
   if (track.length > 0) {
