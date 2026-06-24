@@ -1,5 +1,5 @@
 import type { SolveResponse } from "../wasm";
-import { niceStep } from "./svgUtil";
+import { niceStep, stackRows } from "./svgUtil";
 
 export function Timeline({ r }: { r: SolveResponse }) {
   const W = 760,
@@ -42,18 +42,22 @@ export function Timeline({ r }: { r: SolveResponse }) {
       <text x={x(t_i)} y={yBase + 18} className="axis-label" textAnchor="middle">{t_i.toFixed(0)}</text>
       <text x={x(t_f)} y={yBase + 18} className="axis-label" textAnchor="middle">{t_f.toFixed(0)}</text>
       <text x={padL + plotW / 2} y={yBase + 35} className="axis-title" textAnchor="middle">burn time  [s]</text>
-      {r.maneuvers.map((m, j) => {
-        const mx = x(m.t);
-        const my = y(mags[j]);
-        return (
-          <g key={j}>
-            <line x1={mx} y1={yBase} x2={mx} y2={my} className="stem" />
-            <circle cx={mx} cy={my} r={4} className="stem-dot" />
-            <text x={mx} y={my - 11} className="stem-label" textAnchor="middle">{mags[j].toFixed(4)}</text>
-            <text x={mx} y={my - 25} className="mnvr-tag" textAnchor="middle">{`mnvr ${j + 1}`}</text>
-          </g>
-        );
-      })}
+      {(() => {
+        const rows = stackRows(r.maneuvers.map((m) => x(m.t)), 22);
+        return r.maneuvers.map((m, j) => {
+          const mx = x(m.t);
+          const my = y(mags[j]);
+          const tagY = Math.max(12, my - 25 - rows[j] * 12);
+          return (
+            <g key={j}>
+              <line x1={mx} y1={yBase} x2={mx} y2={my} className="stem" />
+              <circle cx={mx} cy={my} r={4} className="stem-dot" />
+              <text x={mx} y={my - 11} className="stem-label" textAnchor="middle">{mags[j].toFixed(4)}</text>
+              <text x={mx} y={tagY} className="mnvr-tag" textAnchor="middle">{`M${j + 1}`}</text>
+            </g>
+          );
+        });
+      })()}
     </svg>
   );
 }
