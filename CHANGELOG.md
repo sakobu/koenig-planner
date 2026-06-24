@@ -6,17 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Security
-- The `run_json` library entrypoint — and the Python/WASM frontends built on it —
-  now rejects request bodies larger than `MAX_REQUEST_BYTES` (1 MiB, exposed as a
-  public constant) with `bad_request`, before any JSON parse or allocation. This
-  caps the previously-unbounded body size on those entrypoints; the HTTP server
-  already enforced a 64 KiB body limit.
-- Request DTOs now use `#[serde(deny_unknown_fields)]` (`OrbitDto`, `SolveParamsDto`,
-  `SolveRequest`), so unknown/typo'd fields are rejected as `bad_request` instead of
-  silently ignored. This closes the wire-format "no `deny_unknown_fields`" hardening
-  item and bounds the unknown-field skip path on the `run_json`/py/wasm entrypoints
-  (defense-in-depth, alongside the `MAX_REQUEST_BYTES` cap above).
+## [0.2.0] — 2026-06-24
+
+> **Migrating from 0.1.0.** This is the first release with breaking changes for
+> direct Rust API consumers. The serialized JSON wire format is unchanged.
+>
+> - The `validation` feature is removed → depend on the new
+>   `koenig-damico-planner-validation` crate for the Monte-Carlo harness.
+> - `Piecewise::new` / `Piecewise::with_perigee_epoch` now return `Result` →
+>   handle or `unwrap` the result.
+> - `koenig-damico-planner-api`'s `ApiError.kind` is a typed `ApiErrorKind` (was
+>   `&'static str`) → match the enum.
+> - `PlannerError::InvalidInput` now wraps `InvalidInputKind`, and the
+>   `min_fuel_socp` / `refine_socp` / `MinFuelSolution` / `RefineSolution` /
+>   `ConicRows` / `Dual` / `FuelGenerator` items moved off the crate root to the
+>   `solver::` / `types::` paths → update `match` arms and `use` paths.
 
 ### Added
 - Primer-vector history on every solve (the paper's Fig. 7): the new public
@@ -57,6 +61,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   period makes it `true` for every time (collapsing it to `FaceMax` everywhere).
   Callers must now handle or `unwrap` the result; the `api` and `wasm` adapters
   surface a bad period as a `bad_request`.
+- **BREAKING:** `PlannerError::InvalidInput` now wraps a typed `InvalidInputKind`
+  enum (was an opaque `String`). The new public `InvalidInputKind` classifies the
+  cause (grid, eccentricity, period, budget, …) and carries the offending
+  value(s); it is re-exported at the crate root. Rust consumers that matched on or
+  constructed `InvalidInput(String)` must update to the enum. The serialized wire
+  JSON is unchanged.
+- **BREAKING:** the crate-root re-export surface is trimmed. `min_fuel_socp`,
+  `refine_socp`, `MinFuelSolution`, and `RefineSolution` are now reached via
+  `koenig_damico_planner::solver::…`, and `ConicRows`, `Dual`, and `FuelGenerator`
+  via `koenig_damico_planner::types::…`, instead of the crate root. Update `use`
+  paths accordingly; the items themselves are unchanged.
 
 ### Fixed
 - The Monte-Carlo Fig. 9 timing sweep now surfaces solver failures: `run_fig9` returns a
@@ -114,6 +129,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `dynamic = ["version"]`), so it can no longer drift from `crates/py/Cargo.toml`.
 
 ### Security
+- The `run_json` library entrypoint — and the Python/WASM frontends built on it —
+  now rejects request bodies larger than `MAX_REQUEST_BYTES` (1 MiB, exposed as a
+  public constant) with `bad_request`, before any JSON parse or allocation. This
+  caps the previously-unbounded body size on those entrypoints; the HTTP server
+  already enforced a 64 KiB body limit.
+- Request DTOs now use `#[serde(deny_unknown_fields)]` (`OrbitDto`, `SolveParamsDto`,
+  `SolveRequest`), so unknown/typo'd fields are rejected as `bad_request` instead of
+  silently ignored. This closes the wire-format "no `deny_unknown_fields`" hardening
+  item and bounds the unknown-field skip path on the `run_json`/py/wasm entrypoints
+  (defense-in-depth, alongside the `MAX_REQUEST_BYTES` cap above).
 - CI now scans dependencies for security advisories, license compatibility, and
   source provenance with `cargo-deny`, on every push/PR and on a weekly schedule
   (the schedule re-checks the committed `Cargo.lock` for newly-published
@@ -130,8 +155,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   convex-encoding building blocks `extract_qp` / `min_fuel_socp` / `refine_socp`)
   now carry `# Errors` rustdoc listing the `PlannerError` variants each can return
   and when; a `missing_errors_doc` / `missing_panics_doc` lint enforces the
-  convention. `PlannerError::InvalidInput` is documented as an intentionally
-  opaque, caller-fixable catch-all whose wrapped message is the only diagnostic.
+  convention. `PlannerError::InvalidInput` is documented as a caller-fixable
+  "bad request — correct the inputs" signal whose wrapped `InvalidInputKind`
+  classifies the cause.
 - The request wire contract is documented more completely: `n_coarse` / `n_init`
   are marked inert when `initial_times` is supplied (that path bypasses
   Algorithm 1) on the api and wasm DTOs and the Python `solve` docstring/stub,
@@ -170,4 +196,5 @@ Initial release.
   transcription errors in the published numbers; the crate validates the math
   and self-consistency rather than the printed figures.
 
+[0.2.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.1.0
