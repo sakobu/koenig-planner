@@ -18,9 +18,9 @@ export default function App() {
   return (
     <>
       <header className={fault ? "fault" : undefined}>
-        <h1>Koenig-D'Amico Maneuver Planner</h1>
+        <h1>Koenig-D'Amico Impulsive Control Solver</h1>
         <span className="version">{ready ? `core v${version()}` : "loading…"}</span>
-        <span className="status-lamp">{fault ? "● solve fault" : "● plan nominal"}</span>
+        <span className="status-lamp">{fault ? "● fault" : "● nominal"}</span>
       </header>
       <main>
         <Controls req={req} setReq={setReq} />
