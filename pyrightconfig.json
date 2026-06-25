@@ -1,5 +1,6 @@
 {
   "include": ["crates/py"],
+  "extraPaths": ["crates/py/python"],
   "typeCheckingMode": "basic",
   "reportMissingImports": "error"
 }
