@@ -31,7 +31,9 @@ pub struct SecularRates {
     pub raan_dot: f64,
     /// domega/dt [rad/s].
     pub argp_dot: f64,
-    /// dM/dt [rad/s] (Keplerian mean motion plus the J2 secular term).
+    /// dM/dt [rad/s] (Keplerian mean motion plus the J2 secular term). The J2
+    /// term is `η³`-weighted here, versus `η⁴` for `raan_dot`/`argp_dot`, per the
+    /// Brouwer `Mdot` form (\[KD20\] eq. 50; \[KGD17\] eq. 13).
     pub mean_anom_dot: f64,
 }
 

@@ -32,13 +32,27 @@ print(sol.total_dv, "m/s in", len(sol.maneuvers), "maneuvers")
 for m in sol.maneuvers:
     print(m.t, m.dv)        # time [s], (R, T, N) [m/s]
 print(sol.lambda_)          # optimal dual (6-vector)
+print(sol.iterations, sol.residual)   # Algorithm-2 iterations; equality residual
+
+# Primer-vector history (the paper's Fig. 7 contact curve) — three parallel
+# arrays, one entry per grid point:
+print(sol.primer_times[0], sol.primer_magnitude[0], sol.primer_rtn[0])
+#   primer_rtn is the primer p(t) = Γᵀλ in RTN, NOT the executed thrust
+#   direction — the two coincide only for the "norm2" cost.
 ```
+
+`solve()` also takes optional keyword-only tuning arguments: `n_coarse` /
+`n_init` (Algorithm-1 seeding), `eps_cost` / `eps_remove` (refinement
+tolerances), the `"piecewise"`-only `period` / `t_perigee0`, and an
+`initial_times` override (which bypasses Algorithm 1). See the type stub for the
+full signature and defaults.
 
 `solve_json(str) -> str` accepts/returns the JSON `SolveRequest`/`SolveResponse`
 contract from `koenig-damico-planner-api`. Invalid input raises `ValueError`; solver
 failures raise `RuntimeError`.
 
-See `examples/showcase.py` for a plotting walkthrough.
+See `examples/showcase.py` for a plotting walkthrough, and
+`examples/primer_history.py` for the primer-vector (Fig. 7 contact-curve) plot.
 
 ## Types & editor setup
 

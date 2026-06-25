@@ -1,4 +1,4 @@
-//! Monte-Carlo validation harness — reproduces [KD20] Fig. 7/8/9. Workspace-internal (publish=false).
+//! Monte-Carlo validation harness — reproduces \[KD20\] Fig. 7/8/9. Workspace-internal (publish=false).
 
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
@@ -31,14 +31,16 @@ pub const PAPER_MEANS: [f64; 3] = [4.90, 3.99, 3.31];
 pub const A_C: f64 = 25_000e3;
 /// Per-ROE Gaussian std, metre-scaled (σ = 1 km).
 pub const SIGMA_M: f64 = 1000.0;
-/// Documented constant seed (portable StdRng) — "koenig" in hex-ish.
+/// Documented constant seed (portable StdRng) — the ASCII bytes "oenig"
+/// (i.e. "koenig" minus the leading `k`).
 pub const SEED: u64 = 0x6F_656E_6967;
-/// Worked-example window `[s]`.
+/// Worked-example window start `[s]`.
 pub const T_I: f64 = 0.0;
+/// Worked-example window end `[s]`.
 pub const T_F: f64 = 117_990.0;
 /// Fig. 8 grid step `[s]` (Table III 30 s grid → 3934 candidate times).
 pub const GRID_DT: f64 = 30.0;
-/// Fig. 9 grid sizes (10 → 10⁶). 10⁶ is ~150 MB Γ cache / multi-second; documented.
+/// Fig. 9 grid sizes (10 → 10⁶). 10⁶ is ~150 MB Γ cache / ~0.3 s (release build); documented.
 pub const FIG9_SIZES: [usize; 6] = [10, 100, 1_000, 10_000, 100_000, 1_000_000];
 
 /// Table III chief mean absolute orbit (angles in radians).
@@ -163,10 +165,15 @@ fn solve_scheme<D: Dynamics, C: CostModel>(
 /// One Fig. 8 sample outcome.
 #[derive(Clone, Copy)]
 pub struct Fig8Row {
+    /// Candidate-time count labelling the seeding scheme (2 / 6 / 10).
     pub n_init: usize,
+    /// Seeding-scheme label (`"endpoints"` / `"largest_g"` / `"evenly_spaced"`).
     pub scheme: &'static str,
+    /// Index of the random target within the Monte-Carlo batch.
     pub sample: usize,
+    /// Algorithm-2 refinement iterations taken to converge.
     pub iterations: usize,
+    /// Final equality residual `‖ΣΓΔv − w‖` (dimensionless, scaled by `a_c`).
     pub residual: f64,
     /// Minimized fuel-cost objective `c*` (the polytope gauge `Σθ` under a
     /// FaceMax/Piecewise perigee window, `Σ‖Δv‖₂` under Norm2) — matches the
@@ -176,11 +183,17 @@ pub struct Fig8Row {
 
 /// Per-scheme summary statistics (one row per Fig. 8 seeding).
 pub struct Fig8Stat {
+    /// Candidate-time count labelling the seeding scheme (2 / 6 / 10).
     pub n_init: usize,
+    /// Number of samples in the scheme's group.
     pub n: usize,
+    /// Mean refinement iterations over the group.
     pub mean_iters: f64,
+    /// Fraction of samples solved in ≤ 8 iterations (the paper's stated bound).
     pub frac_le8: f64,
+    /// Worst-case refinement iterations in the group.
     pub max_iters: usize,
+    /// Worst-case final residual in the group.
     pub max_residual: f64,
 }
 
@@ -259,10 +272,16 @@ pub fn summarize_fig8(rows: &[Fig8Row], schemes: &[(usize, InitScheme)]) -> Vec<
 /// One Fig. 9 timing outcome.
 #[derive(Clone, Copy)]
 pub struct Fig9Row {
+    /// Actual candidate-time grid length (may differ from the requested size by
+    /// ±1 due to rounding in `TimeGrid::len`).
     pub grid_len: usize,
+    /// Grid step `[s]`: `(t_f − t_i)/(n − 1)`.
     pub dt: f64,
+    /// Wall-clock solve time `[s]` for the single timed solve.
     pub seconds: f64,
+    /// Algorithm-2 refinement iterations (`0` if the solve failed).
     pub iterations: usize,
+    /// Final equality residual (`NaN` if the solve failed).
     pub residual: f64,
 }
 
@@ -520,7 +539,7 @@ pub fn plot_fig8_cdf(
 #[cfg(feature = "figures")]
 pub fn fig9<D: Dynamics, C: CostModel>(dynamics: &D, cost: &C) {
     let w = sample_pseudostates(1, SEED)[0];
-    println!("\nFig. 9 — solve time vs |T| (10⁶ is multi-second / ~150 MB)");
+    println!("\nFig. 9 — solve time vs |T| (10⁶ is ~0.3 s release / ~150 MB)");
     let (rows, failures) = run_fig9(dynamics, cost, w, &FIG9_SIZES);
     println!(
         "  {:>10}  {:>12}  {:>10}  {:>6}  {:>10}",

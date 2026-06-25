@@ -58,13 +58,26 @@ version is the single source of truth for the contract.
 Stable identifiers a client may hard-code:
 
 - **Cost-model tags** (`cost.type`): `"norm2"`, `"facemax"`, `"piecewise"`.
-- **Error kinds** (`ApiError.kind`): `"bad_request"`, `"solver"`, `"internal"`.
+- **Error kinds** (`ApiError.kind`): `"bad_request"`, `"solver"`, `"internal"`
+  — `run()` / `run_json()` themselves return only `"bad_request"` or `"solver"`;
+  `"internal"` is emitted solely by the HTTP server's caught-panic path.
 - **Field names** of `SolveRequest` / `SolveResponse` as documented on the DTOs.
 
 These tags are regression-pinned by `crates/api/tests/serde_shapes.rs`, so a
-silent rename can't slip through. Requests use `#[serde(deny_unknown_fields)]`:
-an unknown request field is rejected rather than ignored. Responses may gain
-fields in a future release, so clients should ignore unknown response fields.
+silent rename can't slip through. The top-level request, `chief`, and `params`
+objects use `#[serde(deny_unknown_fields)]`, so an unknown field there is
+rejected rather than ignored; the nested `cost` object (an internally tagged
+enum) ignores unknown keys. Responses may gain fields in a future release, so
+clients should ignore unknown response fields.
+
+## Limits
+
+Two public guard constants bound the cost of a request; exceeding either yields
+`bad_request` before any allocation:
+
+- **`MAX_REQUEST_BYTES`** (1 MiB) — `run_json` rejects a larger raw JSON body.
+- **`MAX_GRID_POINTS`** (100 000) — `run` rejects a target grid with more points
+  than this (`(t_f − t_i)/dt`).
 
 ## License
 

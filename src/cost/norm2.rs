@@ -10,7 +10,7 @@ use nalgebra::{SMatrix, SVector};
 pub struct Norm2;
 
 impl SublevelSet for Norm2 {
-    // Ref: [KD20] Table II; eq. 46 (q-norm primer vector, q=2).
+    // Ref: [KD20] eq. 22 (contact function g); Table II; eq. 46 (q-norm primer vector, q=2).
     fn contact(&self, y: SVector<f64, M>) -> f64 {
         y.norm()
     }

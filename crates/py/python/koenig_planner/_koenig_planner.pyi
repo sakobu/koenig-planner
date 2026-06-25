@@ -18,12 +18,6 @@ __version__: str
 class Orbit:
     """Chief mean absolute orbit. Angles in degrees; `a` in metres."""
 
-    a: float
-    e: float
-    i: float
-    raan: float
-    argp: float
-    mean_anom: float
     def __init__(
         self,
         a: float,
@@ -33,32 +27,57 @@ class Orbit:
         argp: float,
         mean_anom: float,
     ) -> None: ...
+    # Read-only (the underlying PyO3 fields are get-only).
+    @property
+    def a(self) -> float: ...
+    @property
+    def e(self) -> float: ...
+    @property
+    def i(self) -> float: ...
+    @property
+    def raan(self) -> float: ...
+    @property
+    def argp(self) -> float: ...
+    @property
+    def mean_anom(self) -> float: ...
 
 class Maneuver:
     """One impulsive maneuver: time `t` [s] and RTN delta-v [m/s]."""
 
-    # Returned by solve(); not constructed directly.
-    t: float
-    dv: tuple[float, float, float]
+    # Returned by solve(); not constructed directly. All fields are read-only.
+    @property
+    def t(self) -> float: ...
+    @property
+    def dv(self) -> tuple[float, float, float]: ...
 
 class Solution:
     """Planner output."""
 
-    # Returned by solve(); not constructed directly.
-    maneuvers: list[Maneuver]
-    # Total fuel cost [m/s]: the minimized objective (the paper's "delta-v cost"
-    # c*) — sum of ||dv|| under the L2 cost, the polytope gauge sum(theta) under FaceMax.
-    total_dv: float
-    iterations: int
-    residual: float
-    lambda_: list[float]
+    # Returned by solve(); not constructed directly. All fields are read-only.
+    @property
+    def maneuvers(self) -> list[Maneuver]: ...
+    @property
+    def total_dv(self) -> float:
+        """Total fuel cost [m/s]: the minimized objective (the paper's "delta-v
+        cost" c*) — sum of ||dv|| under the L2 cost, the polytope gauge sum(theta)
+        under FaceMax."""
+        ...
+    @property
+    def iterations(self) -> int: ...
+    @property
+    def residual(self) -> float: ...
+    @property
+    def lambda_(self) -> list[float]: ...
     # Primer-vector history (paper's Fig. 7 contact curve), parallel arrays, one
     # entry per grid point. Times in [s] from t_i; magnitude is dimensionless
     # (<= 1 + eps_cost, ~= 1 at maneuver times); primer_rtn is the primer vector
     # p(t) = Gamma^T(t)*lambda in RTN (not the executed thrust direction).
-    primer_times: list[float]
-    primer_magnitude: list[float]
-    primer_rtn: list[tuple[float, float, float]]
+    @property
+    def primer_times(self) -> list[float]: ...
+    @property
+    def primer_magnitude(self) -> list[float]: ...
+    @property
+    def primer_rtn(self) -> list[tuple[float, float, float]]: ...
 
 def solve(
     chief: Orbit,

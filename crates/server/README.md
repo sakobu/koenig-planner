@@ -12,12 +12,21 @@ nothing is sent anywhere.
 ## Run
 
 ```bash
-cargo run -p koenig-damico-planner-server
-# listens on 0.0.0.0:8080 by default; override with KOENIG_PLANNER_ADDR.
-# log level via RUST_LOG (default: info).
-# request timeout (s) via KOENIG_PLANNER_TIMEOUT_SECS (default: 10).
-# max simultaneous solves via KOENIG_PLANNER_MAX_CONCURRENCY (default: 64).
+cargo run -p koenig-damico-planner-server   # listens on 0.0.0.0:8080 by default
 ```
+
+Shuts down gracefully on Ctrl-C or SIGTERM (drains in-flight requests).
+
+## Configuration
+
+All configuration is via environment variables:
+
+| Variable                         | Default        | Effect                                            |
+| -------------------------------- | -------------- | ------------------------------------------------- |
+| `KOENIG_PLANNER_ADDR`            | `0.0.0.0:8080` | listen address                                    |
+| `RUST_LOG`                       | `info`         | log level / filter                                |
+| `KOENIG_PLANNER_TIMEOUT_SECS`    | `10`           | per-request timeout (→ `408`); see [Limits](#limits) |
+| `KOENIG_PLANNER_MAX_CONCURRENCY` | `64`           | max simultaneous solves; see [Limits](#limits)    |
 
 ## Endpoints
 
@@ -35,6 +44,11 @@ curl -s -H 'content-type: application/json' \
      -d @crates/server/golden.json \
      localhost:8080/solve | jq
 ```
+
+A `200` response is a `SolveResponse`: `maneuvers` (each `{t, dv}`), `total_dv`,
+`iterations`, `residual`, `lambda` (the 6-vector dual), and the grid-aligned
+primer-vector triple `primer_times` / `primer_magnitude` / `primer_rtn`. Full
+field semantics and units are the [`koenig-damico-planner-api`](../api) contract.
 
 ## Errors
 
