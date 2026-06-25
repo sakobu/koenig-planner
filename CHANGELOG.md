@@ -19,6 +19,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   three solver wrappers and attributes Algorithm 3 to `min_fuel_socp` (not the
   legacy `extract_qp`).
 
+### Documentation
+- Workspace-wide documentation accuracy and completeness pass (docs-only — no
+  API, behavior, or wire change). Corrected: the root README's
+  `TimeGrid::uniform` precondition comment (`t_f > t_i`, not `t_f >= t_i`); the
+  `primer_history` signature in this changelog (it returns
+  `Result<PrimerHistory, PlannerError>`); the api README's
+  `deny_unknown_fields` claim (the nested `cost` enum is exempt); and the
+  validation crate's stale "multi-second" Fig. 9 timing note (the release-build
+  10⁶-point solve is ~0.3 s, matching the README). Filled completeness gaps: a
+  crate-level rustdoc quick-start, a `serde`-feature note, and concrete-type
+  pointers on the landing page; a "Limits" note and the server-only `internal`
+  error-kind clarification in the api README; the `SolveResponse` body, graceful
+  shutdown, and full env-var list in the server README; the primer-vector /
+  `iterations` / `residual` outputs, optional tuning args, and the
+  `primer_history.py` example pointer in the Python README; the React +
+  React-Three-Fiber demo description, `version()`, and `solve_json`'s
+  throw-on-failure behavior in the wasm README; and doc comments on the
+  validation result structs. The Python type stubs now declare the read-only
+  PyO3 fields as read-only properties so type checkers flag illegal writes.
+
 ## [0.2.0] — 2026-06-24
 
 > **Migrating from 0.1.0.** This is the first release with breaking changes for
@@ -37,7 +57,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Primer-vector history on every solve (the paper's Fig. 7): the new public
-  `primer_history(dynamics, cost, grid, lambda) -> PrimerHistory` reconstructs the
+  `primer_history(dynamics, cost, grid, lambda) -> Result<PrimerHistory, PlannerError>` reconstructs the
   primer `p(t) = Γᵀ(t)·λ` and its dual-gauge magnitude `g_{U(1,t)}(p(t))` at each
   grid time from the converged dual. The HTTP/Python/WASM `SolveResponse` now
   carries three parallel, grid-aligned arrays — `primer_times`, `primer_magnitude`
@@ -183,7 +203,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Initial release.
 
 ### Added
-- Faithful Rust port of the Koenig–D'Amico fuel-optimal impulsive control
+- Faithful Rust port of the Koenig-D'Amico fuel-optimal impulsive control
   algorithm (IEEE TAC 2020): the three-step reachable-set method — candidate
   time-grid initialization (Algorithm 1), dual-reachability SOCP refinement
   (Algorithm 2), and direct gauge-aware minimum-fuel SOCP maneuver extraction
@@ -192,7 +212,7 @@ Initial release.
   control-input matrix `B(t)`, with a fallible Kepler→B→γ pipeline.
 - Cost models: `Norm2`, `FaceMax`, and the perigee-windowed `Piecewise` cost.
 - Public API: `solve`, `solve_from_initial_times`, and the convex-encoding
-  building blocks (`min_fuel_socp`, `refine_socp`).
+  building blocks (`extract_qp`, `min_fuel_socp`, `refine_socp`).
 - Monte-Carlo validation harness (Fig. 8 / Fig. 9) behind the `validation`
   feature; a seeded, paper-independent invariant test runs in CI without it.
 - Dual MIT / Apache-2.0 licensing.
@@ -209,5 +229,6 @@ Initial release.
   transcription errors in the published numbers; the crate validates the math
   and self-consistency rather than the printed figures.
 
+[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.1.0

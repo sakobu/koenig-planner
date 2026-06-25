@@ -1,4 +1,4 @@
-//! Monte-Carlo validation harness CLI — reproduces [KD20] Fig. 7/8/9.
+//! Monte-Carlo validation harness CLI — reproduces \[KD20\] Fig. 7/8/9.
 //! Run: cargo run --release -p koenig-damico-planner-validation --features figures \
 //!        --bin monte_carlo [fig7|fig8|fig9]   (default: all)
 

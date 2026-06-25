@@ -5,6 +5,9 @@ use crate::types::{ConicRows, FuelGenerator, M, N};
 use nalgebra::{SMatrix, SVector};
 
 /// The unit sublevel set `U(1,t)` of the cost at a fixed time.
+///
+/// The sublevel set lives in the `M = 3` RTN control space (the same space as a
+/// maneuver's Δv), so `contact` and `support` operate on `ℝ³` vectors.
 pub trait SublevelSet {
     /// Contact function `g(y) = max_{z in U} y . z`.
     fn contact(&self, y: SVector<f64, M>) -> f64;
