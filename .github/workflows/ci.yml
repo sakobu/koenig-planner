@@ -31,6 +31,11 @@ jobs:
         run: cargo doc --no-deps --all-features -p koenig-damico-planner -p koenig-damico-planner-api
         env:
           RUSTDOCFLAGS: -D warnings
+      - name: Build + test + clippy (core, serde OFF)
+        run: |
+          cargo build  -p koenig-damico-planner --no-default-features --all-targets
+          cargo test   -p koenig-damico-planner --no-default-features --all-targets
+          cargo clippy -p koenig-damico-planner --no-default-features --all-targets -- -D warnings
 
   msrv:
     runs-on: ubuntu-latest
