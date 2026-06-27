@@ -20,7 +20,7 @@ plain-data wrapper.
   `ManeuverDto`, `SolveResponse`, `ApiError`, `ApiErrorKind` — plus `pub use koenig_damico_planner as core;`.
 
 `run()` owns the three unit/convention conversions so a frontend can't get them silently wrong:
-request angles (`i`, `raan`, `argp`, `mean_anom`) are **degrees** → radians; the target `w_metres`
+request angles (`i`, `raan`, `argp`, `mean_anom`) are **degrees** → radians; the target `w_meters`
 is divided by `chief.a`; the `Piecewise` cost period defaults to `TAU / chief.mean_motion()` when
 omitted. Failures map to `ApiError { kind, message }` with `kind ∈ {"bad_request", "solver"}`.
 
@@ -34,7 +34,7 @@ let req = SolveRequest {
     t_i: 0.0,
     t_f: 117_990.0,
     dt: 30.0,
-    w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0], // target pseudostate [m]
+    w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0], // target pseudostate [m]
     cost: CostSpec::Piecewise { period: None, t_perigee0: None },
     params: None,
     initial_times: None,

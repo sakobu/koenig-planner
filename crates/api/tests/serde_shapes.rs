@@ -21,7 +21,7 @@ fn minimal_request() -> SolveRequest {
         t_i: 0.0,
         t_f: 117_990.0,
         dt: 30.0,
-        w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         cost: CostSpec::Norm2,
         params: None,
         initial_times: None,

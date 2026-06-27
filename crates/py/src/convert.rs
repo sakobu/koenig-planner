@@ -28,7 +28,7 @@ pub(crate) fn build_request(
     t_i: f64,
     t_f: f64,
     dt: f64,
-    w_metres: [f64; 6],
+    w_meters: [f64; 6],
     cost: &str,
     period: Option<f64>,
     t_perigee0: Option<f64>,
@@ -68,7 +68,7 @@ pub(crate) fn build_request(
         t_i,
         t_f,
         dt,
-        w_metres,
+        w_meters,
         cost,
         params: Some(SolveParamsDto {
             n_coarse,

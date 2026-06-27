@@ -8,7 +8,7 @@ mod convert;
 use koenig_damico_planner_api::run;
 use pyo3::prelude::*;
 
-/// Chief mean absolute orbit. Angles in **degrees**; `a` in **metres**.
+/// Chief mean absolute orbit. Angles in **degrees**; `a` in **meters**.
 #[pyclass(from_py_object)]
 #[derive(Clone)]
 struct Orbit {
@@ -122,7 +122,7 @@ impl Solution {
 /// path bypasses Algorithm 1).
 #[pyfunction]
 #[pyo3(signature = (
-    chief, t_i, t_f, dt, w_metres, cost="piecewise",
+    chief, t_i, t_f, dt, w_meters, cost="piecewise",
     *, period=None, t_perigee0=None,
     n_coarse=None, n_init=None, eps_cost=None, eps_remove=None,
     initial_times=None
@@ -134,7 +134,7 @@ fn solve(
     t_i: f64,
     t_f: f64,
     dt: f64,
-    w_metres: [f64; 6],
+    w_meters: [f64; 6],
     cost: &str,
     period: Option<f64>,
     t_perigee0: Option<f64>,
@@ -149,7 +149,7 @@ fn solve(
         t_i,
         t_f,
         dt,
-        w_metres,
+        w_meters,
         cost,
         period,
         t_perigee0,

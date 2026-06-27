@@ -27,6 +27,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   without a breaking change. The seal is reversible (it can be opened in a minor
   release if a downstream gauge is requested). `CostModel` and `Dynamics` remain
   open extension points.
+- **BREAKING (wire / Python / WASM):** the request field `w_metres` is renamed to
+  `w_meters`, standardizing the codebase on US-English spelling. This changes the
+  JSON request key, the Python `solve` / `solve_json` `w_meters=` keyword, and the
+  WASM/TS `SolveRequest` field. The field is required (and the HTTP `SolveRequest`
+  is `deny_unknown_fields`), so a stale `w_metres` key is rejected loudly rather
+  than silently ignored. The Rust core's public API is unchanged.
 
 ### Fixed
 - Stale docs refreshed to match the shipped 0.2.0 frontends (docs-only — no API,

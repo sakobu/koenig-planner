@@ -24,7 +24,7 @@ chief = kp.Orbit(a=25_000e3, e=0.7, i=40.0, raan=358.0, argp=0.0, mean_anom=180.
 sol = kp.solve(
     chief,
     t_i=0.0, t_f=117_990.0, dt=30.0,        # planning window [s]
-    w_metres=[50, 5000, 100, 100, 0, 400],  # target pseudostate [m]
+    w_meters=[50, 5000, 100, 100, 0, 400],  # target pseudostate [m]
     cost="piecewise",                        # "norm2" | "facemax" | "piecewise"
 )
 

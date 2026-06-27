@@ -92,7 +92,7 @@ export function Controls({
           <NumberField
             key={label}
             label={label}
-            value={req.w_metres[idx]}
+            value={req.w_meters[idx]}
             onChange={(v) => setReq(setW(req, idx, v))}
             min={W_RANGE[idx][0]}
             max={W_RANGE[idx][1]}

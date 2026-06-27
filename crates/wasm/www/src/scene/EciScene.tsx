@@ -8,7 +8,7 @@ import { Arrow } from "./Arrow";
 const EARTH_RADIUS_M = 6.378e6;
 
 export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
-  const k = 1 / g.a; // metres → scene units (a ≈ 1)
+  const k = 1 / g.a; // meters → scene units (a ≈ 1)
   const orbit = scaleAll(g.orbit_eci as V3[], k);
   const arc = g.perigee_arc_eci ? scaleAll(g.perigee_arc_eci as V3[], k) : null;
   const earthR = EARTH_RADIUS_M * k;

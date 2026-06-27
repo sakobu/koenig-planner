@@ -21,8 +21,8 @@ use std::f64::consts::TAU;
 
 /// Chief semimajor axis a_c [m] — the I/O scaling factor for nondimensionalization.
 const A_C: f64 = 25_000e3;
-/// Table III target pseudostate in metres (= a_c * w_nd).
-const W_METRES: [f64; 6] = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0];
+/// Table III target pseudostate in meters (= a_c * w_nd).
+const W_METERS: [f64; 6] = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0];
 
 // Ref: [KD20] Table III; eq. 49; eq. 40 (dual lower bound); Fig. 7 (contact curve);
 // Table IV (paper maneuver plan).
@@ -39,7 +39,7 @@ fn main() {
     let (t_i, t_f) = (0.0, 117_990.0);
     let dynamics = J2Roe::new(chief, t_i, t_f).expect("worked-example chief is valid");
     let cost = Piecewise::new(TAU / chief.mean_motion()).expect("worked-example period is valid"); // eq.49 perigee windows
-    let w = Pseudostate::from_row_slice(&W_METRES) / A_C; // dimensionless w_nd
+    let w = Pseudostate::from_row_slice(&W_METERS) / A_C; // dimensionless w_nd
     let grid = TimeGrid::uniform(t_i, t_f, 30.0).expect("valid grid"); // 3934 candidate times
     let params = SolveParams::default();
 

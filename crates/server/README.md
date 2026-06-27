@@ -37,7 +37,7 @@ All configuration is via environment variables:
 
 The `SolveRequest` / `SolveResponse` JSON shapes are the
 [`koenig-damico-planner-api`](../api) contract: chief angles in **degrees**,
-`a` and `w_metres` in **metres**, times in **seconds**.
+`a` and `w_meters` in **meters**, times in **seconds**.
 
 ```bash
 curl -s -H 'content-type: application/json' \
