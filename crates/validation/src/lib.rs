@@ -29,7 +29,7 @@ pub const PAPER_MEANS: [f64; 3] = [4.90, 3.99, 3.31];
 
 /// Chief semimajor axis a_c `[m]` — the I/O scaling factor.
 pub const A_C: f64 = 25_000e3;
-/// Per-ROE Gaussian std, metre-scaled (σ = 1 km).
+/// Per-ROE Gaussian std, meter-scaled (σ = 1 km).
 pub const SIGMA_M: f64 = 1000.0;
 /// Documented constant seed (portable StdRng) — the ASCII bytes "oenig"
 /// (i.e. "koenig" minus the leading `k`).
@@ -74,7 +74,7 @@ pub fn worked_example_cost() -> Piecewise {
 }
 
 /// `n` random target pseudostates as dimensionless `w_nd`: each of the 6 ROE
-/// components `~ Normal(0, σ = SIGMA_M metres)`, then divided by `a_c`
+/// components `~ Normal(0, σ = SIGMA_M meters)`, then divided by `a_c`
 /// (sampling convention). `StdRng` is portable, so a fixed
 /// `seed` yields identical samples on every platform.
 ///

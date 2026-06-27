@@ -23,7 +23,7 @@ use nalgebra::SVector;
 use std::f64::consts::TAU;
 
 const A_C: f64 = 25_000e3;
-const W_METRES: [f64; 6] = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0];
+const W_METERS: [f64; 6] = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0];
 
 // Ref: [KD20] Table III; eq. 49.
 fn worked_example() -> (J2Roe, Piecewise, Pseudostate, TimeGrid) {
@@ -37,7 +37,7 @@ fn worked_example() -> (J2Roe, Piecewise, Pseudostate, TimeGrid) {
     );
     let dynamics = J2Roe::new(chief, 0.0, 117_990.0).unwrap();
     let cost = Piecewise::new(TAU / chief.mean_motion()).unwrap();
-    let w = Pseudostate::from_row_slice(&W_METRES) / A_C;
+    let w = Pseudostate::from_row_slice(&W_METERS) / A_C;
     let grid = TimeGrid::uniform(0.0, 117_990.0, 30.0).unwrap();
     (dynamics, cost, w, grid)
 }

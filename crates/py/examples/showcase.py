@@ -19,9 +19,9 @@ import koenig_planner as kp
 
 # %%
 chief = kp.Orbit(a=25_000e3, e=0.7, i=40.0, raan=358.0, argp=0.0, mean_anom=180.0)
-w_metres = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]
+w_meters = [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]
 
-sol = kp.solve(chief, 0.0, 117_990.0, 30.0, w_metres, "piecewise")
+sol = kp.solve(chief, 0.0, 117_990.0, 30.0, w_meters, "piecewise")
 
 print(f"maneuvers : {len(sol.maneuvers)}")
 print(f"total_dv  : {sol.total_dv:.6f} m/s")

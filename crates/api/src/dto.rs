@@ -1,7 +1,7 @@
 //! Serde request/response DTOs for the planner wire contract.
 //!
 //! These mirror the core types but decouple the wire/JSON contract from the
-//! nalgebra-based domain types: requests carry degrees/metres, responses carry
+//! nalgebra-based domain types: requests carry degrees/meters, responses carry
 //! plain arrays. `convert.rs` holds the (field-exhaustive) conversions.
 
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 // ── Request DTOs ────────────────────────────────────────────────────────────
 
 /// Chief orbit definition.  Angles are in **degrees** (converted to radians
-/// server-side); `a` is in **metres**.
+/// server-side); `a` is in **meters**.
 ///
 /// These are the six mean Keplerian elements `[a, e, i, Ω, ω, M]` as used
 /// throughout Koenig & D'Amico (2020).
@@ -83,7 +83,7 @@ pub struct SolveParamsDto {
 
 /// A full planning request.
 ///
-/// Angles in [`OrbitDto`] are **degrees**; `w_metres` is in **metres**;
+/// Angles in [`OrbitDto`] are **degrees**; `w_meters` is in **meters**;
 /// times are in **seconds**.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -96,10 +96,10 @@ pub struct SolveRequest {
     pub t_f: f64,
     /// Grid step `dt` `[s]`.
     pub dt: f64,
-    /// Target pseudostate in **metres**.  The server divides each component
+    /// Target pseudostate in **meters**.  The server divides each component
     /// by `chief.a` to produce the dimensionless `w` passed to the planner,
     /// matching the nondimensionalisation in the worked example.
-    pub w_metres: [f64; 6],
+    pub w_meters: [f64; 6],
     /// Cost model selection.
     pub cost: CostSpec,
     /// Optional solver tuning (default = Table III).

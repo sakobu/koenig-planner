@@ -27,7 +27,7 @@ fn golden_worked_example() {
         t_i: 0.0,
         t_f: 117_990.0,
         dt: 30.0,
-        w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         cost: CostSpec::Piecewise {
             period: None,
             t_perigee0: None,
@@ -118,7 +118,7 @@ fn golden_worked_example() {
 }
 
 /// FaceMax cost model dispatch — exercises the `ConstFaceMax` adapter via
-/// `run()`.  Reuses the worked-example chief/grid/`w_metres`.  FaceMax is a
+/// `run()`.  Reuses the worked-example chief/grid/`w_meters`.  FaceMax is a
 /// different cost from Piecewise so no specific Δv band is asserted; only
 /// finiteness, sparsity (1–6 maneuvers), and positivity are checked.
 #[test]
@@ -135,7 +135,7 @@ fn facemax_run_ok() {
         t_i: 0.0,
         t_f: 117_990.0,
         dt: 30.0,
-        w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         cost: CostSpec::FaceMax,
         params: None,
         initial_times: None,
@@ -196,7 +196,7 @@ fn n_coarse_zero_is_bad_request() {
         t_i: 0.0,
         t_f: 117_990.0,
         dt: 30.0,
-        w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         cost: CostSpec::Piecewise {
             period: None,
             t_perigee0: None,

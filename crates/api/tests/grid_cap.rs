@@ -28,7 +28,7 @@ fn oversized_grid_via_tiny_dt_is_bad_request() {
         t_i: 0.0,
         t_f: 117_990.0,
         dt: 0.001, // ~1.18e8 points >> MAX_GRID_POINTS
-        w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         cost: CostSpec::Norm2,
         params: None,
         initial_times: None,
@@ -59,7 +59,7 @@ fn one_over_cap_is_rejected() {
         t_i: 0.0,
         t_f: MAX_GRID_POINTS as f64, // len = MAX_GRID_POINTS + 1
         dt: 1.0,
-        w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         cost: CostSpec::Norm2,
         params: None,
         initial_times: None,

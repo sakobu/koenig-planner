@@ -15,9 +15,9 @@ export function setWindow(
 }
 
 export function setW(req: SolveRequest, idx: number, v: number): SolveRequest {
-  const w_metres = [...req.w_metres] as SolveRequest["w_metres"];
-  w_metres[idx] = v;
-  return { ...req, w_metres };
+  const w_meters = [...req.w_meters] as SolveRequest["w_meters"];
+  w_meters[idx] = v;
+  return { ...req, w_meters };
 }
 
 export function setCostType(req: SolveRequest, type: CostSpec["type"]): SolveRequest {

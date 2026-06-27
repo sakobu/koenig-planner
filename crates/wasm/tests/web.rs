@@ -13,12 +13,12 @@ fn golden_request_deserializes() {
     let json = r#"{
         "chief": {"a": 25000000.0, "e": 0.7, "i": 40.0, "raan": 358.0, "argp": 0.0, "mean_anom": 180.0},
         "t_i": 0.0, "t_f": 117990.0, "dt": 30.0,
-        "w_metres": [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        "w_meters": [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         "cost": {"type": "piecewise"}
     }"#;
     let req: SolveRequest = serde_json::from_str(json).unwrap();
     assert_eq!(req.chief.a, 25_000_000.0);
-    assert_eq!(req.w_metres.len(), 6);
+    assert_eq!(req.w_meters.len(), 6);
     assert!(matches!(
         req.cost,
         CostSpec::Piecewise {
@@ -44,7 +44,7 @@ fn golden_req() -> Req {
         t_i: 0.0,
         t_f: 117_990.0,
         dt: 30.0,
-        w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+        w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         cost: koenig_damico_planner_wasm::CostSpec::Piecewise {
             period: None,
             t_perigee0: None,
@@ -148,7 +148,7 @@ fn solve_outcome_status_tags_are_stable() {
 #[wasm_bindgen_test]
 fn solve_json_roundtrips_and_errors() {
     let json = r#"{"chief":{"a":25000000.0,"e":0.7,"i":40.0,"raan":358.0,"argp":0.0,"mean_anom":180.0},
-        "t_i":0.0,"t_f":117990.0,"dt":30.0,"w_metres":[50.0,5000.0,100.0,100.0,0.0,400.0],
+        "t_i":0.0,"t_f":117990.0,"dt":30.0,"w_meters":[50.0,5000.0,100.0,100.0,0.0,400.0],
         "cost":{"type":"piecewise"}}"#;
     let out = solve_json(json).expect("golden json solves");
     assert!(out.contains("\"maneuvers\""));

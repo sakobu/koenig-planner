@@ -15,28 +15,26 @@ pub(crate) fn bad_request(e: PlannerError) -> ApiError {
     }
 }
 
-/// Map a [`PlannerError`] from the dispatch (solve/solve_from_initial_times)
-/// to the correct [`ApiError`] kind.
+/// Map a [`PlannerError`] from the dispatch (solve/solve_from_initial_times) to
+/// the correct [`ApiError`] kind, via the core's coarse [`ErrorClass`].
 ///
-/// `InvalidInput` is caller-fixable → `"bad_request"`.
-/// All other variants indicate a numerically unsolvable / failed problem →
-/// `"solver"`.  The match is exhaustive so a future new variant forces an
-/// explicit decision here at compile time.
+/// `PlannerError` is `#[non_exhaustive]`, so matching its variants here (a
+/// downstream crate) would need a wildcard that silently absorbs a future
+/// variant. Mapping the core's own `ErrorClass` instead keeps the "new variant
+/// forces a decision" guarantee inside core (its `class()` match is exhaustive):
+/// a new `PlannerError` variant is classified there at compile time and lands in
+/// an existing class this mapping already handles. A future `ErrorClass` falls to
+/// `internal` (500) until handled explicitly — a safe default, never a mislabel.
 pub(crate) fn map_dispatch_error(e: koenig_damico_planner::PlannerError) -> ApiError {
-    use koenig_damico_planner::PlannerError;
-    match e {
-        // Caller-fixable: bad request.
-        PlannerError::InvalidInput(_) => ApiError {
-            kind: ApiErrorKind::BadRequest,
-            message: e.to_string(),
-        },
-        // Well-formed request, numerically unsolvable / solver failure.
-        PlannerError::SolverFailed(_)
-        | PlannerError::NotConverged { .. }
-        | PlannerError::KeplerDivergence { .. } => ApiError {
-            kind: ApiErrorKind::Solver,
-            message: e.to_string(),
-        },
+    use koenig_damico_planner::ErrorClass;
+    let kind = match e.class() {
+        ErrorClass::InvalidInput => ApiErrorKind::BadRequest, // caller-fixable.
+        ErrorClass::Unsolvable => ApiErrorKind::Solver,       // well-formed, unsolvable.
+        _ => ApiErrorKind::Internal,                          // future class: 500 until handled.
+    };
+    ApiError {
+        kind,
+        message: e.to_string(),
     }
 }
 

@@ -12,7 +12,7 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
   // along-track drift is real physics, shown honestly rather than hidden.
   const track = g.deputy_track_rtn as V3[];
   const rmax = Math.max(1e-6, maxRadius(track)); // rotation-invariant, so map order is irrelevant
-  const k = 1 / rmax; // auto-fit metres → ~unit scene
+  const k = 1 / rmax; // auto-fit meters → ~unit scene
   // Orient with the conventional radial-up / transverse-right / normal-depth
   // axes (see rtnToView), viewed obliquely so the genuinely 3D shape reads
   // honestly: an in-plane-dominated orbit shows the tilted 2:1 ellipse, a

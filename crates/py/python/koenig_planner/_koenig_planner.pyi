@@ -16,7 +16,7 @@ __all__ = ["Orbit", "Maneuver", "Solution", "solve", "solve_json", "__version__"
 __version__: str
 
 class Orbit:
-    """Chief mean absolute orbit. Angles in degrees; `a` in metres."""
+    """Chief mean absolute orbit. Angles in degrees; `a` in meters."""
 
     def __init__(
         self,
@@ -84,7 +84,7 @@ def solve(
     t_i: float,
     t_f: float,
     dt: float,
-    w_metres: Sequence[float],
+    w_meters: Sequence[float],
     cost: str = ...,
     *,
     period: float | None = ...,

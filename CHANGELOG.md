@@ -6,12 +6,48 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-27
+
+> **Migrating from 0.2.0.** The error/gauge changes are breaking for direct Rust
+> API consumers only; the `w_metres` → `w_meters` rename additionally breaks the
+> JSON wire format, the Python keyword, and the WASM/TS request type.
+>
+> - `PlannerError` is now `#[non_exhaustive]` → add a trailing `_` arm to any
+>   `match`, or classify with the new `PlannerError::class() -> ErrorClass`.
+> - `SublevelSet` is now sealed → only the built-in `Norm2`/`FaceMax` gauges
+>   implement it (this was never a documented extension point).
+> - The request field `w_metres` is renamed to `w_meters` (US spelling) → rename
+>   the key in any JSON request body, the Python `solve`/`solve_json` `w_meters=`
+>   keyword, and the WASM/TS `SolveRequest` field. The field is required, so a
+>   stale `w_metres` key fails loudly with a missing-field error.
+
 ### Added
 
 - The crate now re-exports `nalgebra` (`koenig_damico_planner::nalgebra`) and
   documents that its public API exposes `nalgebra` types, so a `nalgebra` major
   bump is a breaking change of this crate (downstream can use the version-matched
   re-export).
+
+### Changed
+
+- **BREAKING:** `PlannerError` is now `#[non_exhaustive]`, so future error
+  categories are non-breaking for direct Rust consumers. New public
+  `PlannerError::class() -> ErrorClass` classifies an error into a coarse,
+  transport-agnostic category (`InvalidInput` / `Unsolvable`); the api frontend
+  maps it to the HTTP error kind, so a future core variant is still classified
+  inside the core crate at compile time. `ErrorClass` is re-exported at the crate
+  root. The serialized wire JSON is unchanged.
+- **BREAKING:** `SublevelSet` is now a sealed trait — only the built-in
+  `Norm2` / `FaceMax` gauges implement it — so future methods can be added to it
+  without a breaking change. The seal is reversible (it can be opened in a minor
+  release if a downstream gauge is requested). `CostModel` and `Dynamics` remain
+  open extension points.
+- **BREAKING (wire / Python / WASM):** the request field `w_metres` is renamed to
+  `w_meters`, standardizing the codebase on US-English spelling. This changes the
+  JSON request key, the Python `solve` / `solve_json` `w_meters=` keyword, and the
+  WASM/TS `SolveRequest` field. The field is required (and the HTTP `SolveRequest`
+  is `deny_unknown_fields`), so a stale `w_metres` key is rejected loudly rather
+  than silently ignored. The Rust core's public API is unchanged.
 
 ### Fixed
 - Stale docs refreshed to match the shipped 0.2.0 frontends (docs-only — no API,
@@ -236,6 +272,7 @@ Initial release.
   transcription errors in the published numbers; the crate validates the math
   and self-consistency rather than the printed figures.
 
-[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.3.0
 [0.2.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.1.0

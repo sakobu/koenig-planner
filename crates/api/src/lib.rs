@@ -16,7 +16,7 @@
 //!     t_i: 0.0,
 //!     t_f: 117_990.0,
 //!     dt: 30.0,
-//!     w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+//!     w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
 //!     cost: CostSpec::Piecewise { period: None, t_perigee0: None },
 //!     params: None,
 //!     initial_times: None,
@@ -158,7 +158,7 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
     }
 
     // 4. Nondimensionalize the target pseudostate (divide by chief.a).
-    let w = Pseudostate::from_row_slice(&req.w_metres) / chief.a;
+    let w = Pseudostate::from_row_slice(&req.w_meters) / chief.a;
 
     // 5. Merge optional parameter overrides with Table III defaults.
     let params = resolve_params(req.params);

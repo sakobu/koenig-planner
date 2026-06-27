@@ -117,12 +117,12 @@ pub fn chief_geometry(
     // period, difference in ECI, and express in the chief RTN frame. Faithful
     // by reuse — only the exact ROE inverse and frame rotations are new.
     let roe = [
-        req.w_metres[0] / chief.a,
-        req.w_metres[1] / chief.a,
-        req.w_metres[2] / chief.a,
-        req.w_metres[3] / chief.a,
-        req.w_metres[4] / chief.a,
-        req.w_metres[5] / chief.a,
+        req.w_meters[0] / chief.a,
+        req.w_meters[1] / chief.a,
+        req.w_meters[2] / chief.a,
+        req.w_meters[3] / chief.a,
+        req.w_meters[4] / chief.a,
+        req.w_meters[5] / chief.a,
     ];
     let deputy = frames::deputy_from_roe(&chief, roe);
     let period = TAU / chief.mean_motion();
@@ -161,7 +161,7 @@ pub fn chief_geometry(
         perigee_arc_eci,
         relative_trajectory_rtn,
         deputy_track_rtn,
-        target_roe: req.w_metres,
+        target_roe: req.w_meters,
     })
 }
 
@@ -184,7 +184,7 @@ mod tests {
             t_i: 0.0,
             t_f: 117_990.0,
             dt: 30.0,
-            w_metres: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+            w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
             cost,
             params: None,
             initial_times: None,
@@ -308,14 +308,14 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn target_roe_echoes_w_metres() {
+    fn target_roe_echoes_w_meters() {
         let g = chief_geometry(&req_with(dto::CostSpec::Norm2, 0.0), &resp_with(&[])).unwrap();
         assert_eq!(g.target_roe, [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]);
     }
 
     #[wasm_bindgen_test]
-    fn relative_trajectory_is_metres_scale_for_metres_roe() {
-        // w_metres ~ tens to thousands of metres → relative orbit is metres-scale,
+    fn relative_trajectory_is_meters_scale_for_meters_roe() {
+        // w_meters ~ tens to thousands of meters → relative orbit is meters-scale,
         // i.e. tiny vs the ~2.5e7 m chief orbit (no NaNs, bounded magnitude).
         let g = chief_geometry(&req_with(dto::CostSpec::Norm2, 0.0), &resp_with(&[])).unwrap();
         assert_eq!(g.relative_trajectory_rtn.len(), N_REL_SAMPLES + 1);
@@ -335,7 +335,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn zero_roe_gives_zero_relative_trajectory() {
         let mut req = req_with(dto::CostSpec::Norm2, 0.0);
-        req.w_metres = [0.0; 6];
+        req.w_meters = [0.0; 6];
         let g = chief_geometry(&req, &resp_with(&[])).unwrap();
         for p in &g.relative_trajectory_rtn {
             let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
@@ -359,7 +359,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn zero_roe_gives_zero_deputy_track_rtn() {
         let mut req = req_with(dto::CostSpec::Norm2, 0.0);
-        req.w_metres = [0.0; 6];
+        req.w_meters = [0.0; 6];
         let g = chief_geometry(&req, &resp_with(&[])).unwrap();
         for p in &g.deputy_track_rtn {
             let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
