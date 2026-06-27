@@ -84,6 +84,8 @@ impl SublevelSet for FaceMax {
     }
 }
 
+impl crate::cost::private::Sealed for FaceMax {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

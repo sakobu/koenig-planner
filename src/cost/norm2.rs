@@ -40,6 +40,8 @@ impl SublevelSet for Norm2 {
     }
 }
 
+impl crate::cost::private::Sealed for Norm2 {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

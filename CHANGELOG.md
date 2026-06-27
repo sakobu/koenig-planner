@@ -22,6 +22,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   maps it to the HTTP error kind, so a future core variant is still classified
   inside the core crate at compile time. `ErrorClass` is re-exported at the crate
   root. The serialized wire JSON is unchanged.
+- **BREAKING:** `SublevelSet` is now a sealed trait — only the built-in
+  `Norm2` / `FaceMax` gauges implement it — so future methods can be added to it
+  without a breaking change. The seal is reversible (it can be opened in a minor
+  release if a downstream gauge is requested). `CostModel` and `Dynamics` remain
+  open extension points.
 
 ### Fixed
 - Stale docs refreshed to match the shipped 0.2.0 frontends (docs-only — no API,

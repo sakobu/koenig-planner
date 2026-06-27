@@ -4,11 +4,32 @@
 use crate::types::{ConicRows, FuelGenerator, M, N};
 use nalgebra::{SMatrix, SVector};
 
+mod private {
+    /// Sealing marker: prevents [`SublevelSet`](super::SublevelSet) from being
+    /// implemented outside this crate.
+    ///
+    /// Sealing is the *reversible* default: adding the seal is breaking (done
+    /// once, pre-1.0), but *removing* it later — opening the trait if a downstream
+    /// convex gauge is ever requested — is non-breaking. Until then the built-in
+    /// gauges (`Norm2`, `FaceMax`, the closed [KD20] Table II set) are the only
+    /// implementors, so the solver can rely on the gauge / support-function
+    /// duality without guarding against incorrect external impls. `CostModel` and
+    /// `Dynamics` are intentionally NOT sealed: custom time-varying cost selection
+    /// and custom linear dynamics are supported extension points.
+    pub trait Sealed {}
+}
+
 /// The unit sublevel set `U(1,t)` of the cost at a fixed time.
 ///
 /// The sublevel set lives in the `M = 3` RTN control space (the same space as a
 /// maneuver's Δv), so `contact` and `support` operate on `ℝ³` vectors.
-pub trait SublevelSet {
+///
+/// This trait is **sealed**: the built-in gauges [`Norm2`] and [`FaceMax`] are
+/// its only implementors. Custom downstream gauges are not supported today, but
+/// the seal is reversible — it can be opened in a minor release if a downstream
+/// gauge is requested. Compose the built-in gauges over time with the open
+/// [`CostModel`] trait.
+pub trait SublevelSet: private::Sealed {
     /// Contact function `g(y) = max_{z in U} y . z`.
     fn contact(&self, y: SVector<f64, M>) -> f64;
     /// Support direction `s(y) = argmax_{z in U} y . z`.
