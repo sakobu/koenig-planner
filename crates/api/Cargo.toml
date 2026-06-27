@@ -1,9 +1,9 @@
 [package]
 name = "koenig-damico-planner-api"
-version = "0.2.0"
-edition = "2021"
-rust-version = "1.92"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 description = "Serde DTOs and a single dispatch entry point for the Koenig-D'Amico maneuver planner"
 readme = "README.md"
 # Workspace-internal facade: consumed by the Python, HTTP, and WASM frontends

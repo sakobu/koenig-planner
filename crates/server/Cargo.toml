@@ -1,9 +1,9 @@
 [package]
 name = "koenig-damico-planner-server"
-version = "0.2.0"
-edition = "2021"
-rust-version = "1.92"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 description = "Self-hostable HTTP service for the Koenig-D'Amico fuel-optimal impulsive maneuver planner"
 publish = false
 

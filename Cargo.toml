@@ -3,16 +3,23 @@ members = ["crates/api", "crates/py", "crates/server", "crates/wasm", "crates/va
 default-members = [".", "crates/api"]
 resolver = "2"
 
-[workspace.dependencies]
-proptest = "1"
-
-[package]
-name = "koenig-damico-planner"
+[workspace.package]
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.92"
 authors = ["sakobu <smelkon@icloud.com>"]
 license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+proptest = "1"
+
+[package]
+name = "koenig-damico-planner"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 description = "Faithful Rust re-implementation of the Koenig-D'Amico fuel-optimal impulsive control algorithm (IEEE TAC 2020)"
 readme = "README.md"
 repository = "https://github.com/sakobu/koenig-planner"
