@@ -23,7 +23,7 @@ version = "0.3"
 optional = true
 
 [dev-dependencies]
-approx = "0.5"
+approx = { workspace = true }
 
 [features]
 # Figure/CSV output pulls native plotting deps (plotters/fontconfig). The sampler,
