@@ -31,6 +31,11 @@ jobs:
         run: cargo doc --no-deps --all-features -p koenig-damico-planner -p koenig-damico-planner-api
         env:
           RUSTDOCFLAGS: -D warnings
+      - name: Build + test + clippy (core, serde OFF)
+        run: |
+          cargo build  -p koenig-damico-planner --no-default-features --all-targets
+          cargo test   -p koenig-damico-planner --no-default-features --all-targets
+          cargo clippy -p koenig-damico-planner --no-default-features --all-targets -- -D warnings
 
   msrv:
     runs-on: ubuntu-latest
@@ -123,3 +128,13 @@ jobs:
           path: |
             crates/wasm/pkg
             crates/wasm/www/dist
+
+  semver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: cargo-semver-checks (published core crate)
+        uses: obi1kenobi/cargo-semver-checks-action@5b298c9520f7096a4683c0bd981a7ac5a7e249ae # v2.8
+        with:
+          package: koenig-damico-planner
+          feature-group: all-features

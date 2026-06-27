@@ -83,3 +83,10 @@ pub use types::{Pseudostate, M, N};
 // re-exported at the crate root, to keep the root surface small. `Dual` is the exception that
 // surfaces in the primary API (it types the re-exported `Solution::lambda` field and the
 // `primer_history` argument); name it as `types::Dual` when you need it. ---
+
+/// Re-export of the [`nalgebra`] version this crate's public API is built on
+/// (`Pseudostate`, `Dual`, `Maneuver::dv`, `Solution::lambda`, `ConicRows`,
+/// `PrimerHistory`). Use `koenig_damico_planner::nalgebra` to construct those
+/// types against a matching version. A `nalgebra` *major* bump is a breaking
+/// change of this crate.
+pub use nalgebra;

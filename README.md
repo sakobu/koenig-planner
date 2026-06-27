@@ -182,6 +182,15 @@ roughly linearly in |T| (~0.3 s at 10⁶ points).
 cargo test --all-targets --all-features
 ```
 
+## Stability & MSRV
+
+This is a pre-1.0 (0.x) crate: breaking changes are batched into minor `0.x`
+bumps and called out in [`CHANGELOG.md`](CHANGELOG.md); the serialized JSON wire
+format is versioned with the crate. The public API exposes
+[nalgebra](https://docs.rs/nalgebra) types, so a `nalgebra` major bump is a
+breaking change of this crate. **MSRV: Rust 1.92**, enforced in CI and raised
+only in a minor release.
+
 ## License
 
 Licensed under either of [Apache-2.0](LICENSE-APACHE) or [MIT](LICENSE-MIT) at

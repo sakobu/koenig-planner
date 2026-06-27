@@ -1,9 +1,9 @@
 [package]
 name = "koenig-damico-planner-server"
-version = "0.2.0"
-edition = "2021"
-rust-version = "1.92"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 description = "Self-hostable HTTP service for the Koenig-D'Amico fuel-optimal impulsive maneuver planner"
 publish = false
 
@@ -15,7 +15,7 @@ tower = { version = "0.5", features = ["limit"] }
 tower-http = { version = "0.7", features = ["cors", "trace", "limit", "timeout", "catch-panic"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-serde_json = "1.0"
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
