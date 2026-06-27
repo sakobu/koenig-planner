@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-27
+
+> **Migrating from 0.2.0.** The error/gauge changes are breaking for direct Rust
+> API consumers only; the `w_metres` → `w_meters` rename additionally breaks the
+> JSON wire format, the Python keyword, and the WASM/TS request type.
+>
+> - `PlannerError` is now `#[non_exhaustive]` → add a trailing `_` arm to any
+>   `match`, or classify with the new `PlannerError::class() -> ErrorClass`.
+> - `SublevelSet` is now sealed → only the built-in `Norm2`/`FaceMax` gauges
+>   implement it (this was never a documented extension point).
+> - The request field `w_metres` is renamed to `w_meters` (US spelling) → rename
+>   the key in any JSON request body, the Python `solve`/`solve_json` `w_meters=`
+>   keyword, and the WASM/TS `SolveRequest` field. The field is required, so a
+>   stale `w_metres` key fails loudly with a missing-field error.
+
 ### Added
 
 - The crate now re-exports `nalgebra` (`koenig_damico_planner::nalgebra`) and
@@ -257,6 +272,7 @@ Initial release.
   transcription errors in the published numbers; the crate validates the math
   and self-consistency rather than the printed figures.
 
-[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.3.0
 [0.2.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.1.0
