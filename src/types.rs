@@ -230,8 +230,13 @@ pub enum InvalidInputKind {
 }
 
 /// Errors surfaced by the planner.
+///
+/// This enum is `#[non_exhaustive]`: match it with a trailing `_` arm, or
+/// classify it with [`PlannerError::class`], so future error categories do not
+/// break downstream code.
 #[derive(Debug, Error)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[non_exhaustive]
 pub enum PlannerError {
     /// The convex (SOCP/QP) solver failed.
     #[error("convex solver failed: {0}")]
@@ -261,10 +266,71 @@ pub enum PlannerError {
     InvalidInput(InvalidInputKind),
 }
 
+/// Coarse, transport-agnostic category of a [`PlannerError`].
+///
+/// Lets a transport layer (HTTP status, process exit code, …) map an error
+/// without matching every [`PlannerError`] variant. `#[non_exhaustive]`: match it
+/// with a trailing `_` arm so a future category does not break downstream code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ErrorClass {
+    /// Caller-fixable: the request was malformed; correct the inputs.
+    /// (Wraps [`PlannerError::InvalidInput`].)
+    InvalidInput,
+    /// The request was well-formed but could not be solved — a numeric solver
+    /// failure, non-convergence, or Kepler divergence.
+    Unsolvable,
+}
+
+impl PlannerError {
+    /// Classify this error into a coarse [`ErrorClass`] for transport mapping.
+    ///
+    /// The match is exhaustive (no wildcard), so a future `PlannerError` variant
+    /// must be assigned a class here, inside this crate, at compile time. A
+    /// downstream crate that maps `ErrorClass` instead keeps compiling and
+    /// stays correct when a new `PlannerError` variant is added (it lands in an
+    /// existing class) — which is what makes the `#[non_exhaustive]` on
+    /// [`PlannerError`] non-breaking in practice.
+    #[must_use]
+    pub fn class(&self) -> ErrorClass {
+        match self {
+            PlannerError::InvalidInput(_) => ErrorClass::InvalidInput,
+            PlannerError::SolverFailed(_)
+            | PlannerError::NotConverged { .. }
+            | PlannerError::KeplerDivergence { .. } => ErrorClass::Unsolvable,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
+
+    #[test]
+    fn error_class_partitions_every_variant() {
+        assert_eq!(
+            PlannerError::InvalidInput(InvalidInputKind::Target).class(),
+            ErrorClass::InvalidInput
+        );
+        assert_eq!(
+            PlannerError::SolverFailed("x".into()).class(),
+            ErrorClass::Unsolvable
+        );
+        assert_eq!(
+            PlannerError::NotConverged {
+                max_iters: 1,
+                achieved: 2.0,
+                target: 1.0,
+            }
+            .class(),
+            ErrorClass::Unsolvable
+        );
+        assert_eq!(
+            PlannerError::KeplerDivergence { m: 0.0, e: 0.7 }.class(),
+            ErrorClass::Unsolvable
+        );
+    }
 
     // Ref: [KD20] eq. 51 (ROE state x = [da, dlambda, dex, dey, dix, diy]).
     #[test]

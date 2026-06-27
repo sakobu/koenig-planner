@@ -13,6 +13,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   bump is a breaking change of this crate (downstream can use the version-matched
   re-export).
 
+### Changed
+
+- **BREAKING:** `PlannerError` is now `#[non_exhaustive]`, so future error
+  categories are non-breaking for direct Rust consumers. New public
+  `PlannerError::class() -> ErrorClass` classifies an error into a coarse,
+  transport-agnostic category (`InvalidInput` / `Unsolvable`); the api frontend
+  maps it to the HTTP error kind, so a future core variant is still classified
+  inside the core crate at compile time. `ErrorClass` is re-exported at the crate
+  root. The serialized wire JSON is unchanged.
+
 ### Fixed
 - Stale docs refreshed to match the shipped 0.2.0 frontends (docs-only — no API,
   behavior, or wire change): the root README's WASM-demo section now describes the
