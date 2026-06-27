@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- The crate now re-exports `nalgebra` (`koenig_damico_planner::nalgebra`) and
+  documents that its public API exposes `nalgebra` types, so a `nalgebra` major
+  bump is a breaking change of this crate (downstream can use the version-matched
+  re-export).
+
 ### Fixed
 - Stale docs refreshed to match the shipped 0.2.0 frontends (docs-only — no API,
   behavior, or wire change): the root README's WASM-demo section now describes the
