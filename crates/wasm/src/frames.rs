@@ -72,7 +72,14 @@ pub fn position_eci(orbit: &AbsoluteOrbit) -> Result<[f64; 3], PlannerError> {
 /// Orthonormal RTN basis at the orbit's current position, as ECI column
 /// vectors `[R̂, T̂, N̂]`: `R̂` radial (position direction), `N̂` orbit-normal
 /// (the `Ŵ` column of `perifocal_to_eci`, eccentricity-independent), and
-/// `T̂ = N̂ × R̂` along-track. Right-handed.
+/// `T̂ = N̂ × R̂` the **transverse** (cross-radial, along-track) axis —
+/// perpendicular to `R̂` within the orbital plane and prograde. `T̂` is the
+/// transverse, *not* the tangential/velocity direction: the two coincide only
+/// at apsides and otherwise differ by the flight-path angle. This is the same
+/// RTN frame the core's control-input matrix uses (the `B(t)` columns are R, T,
+/// N; see `koenig_damico_planner::dynamics::b_matrix`), so RTN Δv and primer
+/// vectors rotate into ECI consistently with the solution. Right-handed
+/// (`R̂ × T̂ = N̂`).
 ///
 /// # Errors
 /// Propagates [`position_eci`]'s error.

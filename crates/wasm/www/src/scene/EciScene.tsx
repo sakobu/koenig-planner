@@ -44,7 +44,9 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         <Line points={orbit} color="#7c8b9a" lineWidth={1.5} />
         {/* FaceMax perigee-window arc (piecewise only) */}
         {arc && <Line points={arc} color="#ffb454" lineWidth={3} />}
-        {/* Burn nodes + Δv (thrust) arrows — cyan. */}
+        {/* Burn nodes + Δv (thrust) arrows — cyan. Arrows show DIRECTION only
+            (fixed length); per-burn magnitude is read from the Δv-component
+            bars (RtnComponents). Same for the amber primer arrow below. */}
         {g.maneuver_eci.map((m, j) => {
           const pos: V3 = [m.position_eci[0] * k, m.position_eci[1] * k, m.position_eci[2] * k];
           return (
