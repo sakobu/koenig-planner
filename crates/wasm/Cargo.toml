@@ -4,7 +4,10 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "WebAssembly bindings + browser demo for the Koenig-D'Amico maneuver planner"
+description = "WebAssembly bindings for the Koenig-D'Amico fuel-optimal impulsive maneuver planner"
+repository = "https://github.com/sakobu/koenig-planner"
+keywords = ["astrodynamics", "formation-flying", "spacecraft", "orbit", "webassembly"]
+# crates.io flag only — this crate ships to npm (as `koenig-planner`), never to crates.io.
 publish = false
 
 [lib]
