@@ -1,0 +1,97 @@
+name: release-wasm
+
+# Publishes the WASM crate to npm as `koenig-planner` on every `vX.Y.Z` tag push.
+#
+# Auth: npm Trusted Publishing (OIDC) — no NODE_AUTH_TOKEN secret. This requires a
+# one-time trusted-publisher registration on npmjs.com (GitHub Actions, user
+# `sakobu`, repo `koenig-planner`, workflow filename `release-wasm.yml`) which can
+# only be done AFTER the package exists, so `koenig-planner@0.3.0` is bootstrapped
+# by a manual `npm publish`. This workflow then publishes 0.3.1+ with provenance.
+#
+# Provenance precondition: `npm publish --provenance` requires a PUBLIC repo +
+# PUBLIC package on a GitHub-hosted runner. If the repo is ever made private the
+# publish step fails — drop `--provenance` in that case.
+#
+# The Cargo crate is `koenig-damico-planner-wasm` (Cargo won't let it claim a name
+# the core crate owns); the npm name is set to `koenig-planner` in the generated
+# `pkg/package.json` after the build — the rename lives only in this publish flow,
+# so the local demo (which links `file:../pkg`) is unaffected.
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"] # vX.Y.Z only — no prerelease/stray tags
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        with:
+          toolchain: stable
+          components: clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@9e1e5806d4a4822de933115878265be9aaa786d9 # v2
+        with:
+          tool: wasm-pack
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "22"
+      - name: Clippy (wasm)
+        run: cargo clippy -p koenig-damico-planner-wasm --target wasm32-unknown-unknown --all-targets -- -D warnings
+      - name: Wasm boundary tests
+        run: wasm-pack test --node crates/wasm
+
+  publish-npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required for OIDC trusted publishing + provenance
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@9e1e5806d4a4822de933115878265be9aaa786d9 # v2
+        with:
+          tool: wasm-pack
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - name: Update npm to a trusted-publishing-capable version (>= 11.5.1)
+        run: npm install -g npm@^11.5.1
+      - name: Build wasm package (bundler)
+        run: wasm-pack build crates/wasm --target bundler --release
+      - name: Finalize package.json (npm name, urls, bundle licenses)
+        run: |
+          node -e "const f='crates/wasm/pkg/package.json'; const p=require('./'+f);
+            p.name='koenig-planner';
+            p.repository={type:'git', url:'git+https://github.com/sakobu/koenig-planner.git'};
+            p.homepage='https://github.com/sakobu/koenig-planner';
+            p.bugs={url:'https://github.com/sakobu/koenig-planner/issues'};
+            for (const lic of ['LICENSE-MIT','LICENSE-APACHE']) if (!p.files.includes(lic)) p.files.push(lic);
+            require('fs').writeFileSync(f, JSON.stringify(p, null, 2) + '\n');"
+      - name: Guard — pushed tag must match the package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./crates/wasm/pkg/package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag does not match package version $pkg — bump workspace.package.version or retag" >&2
+            exit 1
+          fi
+          echo "tag and package version agree: $pkg"
+      - name: Publish to npm with provenance
+        working-directory: crates/wasm/pkg
+        run: npm publish --provenance

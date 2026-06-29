@@ -1,8 +1,46 @@
-# koenig-damico-planner-wasm
+# koenig-planner
 
-WebAssembly bindings + a client-side browser demo for the Koenig-D'Amico
-fuel-optimal impulsive maneuver planner. The solver runs entirely in the
-browser — nothing leaves the machine.
+WebAssembly bindings (npm package `koenig-planner`, Rust crate
+`koenig-damico-planner-wasm`) for the Koenig-D'Amico fuel-optimal impulsive
+maneuver planner, plus a client-side browser demo in the repo. The solver runs
+entirely in the browser — nothing leaves the machine.
+
+## Install (npm)
+
+Published to npm as **[`koenig-planner`](https://www.npmjs.com/package/koenig-planner)**,
+built with `wasm-pack --target bundler` — your bundler (Vite / webpack / rollup /
+Next) wires up the `.wasm` automatically:
+
+```bash
+npm install koenig-planner
+```
+
+```js
+import { solve, version } from "koenig-planner";
+
+// Chief orbit (deg / m), target relative orbital elements, and a cost model.
+const request = {
+  chief: { a: 25_000e3, e: 0.7, i: 40, raan: 358, argp: 0, mean_anom: 180 },
+  t_i: 0,
+  t_f: 117_990,
+  dt: 30,
+  w_meters: [50, 5000, 100, 100, 0, 400], // [δa, δλ, δeₓ, δe_y, δiₓ, δi_y]·a
+  cost: { type: "piecewise" }, // or { type: "norm2" } / { type: "facemax" }
+};
+
+const outcome = solve(request); // typed SolveOutcome — never throws
+if (outcome.status === "ok") {
+  const { maneuvers, total_dv } = outcome.value;
+  console.log(`${maneuvers.length} burns, Δv cost ${total_dv} m/s`);
+} else {
+  console.error(outcome.error.kind, outcome.error.message);
+}
+
+console.log(version());
+```
+
+This is a pure-compute solver with no DOM dependency. The `--target web` build in
+the [Build](#build) section below is for running the bundled demo locally.
 
 ## Interface
 
