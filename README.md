@@ -128,8 +128,8 @@ cd crates/wasm/www && npm install && npm run dev
 
 The included demo (React + React-Three-Fiber, built with Vite) takes a chief orbit, target ROEs, and a
 cost model and visualizes the plan client-side: two interactive 3D scenes — the chief orbit in ECI
-(with per-maneuver Δv arrows placed at their true anomaly via the core's own Kepler solver) and the
-deputy's relative orbit in RTN (chief at origin) — a playback scrubber, a Δv timeline, per-maneuver RTN
+and the deputy's relative orbit in RTN (chief at origin), both with per-maneuver Δv arrows (positioned
+via the core's own Kepler solver) and a swept primer arrow — a playback scrubber, a Δv timeline, per-maneuver RTN
 Δv components, and primer-vector panels (the primer magnitude vs time with the `|p| = 1` optimality
 bound, plus the RTN primer components). See [`crates/wasm/README.md`](crates/wasm/README.md).
 

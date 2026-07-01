@@ -65,9 +65,10 @@ cd crates/wasm/www && npm install && npm run dev
 `crates/wasm/www` is a React + React-Three-Fiber app (built with Vite) — the
 "Koenig-D'Amico Impulsive Control Solver" console. It takes a chief orbit, target
 ROEs, and a cost model and renders the plan entirely client-side: two interactive
-3D scenes (the chief orbit in ECI with per-maneuver Δv arrows, and the deputy's
-relative orbit in the RTN frame), a Δv timeline, per-maneuver RTN Δv components,
-primer-magnitude and primer-component charts, and a playback scrubber.
+3D scenes (the chief orbit in ECI, and the deputy's relative orbit in the RTN
+frame — both with per-maneuver Δv arrows and a swept primer arrow), a Δv timeline,
+per-maneuver RTN Δv components, primer-magnitude and primer-component charts, and a
+playback scrubber.
 
 ## Test
 

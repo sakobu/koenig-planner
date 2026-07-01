@@ -149,6 +149,33 @@ pub fn chief_geometry(
         deputy_track_rtn.push(frames::eci_to_rtn(&c_t, rel_eci)?);
     }
 
+    // Burn position + native-RTN Δv per maneuver, in the chief RTN frame (the
+    // RTN analog of maneuver_eci). Anchor only: position_rtn is the deputy's
+    // relative RTN location at the burn time, reconstructed exactly like
+    // deputy_track_rtn (same target-ROE deputy), so each marker sits on the
+    // drawn deputy curve. The real initial→target transition arc isn't
+    // reconstructable from (t, Δv), so this position is schematic and can differ
+    // visibly at meters scale; only the Δv DIRECTION is exact (magnitude lives
+    // in the R/T/N Δv-component bars). dv_rtn is m.dv echoed with no rotation —
+    // it is already in the chief RTN frame (like target_roe echoes w_meters).
+    let mut maneuver_rtn = Vec::with_capacity(resp.maneuvers.len());
+    for m in &resp.maneuvers {
+        let c_t = chief.propagate(m.t);
+        let d_t = deputy.propagate(m.t);
+        let r_c = frames::position_eci(&c_t)?;
+        let r_d = frames::position_eci(&d_t)?;
+        let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
+        maneuver_rtn.push(dto::ManeuverRtnDto {
+            position_rtn: frames::eci_to_rtn(&c_t, rel_eci)?,
+            dv_rtn: m.dv,
+        });
+    }
+
+    // Primer vector in the chief RTN frame at each playback sample — presentation
+    // copy of resp.primer_rtn (mirrors primer_eci) so the RTN scene draws the
+    // swept primer arrow from geometry alone.
+    let primer_rtn = resp.primer_rtn.clone();
+
     Ok(dto::ChiefGeometry {
         a: req.chief.a,
         e: req.chief.e,
@@ -157,7 +184,9 @@ pub fn chief_geometry(
         orbit_eci,
         chief_track_eci,
         maneuver_eci,
+        maneuver_rtn,
         primer_eci,
+        primer_rtn,
         perigee_arc_eci,
         relative_trajectory_rtn,
         deputy_track_rtn,
@@ -365,6 +394,61 @@ mod tests {
             let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
             assert!(r < 1e-3, "zero ROE ⇒ coincident orbits in track, got r={r}");
         }
+    }
+
+    #[wasm_bindgen_test]
+    fn maneuver_rtn_parallels_maneuvers_and_echoes_native_dv() {
+        let g = chief_geometry(
+            &req_with(dto::CostSpec::Norm2, 0.0),
+            &resp_with(&[0.0, 5000.0]),
+        )
+        .unwrap();
+        // One RTN marker per maneuver, matching the ECI markers.
+        assert_eq!(g.maneuver_rtn.len(), 2);
+        assert_eq!(g.maneuver_rtn.len(), g.maneuver_eci.len());
+        // dv_rtn is m.dv echoed with NO rotation (resp_with uses dv = [1,0,0]).
+        for m in &g.maneuver_rtn {
+            assert_eq!(m.dv_rtn, [1.0, 0.0, 0.0]);
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn maneuver_rtn_position_is_meters_scale() {
+        // Meters-scale ROE ⇒ the relative burn position is meters-scale, finite,
+        // and far below the ~2.5e7 m chief radius (same bound as the rel orbit).
+        let g = chief_geometry(
+            &req_with(dto::CostSpec::Norm2, 0.0),
+            &resp_with(&[0.0, 5000.0]),
+        )
+        .unwrap();
+        for m in &g.maneuver_rtn {
+            let p = m.position_rtn;
+            assert!(p[0].is_finite() && p[1].is_finite() && p[2].is_finite());
+            let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+            assert!(r > 0.0 && r < 2.5e5, "relative burn scale off: {r}");
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn zero_roe_gives_zero_maneuver_rtn_position() {
+        let mut req = req_with(dto::CostSpec::Norm2, 0.0);
+        req.w_meters = [0.0; 6];
+        let g = chief_geometry(&req, &resp_with(&[0.0, 5000.0])).unwrap();
+        for m in &g.maneuver_rtn {
+            let p = m.position_rtn;
+            let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+            assert!(r < 1e-3, "zero ROE ⇒ coincident orbits, got r={r}");
+        }
+    }
+
+    #[wasm_bindgen_test]
+    fn primer_rtn_echoes_response_at_each_sample() {
+        let resp = resp_with(&[0.0]);
+        let g = chief_geometry(&req_with(dto::CostSpec::Norm2, 0.0), &resp).unwrap();
+        // Presentation copy: parallel to primer_times and byte-equal to the
+        // response primer_rtn (RTN analog of primer_eci; no rotation).
+        assert_eq!(g.primer_rtn.len(), resp.primer_times.len());
+        assert_eq!(g.primer_rtn, resp.primer_rtn);
     }
 
     // Local norm helper (frames::norm is private to its module).

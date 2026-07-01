@@ -2,6 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls, Text } from "@react-three/drei";
 import type { ChiefGeometry } from "../wasm";
 import { maxRadius, rtnToView, scaleAll, type V3 } from "./vec";
+import { Arrow } from "./Arrow";
 
 export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
   // The deputy track is sampled on the playback grid over the FULL mission
@@ -50,12 +51,43 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         <Text position={[0, 0, -axis - 0.1]} fontSize={0.12} color="#ffb454">N</Text>
         {/* Deputy relative orbit */}
         <Line points={curve} color="#5ef2a8" lineWidth={2} />
-        {/* Deputy glyph synced to the playback scrubber */}
+        {/* Burn nodes + Δv (thrust) arrows — violet. Arrows show DIRECTION only
+            (fixed length); per-burn magnitude is read from the Δv-component bars
+            (RtnComponents), matching the ECI scene. Both the position and the Δv
+            pass through rtnToView so they align with the gnomon and the deputy
+            curve; dv_rtn is already the native RTN frame, so no extra rotation.
+            The node sits on the deputy curve as a schematic anchor (see
+            geometry.rs) — only the arrow direction is exact. */}
+        {g.maneuver_rtn.map((m, j) => {
+          const p = rtnToView(m.position_rtn as V3);
+          const pos: V3 = [p[0] * k, p[1] * k, p[2] * k];
+          return (
+            <group key={j}>
+              <mesh position={pos}>
+                <sphereGeometry args={[0.03, 12, 12]} />
+                <meshStandardMaterial color="#c792ff" />
+              </mesh>
+              <Arrow origin={pos} dir={rtnToView(m.dv_rtn as V3)} length={0.3} color="#c792ff" />
+            </group>
+          );
+        })}
+        {/* Deputy glyph + swept primer arrow (amber, like the ECI primer),
+            synced to the playback scrubber. */}
         {deputyPos && (
-          <mesh position={deputyPos}>
-            <sphereGeometry args={[0.04, 16, 16]} />
-            <meshStandardMaterial color="#5ef2a8" />
-          </mesh>
+          <group>
+            <mesh position={deputyPos}>
+              <sphereGeometry args={[0.04, 16, 16]} />
+              <meshStandardMaterial color="#5ef2a8" />
+            </mesh>
+            {g.primer_rtn.length > 0 && (
+              <Arrow
+                origin={deputyPos}
+                dir={rtnToView((g.primer_rtn[clampedIdx] ?? g.primer_rtn[0]) as V3)}
+                length={0.4}
+                color="#ffb454"
+              />
+            )}
+          </group>
         )}
         <OrbitControls enablePan enableZoom enableRotate />
       </Canvas>
