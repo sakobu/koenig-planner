@@ -127,7 +127,6 @@ fn solve_outcome_status_tags_are_stable() {
                 primer_eci: vec![],
                 primer_rtn: vec![],
                 perigee_arc_eci: None,
-                relative_trajectory_rtn: vec![],
                 deputy_track_rtn: vec![],
                 target_roe: [0.0; 6],
             },

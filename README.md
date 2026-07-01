@@ -142,9 +142,9 @@ frontends over a shared serde/JSON facade:
 | ------------------------------------ | ------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
 | `koenig-damico-planner`              | `.` (root)          | [crates.io](https://crates.io/crates/koenig-damico-planner) | the core solver (this README)                                         |
 | `koenig-damico-planner-api`          | `crates/api`        | internal (`publish = false`)                                | shared serde/JSON facade — the one `run()` / `run_json()` entry point |
-| `koenig-damico-planner-py`           | `crates/py`         | PyPI, as `koenig-planner` (import `koenig_planner`)         | Python bindings (above)                                               |
+| `koenig-damico-planner-py`           | `crates/py`         | planned — PyPI `koenig-planner` (import `koenig_planner`)   | Python bindings (above)                                               |
 | `koenig-damico-planner-server`       | `crates/server`     | internal (`publish = false`)                                | self-hostable HTTP service (axum) — `POST /solve`, `GET /health`      |
-| `koenig-damico-planner-wasm`         | `crates/wasm`       | internal (`publish = false`)                                | WASM bindings + in-browser demo — `tsify`-typed `solve` / `solve_json` |
+| `koenig-damico-planner-wasm`         | `crates/wasm`       | npm, as `koenig-planner` (crates.io `publish = false`)      | WASM bindings + in-browser demo — `tsify`-typed `solve` / `solve_json` |
 | `koenig-damico-planner-validation`   | `crates/validation` | internal (`publish = false`)                                | Monte-Carlo Fig. 7/8/9 reproduction harness                           |
 
 ## Validation harness (Fig. 7 / Fig. 8 / Fig. 9)
