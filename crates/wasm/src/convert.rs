@@ -235,7 +235,6 @@ mod tests {
             primer_eci: vec![[0.4, 0.5, 0.6]],
             primer_rtn: vec![[0.7, 0.8, 0.9]],
             perigee_arc_eci: Some(vec![[1.1, 1.2, 1.3]]),
-            relative_trajectory_rtn: vec![[10.0, 20.0, 30.0]],
             deputy_track_rtn: vec![[1.0, 2.0, 3.0]],
             target_roe: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         };

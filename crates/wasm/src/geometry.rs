@@ -13,8 +13,6 @@ use std::f64::consts::TAU;
 /// Sample counts for the presentation curves (chief orbit loop, perigee arc).
 const N_ORBIT_SAMPLES: usize = 256;
 const N_ARC_SAMPLES: usize = 64;
-/// Sample count for the deputy relative orbit, swept over one chief period.
-const N_REL_SAMPLES: usize = 256;
 
 /// Build the chief orbit (degrees → radians) the same way `api::run` does.
 fn chief_orbit(c: &dto::OrbitDto) -> AbsoluteOrbit {
@@ -30,9 +28,9 @@ fn chief_orbit(c: &dto::OrbitDto) -> AbsoluteOrbit {
 
 /// Presentation geometry for the 3D scene + orbit panel, computed by REUSING
 /// the core's Kepler solver and J2-secular propagation. Reads maneuver times,
-/// Δv, and the primer history from the api response. The deputy relative orbit
-/// (RTN frame, one chief period) is reconstructed via exact ROE inversion and
-/// propagated with the same core dynamics as the chief.
+/// Δv, and the primer history from the api response. The deputy's relative
+/// motion (RTN frame, over the playback grid) is reconstructed via exact ROE
+/// inversion and propagated with the same core dynamics as the chief.
 ///
 /// # Errors
 /// Propagates the core `true_anomaly`/`Piecewise` errors (non-elliptic `e`).
@@ -113,9 +111,11 @@ pub fn chief_geometry(
     });
 
     // Deputy relative orbit: reconstruct the deputy's absolute orbit from the
-    // (dimensionless) target ROE, propagate BOTH with the core over one chief
-    // period, difference in ECI, and express in the chief RTN frame. Faithful
-    // by reuse — only the exact ROE inverse and frame rotations are new.
+    // (dimensionless) target ROE via the exact ROE inverse. It is propagated
+    // with the core below — at each playback sample (deputy_track_rtn) and at
+    // each maneuver time — then differenced in ECI and expressed in the chief
+    // RTN frame. Faithful by reuse — only the ROE inverse and frame rotations
+    // are new.
     let roe = [
         req.w_meters[0] / chief.a,
         req.w_meters[1] / chief.a,
@@ -125,17 +125,6 @@ pub fn chief_geometry(
         req.w_meters[5] / chief.a,
     ];
     let deputy = frames::deputy_from_roe(&chief, roe);
-    let period = TAU / chief.mean_motion();
-    let mut relative_trajectory_rtn = Vec::with_capacity(N_REL_SAMPLES + 1);
-    for k in 0..=N_REL_SAMPLES {
-        let t = period * (k as f64) / (N_REL_SAMPLES as f64);
-        let c_t = chief.propagate(t);
-        let d_t = deputy.propagate(t);
-        let r_c = frames::position_eci(&c_t)?;
-        let r_d = frames::position_eci(&d_t)?;
-        let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
-        relative_trajectory_rtn.push(frames::eci_to_rtn(&c_t, rel_eci)?);
-    }
 
     // Deputy position in chief RTN at each playback (primer_times) sample, so the
     // RTN view's glyph tracks the same scrubber as the ECI spacecraft.
@@ -188,7 +177,6 @@ pub fn chief_geometry(
         primer_eci,
         primer_rtn,
         perigee_arc_eci,
-        relative_trajectory_rtn,
         deputy_track_rtn,
         target_roe: req.w_meters,
     })
@@ -340,36 +328,6 @@ mod tests {
     fn target_roe_echoes_w_meters() {
         let g = chief_geometry(&req_with(dto::CostSpec::Norm2, 0.0), &resp_with(&[])).unwrap();
         assert_eq!(g.target_roe, [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0]);
-    }
-
-    #[wasm_bindgen_test]
-    fn relative_trajectory_is_meters_scale_for_meters_roe() {
-        // w_meters ~ tens to thousands of meters → relative orbit is meters-scale,
-        // i.e. tiny vs the ~2.5e7 m chief orbit (no NaNs, bounded magnitude).
-        let g = chief_geometry(&req_with(dto::CostSpec::Norm2, 0.0), &resp_with(&[])).unwrap();
-        assert_eq!(g.relative_trajectory_rtn.len(), N_REL_SAMPLES + 1);
-        let mut max_r = 0.0_f64;
-        for p in &g.relative_trajectory_rtn {
-            assert!(p[0].is_finite() && p[1].is_finite() && p[2].is_finite());
-            max_r = max_r.max((p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt());
-        }
-        // The along-track ROE (δλ) is 5000 m; relative excursions stay within a
-        // few × that — certainly far below 1 % of the chief radius (~2.5e5 m).
-        assert!(
-            max_r > 100.0 && max_r < 2.5e5,
-            "relative scale off: {max_r}"
-        );
-    }
-
-    #[wasm_bindgen_test]
-    fn zero_roe_gives_zero_relative_trajectory() {
-        let mut req = req_with(dto::CostSpec::Norm2, 0.0);
-        req.w_meters = [0.0; 6];
-        let g = chief_geometry(&req, &resp_with(&[])).unwrap();
-        for p in &g.relative_trajectory_rtn {
-            let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
-            assert!(r < 1e-3, "zero ROE ⇒ coincident orbits, got r={r}");
-        }
     }
 
     #[wasm_bindgen_test]

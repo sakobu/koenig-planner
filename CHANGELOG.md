@@ -16,6 +16,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   to the generated TypeScript types (npm `koenig-planner`). Presentation-only,
   reusing the core's Kepler solver; the numerical core is untouched.
 
+### Removed
+- WASM `ChiefGeometry` no longer includes `relative_trajectory_rtn` (the deputy's
+  relative orbit sampled over one chief period). It was recomputed on every
+  `solve()` but never consumed by the demo, which draws the relative motion from
+  `deputy_track_rtn` (sampled on the full-mission playback grid) instead. This is
+  a **breaking** removal from the generated TypeScript types (npm `koenig-planner`);
+  no runtime behavior changes beyond a smaller payload.
+
 ## [0.3.0] — 2026-06-27
 
 > **Migrating from 0.2.0.** The error/gauge changes are breaking for direct Rust

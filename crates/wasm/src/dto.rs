@@ -111,8 +111,7 @@ pub struct ManeuverRtnDto {
 /// Kepler solver (see `geometry.rs`). `maneuver_nu[j]` is the true anomaly at
 /// maneuver `j`; `perigee_window` (piecewise only) is the FaceMax band `[lo, hi]`
 /// in true anomaly. The `*_eci` fields are metric ECI samples for the 3D scene;
-/// `relative_trajectory_rtn` is the deputy's relative orbit (meters) in the
-/// chief RTN frame; `target_roe` echoes the request `w_meters`.
+/// `target_roe` echoes the request `w_meters`.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 pub struct ChiefGeometry {
@@ -139,8 +138,6 @@ pub struct ChiefGeometry {
     /// ECI samples of the FaceMax perigee-window arc (piecewise cost only).
     #[tsify(optional)]
     pub perigee_arc_eci: Option<Vec<[f64; 3]>>,
-    /// Deputy relative orbit in the chief RTN frame `[m]` (driven by `target_roe`).
-    pub relative_trajectory_rtn: Vec<[f64; 3]>,
     /// Deputy position in the chief RTN frame `[m]` at each `primer_times` sample
     /// (the playback grid) — the deputy glyph that tracks the scrubber.
     pub deputy_track_rtn: Vec<[f64; 3]>,

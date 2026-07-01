@@ -6,7 +6,6 @@ import init, {
   type SolveOutcome,
   type CostSpec,
   type ChiefGeometry,
-  type ManeuverEciDto,
 } from "koenig-damico-planner-wasm";
 
 let ready: Promise<void> | null = null;
@@ -24,5 +23,4 @@ export type {
   SolveOutcome,
   CostSpec,
   ChiefGeometry,
-  ManeuverEciDto,
 };
