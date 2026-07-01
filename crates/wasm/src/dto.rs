@@ -92,6 +92,21 @@ pub struct ManeuverEciDto {
     pub dv_eci: [f64; 3],
 }
 
+/// A maneuver expressed in the chief RTN (relative-motion) frame for the 3D
+/// scene: the deputy's relative burn position and the executed Δv. The RTN
+/// analog of [`ManeuverEciDto`]. Presentation-only.
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+pub struct ManeuverRtnDto {
+    /// Deputy relative burn position in the chief RTN frame `[m]`. A schematic
+    /// anchor on the target-ROE deputy track (see `geometry.rs`); only the Δv
+    /// direction is exact.
+    pub position_rtn: [f64; 3],
+    /// Executed Δv in the chief RTN frame `[m/s]` `[R, T, N]` — the native
+    /// solver frame, echoed with no rotation.
+    pub dv_rtn: [f64; 3],
+}
+
 /// Presentation-only geometry derived from the chief via the core's verified
 /// Kepler solver (see `geometry.rs`). `maneuver_nu[j]` is the true anomaly at
 /// maneuver `j`; `perigee_window` (piecewise only) is the FaceMax band `[lo, hi]`
@@ -112,8 +127,15 @@ pub struct ChiefGeometry {
     pub chief_track_eci: Vec<[f64; 3]>,
     /// Burn position + Δv direction in ECI, one per maneuver.
     pub maneuver_eci: Vec<ManeuverEciDto>,
+    /// Burn position + native-RTN Δv per maneuver, in the chief RTN frame — the
+    /// RTN analog of `maneuver_eci` for the relative-motion scene.
+    pub maneuver_rtn: Vec<ManeuverRtnDto>,
     /// Primer vector in ECI at each `primer_times` sample (dimensionless dir).
     pub primer_eci: Vec<[f64; 3]>,
+    /// Primer vector in the chief RTN frame at each `primer_times` sample — a
+    /// presentation copy of the response `primer_rtn` (RTN analog of
+    /// `primer_eci`), so the RTN scene consumes only this geometry block.
+    pub primer_rtn: Vec<[f64; 3]>,
     /// ECI samples of the FaceMax perigee-window arc (piecewise cost only).
     #[tsify(optional)]
     pub perigee_arc_eci: Option<Vec<[f64; 3]>>,

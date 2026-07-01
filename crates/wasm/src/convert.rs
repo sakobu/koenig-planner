@@ -228,7 +228,12 @@ mod tests {
                 position_eci: [7.0, 8.0, 9.0],
                 dv_eci: [0.1, 0.2, 0.3],
             }],
+            maneuver_rtn: vec![dto::ManeuverRtnDto {
+                position_rtn: [0.7, 0.8, 0.9],
+                dv_rtn: [0.01, 0.02, 0.03],
+            }],
             primer_eci: vec![[0.4, 0.5, 0.6]],
+            primer_rtn: vec![[0.7, 0.8, 0.9]],
             perigee_arc_eci: Some(vec![[1.1, 1.2, 1.3]]),
             relative_trajectory_rtn: vec![[10.0, 20.0, 30.0]],
             deputy_track_rtn: vec![[1.0, 2.0, 3.0]],
@@ -249,5 +254,9 @@ mod tests {
         assert_eq!(got.geometry.e, 0.7);
         assert_eq!(got.geometry.maneuver_nu, vec![0.5]);
         assert_eq!(got.geometry.perigee_window, Some([0.1, 0.2]));
+        assert_eq!(got.geometry.maneuver_rtn.len(), 1);
+        assert_eq!(got.geometry.maneuver_rtn[0].position_rtn, [0.7, 0.8, 0.9]);
+        assert_eq!(got.geometry.maneuver_rtn[0].dv_rtn, [0.01, 0.02, 0.03]);
+        assert_eq!(got.geometry.primer_rtn, vec![[0.7, 0.8, 0.9]]);
     }
 }

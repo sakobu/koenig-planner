@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- WASM demo: the RTN relative-motion scene now draws per-maneuver burn markers
+  with Δv (thrust) arrows and a swept primer arrow, matching the ECI scene (it
+  previously showed only the relative orbit and the moving deputy glyph). The WASM
+  `ChiefGeometry` gains two presentation fields — `maneuver_rtn` (a new
+  `ManeuverRtnDto` carrying the deputy's relative burn position and the native-RTN
+  Δv) and `primer_rtn` (the RTN primer history) — an additive, non-breaking change
+  to the generated TypeScript types (npm `koenig-planner`). Presentation-only,
+  reusing the core's Kepler solver; the numerical core is untouched.
+
 ## [0.3.0] — 2026-06-27
 
 > **Migrating from 0.2.0.** The error/gauge changes are breaking for direct Rust
