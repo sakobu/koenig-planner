@@ -38,7 +38,7 @@ pub(crate) fn map_dispatch_error(e: koenig_damico_planner::PlannerError) -> ApiE
     }
 }
 
-/// Merge optional overrides from [`SolveParamsDto`] into the Table III defaults.
+/// Merge optional overrides from [`SolveParamsDto`] into the p. 10-prose defaults.
 pub(crate) fn resolve_params(dto: Option<SolveParamsDto>) -> SolveParams {
     let mut p = SolveParams::default();
     if let Some(d) = dto {
