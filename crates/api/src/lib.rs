@@ -160,7 +160,7 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
     // 4. Nondimensionalize the target pseudostate (divide by chief.a).
     let w = Pseudostate::from_row_slice(&req.w_meters) / chief.a;
 
-    // 5. Merge optional parameter overrides with Table III defaults.
+    // 5. Merge optional parameter overrides with the p. 10-prose defaults.
     let params = resolve_params(req.params);
 
     // 6. Dispatch per cost model (monomorphize per match arm). Each arm returns

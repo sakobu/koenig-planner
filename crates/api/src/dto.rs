@@ -61,7 +61,7 @@ pub enum CostSpec {
 }
 
 /// Solver tuning knobs.  Every field is optional; missing fields fall back to
-/// [`SolveParams::default`](crate::core::SolveParams::default) (Table III of Koenig & D'Amico 2020).
+/// [`SolveParams::default`](crate::core::SolveParams::default) (Koenig & D'Amico 2020, p. 10 prose).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SolveParamsDto {
@@ -102,7 +102,7 @@ pub struct SolveRequest {
     pub w_meters: [f64; 6],
     /// Cost model selection.
     pub cost: CostSpec,
-    /// Optional solver tuning (default = Table III).
+    /// Optional solver tuning (defaults from Koenig & D'Amico 2020, p. 10 prose).
     #[serde(default)]
     pub params: Option<SolveParamsDto>,
     /// Optional explicit initial candidate times for Algorithm 2 (bypasses
