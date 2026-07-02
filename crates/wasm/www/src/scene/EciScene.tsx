@@ -42,7 +42,8 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         <axesHelper args={[1.6]} />
         {/* Chief orbit */}
         <Line points={orbit} color="#7c8b9a" lineWidth={1.5} />
-        {/* FaceMax perigee-window arc (piecewise only) */}
+        {/* Perigee attitude-constraint window arc (piecewise only — eq. 49's T1,
+            where the cost switches to FaceMax; Norm2 elsewhere) */}
         {arc && <Line points={arc} color="#ffb454" lineWidth={3} />}
         {/* Burn nodes + Δv (thrust) arrows — cyan. Arrows show DIRECTION only
             (fixed length); per-burn magnitude is read from the Δv-component

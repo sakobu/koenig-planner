@@ -24,6 +24,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a **breaking** removal from the generated TypeScript types (npm `koenig-planner`);
   no runtime behavior changes beyond a smaller payload.
 
+### Documentation
+- WASM `ChiefGeometry` doc comments (which surface as JSDoc on the npm
+  `koenig-planner` types) no longer call `perigee_window` / `perigee_arc_eci` the
+  "FaceMax band". Per the paper (eq. 49), that band is the piecewise cost's
+  perigee attitude-constraint window (T1), where the gauge switches to FaceMax
+  (Norm2 elsewhere) — it is not produced by the standalone `FaceMax` cost. Doc
+  wording only; no type or behavior change. The demo's ECI-scene comment was
+  corrected to match.
+
 ## [0.3.0] — 2026-06-27
 
 > **Migrating from 0.2.0.** The error/gauge changes are breaking for direct Rust
