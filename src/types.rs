@@ -27,7 +27,14 @@ pub struct Maneuver {
     pub dv: SVector<f64, M>,
 }
 
-/// A uniform, endpoint-inclusive time grid over `[t_i, t_f]` with step `dt`.
+/// A uniform time grid of samples `t_i + k·dt` lying within `[t_i, t_f]`, `dt > 0`.
+///
+/// The first sample is `t_i`; the last is the largest `t_i + k·dt` that does not
+/// exceed `t_f`. `t_f` is itself a grid point exactly when the window length is a
+/// whole multiple of `dt` (as in the paper's grids below); otherwise the final
+/// sample falls short of `t_f` by less than `dt`. No candidate ever lands past
+/// `t_f`, so the grid always respects the admissible domain (\[KD20\] eq. 5:
+/// `T ⊆ [t_i, t_f]`).
 ///
 /// The worked example (Table III) uses a 30 s grid over `[0, 117990]` -> 3934
 /// candidate times; the Hunter cross-check uses a 10 s grid over `[0, 39000]`
@@ -65,13 +72,22 @@ impl TimeGrid {
         Ok(Self { t_i, t_f, dt })
     }
 
-    /// Number of grid points, inclusive of both endpoints.
+    /// Number of grid points: the count of samples `t_i + k·dt` within
+    /// `[t_i, t_f]` (always `>= 1`; includes `t_i`, and includes `t_f` only when
+    /// the window length is a whole multiple of `dt`).
     ///
     /// Assumes the [`uniform`](Self::uniform) invariant (`dt > 0`, `t_f > t_i`,
     /// finite); on a hand-built `TimeGrid` violating it the `f64 -> usize` cast
     /// saturates.
     pub fn len(&self) -> usize {
-        ((self.t_f - self.t_i) / self.dt).round() as usize + 1
+        // floor (not round) so the last sample `t_i + (len-1)·dt` never lands past
+        // `t_f` (\[KD20\] eq. 5: `T ⊆ [t_i, t_f]`). The relative tolerance restores
+        // the exact endpoint on a commensurate window whose f64 division lands a
+        // few ULP short of the whole ratio (e.g. `dt = (t_f - t_i)/n`), while
+        // staying far below 1 so a genuinely short ratio is never pulled up.
+        let ratio = (self.t_f - self.t_i) / self.dt;
+        let tol = 1e-9 * ratio.abs().max(1.0);
+        (ratio + tol).floor() as usize + 1
     }
 
     /// A grid always has at least one point; provided for lint-completeness.
@@ -90,22 +106,26 @@ impl TimeGrid {
     }
 }
 
-/// Tunable parameters for the three-step algorithm (Table III defaults).
+/// Tunable parameters for the three-step algorithm (\[KD20\] p. 10 prose defaults).
+///
+/// The paper's Table III is the chief-orbit / pseudostate table; these solver
+/// parameters come from the p. 10 prose ("20 times evenly distributed", "six
+/// times", tolerance "selected as 0.01").
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SolveParams {
-    /// Coarse-sample count `|T^d|` for Algorithm 1 initialization (Table III: 20).
+    /// Coarse-sample count `|T^d|` for Algorithm 1 initialization (p. 10 prose: 20).
     pub n_coarse: usize,
-    /// Initial candidate-time count `n_init` (Table III: 6).
+    /// Initial candidate-time count `n_init` (p. 10 prose: 6).
     pub n_init: usize,
-    /// Convergence tolerance `eps_cost` (Table III: 0.01).
+    /// Convergence tolerance `eps_cost` (p. 10 prose: 0.01).
     pub eps_cost: f64,
-    /// Slack-removal tolerance `eps_remove` (Table III: 0.01).
+    /// Slack-removal tolerance `eps_remove` (p. 10 prose: 0.01).
     pub eps_remove: f64,
 }
 
 impl Default for SolveParams {
-    // Ref: [KD20] Table III default params (T^d=20, T^est=6, eps=0.01), p. 10 prose.
+    // Ref: [KD20] default params (T^d=20, T^est=6, eps=0.01), p. 10 prose.
     fn default() -> Self {
         Self {
             n_coarse: 20,
@@ -357,9 +377,38 @@ mod tests {
         assert_eq!(g.len(), 3901);
     }
 
-    // Ref: [KD20] Table III default params (20, 6, 0.01, 0.01).
+    // Ref: [KD20] eq. 5 (admissible domain T ⊆ [t_i, t_f]); eq. 11 (only impulses
+    // with t_j ≤ t contribute to x(t)). On a window whose length is not a whole
+    // multiple of `dt`, no grid time may land past `t_f` — such a candidate is
+    // inadmissible and would be evaluated with a backward-extrapolated STM.
     #[test]
-    fn default_params_match_table_iii() {
+    fn grid_last_time_never_exceeds_t_f() {
+        // Non-commensurate windows where round-based `len` used to overshoot.
+        for (t_i, t_f, dt) in [
+            (0.0, 117_990.0, 100.0), // ratio 1179.9 -> last was 118000 (+10 s)
+            (0.0, 117_990.0, 29.0),  //             -> last was 118001 (+11 s)
+            (0.0, 100.0, 40.0),      // ratio 2.5 (half away from zero) -> last 120
+            (0.0, 5.0, 10.0),        // window shorter than dt -> only t_i fits
+        ] {
+            let g = TimeGrid::uniform(t_i, t_f, dt).unwrap();
+            let last = g.time(g.len() - 1);
+            assert!(
+                last <= t_f,
+                "uniform({t_i}, {t_f}, {dt}): last grid time {last} exceeds t_f {t_f}"
+            );
+            // Maximal count: the next sample must fall outside the window, so
+            // flooring did not silently drop a point that still fits in [t_i, t_f].
+            let beyond = g.time(g.len());
+            assert!(
+                beyond > t_f,
+                "uniform({t_i}, {t_f}, {dt}): dropped an in-window sample at {beyond}"
+            );
+        }
+    }
+
+    // Ref: [KD20] default params (20, 6, 0.01, 0.01), p. 10 prose.
+    #[test]
+    fn default_params_match_paper() {
         let p = SolveParams::default();
         assert_eq!(p.n_coarse, 20);
         assert_eq!(p.n_init, 6);

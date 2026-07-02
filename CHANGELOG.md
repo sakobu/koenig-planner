@@ -24,6 +24,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a **breaking** removal from the generated TypeScript types (npm `koenig-planner`);
   no runtime behavior changes beyond a smaller payload.
 
+### Fixed
+- `TimeGrid` no longer manufactures a candidate time past `t_f`. The grid-point
+  count used `round((t_f - t_i)/dt) + 1`, so on a window whose length is not a
+  whole multiple of `dt` the final sample `t_i + (len-1)·dt` could land up to
+  `dt/2` **after** `t_f` — an inadmissible candidate (the paper restricts the
+  control domain to `T ⊆ [t_i, t_f]`, eq. 5) that `J2Roe::gamma` then evaluated
+  with a backward-extrapolated state-transition matrix (`t_f - t < 0`), so a
+  maneuver could be scheduled after the epoch at which the target must already be
+  achieved while the reported residual stayed near zero. The count is now
+  floor-based (with a relative tolerance that preserves the exact endpoint on
+  commensurate windows), so every candidate stays within `[t_i, t_f]`.
+  **Behavior change:** on a non-commensurate window the grid now has one fewer
+  point and its last sample falls short of `t_f` by less than `dt` (`t_f` is a
+  grid point only when the window length is a whole multiple of `dt`); the
+  `TimeGrid` docs are corrected to state this contract. The paper's worked example
+  (`[0, 117990]` @ 30 s) and the Hunter cross-check (`[0, 39000]` @ 10 s) are
+  commensurate and unaffected (solver output byte-identical; worked-example
+  residual 1.135e-14).
+
 ### Documentation
 - WASM `ChiefGeometry` doc comments (which surface as JSDoc on the npm
   `koenig-planner` types) no longer call `perigee_window` / `perigee_arc_eci` the
