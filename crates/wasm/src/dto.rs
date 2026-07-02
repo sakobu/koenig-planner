@@ -109,8 +109,10 @@ pub struct ManeuverRtnDto {
 
 /// Presentation-only geometry derived from the chief via the core's verified
 /// Kepler solver (see `geometry.rs`). `maneuver_nu[j]` is the true anomaly at
-/// maneuver `j`; `perigee_window` (piecewise only) is the FaceMax band `[lo, hi]`
-/// in true anomaly. The `*_eci` fields are metric ECI samples for the 3D scene;
+/// maneuver `j`; `perigee_window` (piecewise only) is the perigee
+/// attitude-constraint window `[lo, hi]` in true anomaly — eq. 49's T1, where the
+/// piecewise cost switches to the FaceMax gauge (Norm2 outside it). The `*_eci`
+/// fields are metric ECI samples for the 3D scene;
 /// `target_roe` echoes the request `w_meters`.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
@@ -135,7 +137,8 @@ pub struct ChiefGeometry {
     /// presentation copy of the response `primer_rtn` (RTN analog of
     /// `primer_eci`), so the RTN scene consumes only this geometry block.
     pub primer_rtn: Vec<[f64; 3]>,
-    /// ECI samples of the FaceMax perigee-window arc (piecewise cost only).
+    /// ECI samples of the perigee attitude-constraint window arc (piecewise cost
+    /// only) — eq. 49's T1 region, where the gauge is FaceMax.
     #[tsify(optional)]
     pub perigee_arc_eci: Option<Vec<[f64; 3]>>,
     /// Deputy position in the chief RTN frame `[m]` at each `primer_times` sample
