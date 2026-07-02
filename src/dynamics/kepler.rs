@@ -14,15 +14,19 @@ pub fn wrap_to_pi(x: f64) -> f64 {
 
 /// Solve Kepler's equation `M = E - e sin E` for the eccentric anomaly `E` `[rad]`.
 ///
-/// Newton iteration with initial guess `E0 = M + e sin M`. Well-conditioned at
-/// `e = 0.7` (`1 - e cos E >= 0.3`); converges in ~5-8 iterations.
+/// Newton from the guess `E0 = M + e sin M` handles the well-conditioned majority
+/// (`e = 0.7`: `1 - e cos E >= 0.3`, ~5-8 steps). Near periapsis at near-parabolic
+/// `e` (`>= ~0.995`) the derivative `1 - e cos E` shrinks to ~1e-3 and Newton
+/// overshoots, so the solve falls back to bisection on `[-pi, pi]`, where
+/// `F(E) = E - e sin E - M` is strictly increasing with `F(-pi) <= 0 <= F(pi)` —
+/// one bracketed root, so it converges for every valid `e`.
 ///
 /// # Errors
-/// - [`PlannerError::InvalidInput`] if `e` is not in `[0, 1)` (this solver is
-///   elliptic-only; `NaN`/`inf` are rejected by the same range test).
-/// - [`PlannerError::KeplerDivergence`] if Newton iteration does not reach
-///   `|ΔE| < 1e-14` within 60 steps (not reachable for valid `e`; a defensive
-///   guard so a future regression cannot silently return a wrong-but-finite `E`).
+/// - [`PlannerError::InvalidInput`] if `e` is not in `[0, 1)` (elliptic-only;
+///   `NaN`/`inf` fail the same range test).
+/// - [`PlannerError::KeplerDivergence`] only if the guaranteed-convergent
+///   bisection backstop is itself exhausted — unreachable for valid `e`, kept so
+///   a future regression cannot silently return a wrong-but-finite `E`.
 pub fn mean_to_eccentric(m: f64, e: f64) -> Result<f64, PlannerError> {
     if !(0.0..1.0).contains(&e) {
         return Err(PlannerError::InvalidInput(InvalidInputKind::Eccentricity {
@@ -30,6 +34,7 @@ pub fn mean_to_eccentric(m: f64, e: f64) -> Result<f64, PlannerError> {
         }));
     }
     let m = wrap_to_pi(m);
+    // Newton fast path: quadratic convergence wherever `1 - e cos E` is not tiny.
     let mut ecc = m + e * m.sin();
     for _ in 0..60 {
         let delta = (ecc - e * ecc.sin() - m) / (1.0 - e * ecc.cos());
@@ -38,7 +43,34 @@ pub fn mean_to_eccentric(m: f64, e: f64) -> Result<f64, PlannerError> {
             return Ok(ecc);
         }
     }
-    Err(PlannerError::KeplerDivergence { m, e })
+    // Near-parabolic near periapsis: Newton overshot. Bisection on the monotone
+    // bracket is unconditionally convergent.
+    converge_by_bisection(m, e).ok_or(PlannerError::KeplerDivergence { m, e })
+}
+
+/// Bisect Kepler's equation for `E` on `[-pi, pi]`, given `M` already wrapped to
+/// `[-pi, pi)`.
+///
+/// `F(E) = E - e sin E - M` is strictly increasing for `e < 1` with
+/// `F(-pi) = -pi - M <= 0` and `F(pi) = pi - M > 0`, so its unique root is
+/// bracketed and bisection converges unconditionally — the safeguard the raw
+/// Newton step lacks near periapsis. `None` only if the (generous) step cap is
+/// exhausted, which cannot happen for `e in [0, 1)`.
+fn converge_by_bisection(m: f64, e: f64) -> Option<f64> {
+    let (mut lo, mut hi) = (-PI, PI);
+    for _ in 0..100 {
+        let mid = 0.5 * (lo + hi);
+        // Narrow toward the root by the sign of the strictly increasing `F`.
+        if mid - e * mid.sin() - m > 0.0 {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+        if hi - lo < 1e-14 {
+            return Some(0.5 * (lo + hi));
+        }
+    }
+    None
 }
 
 /// True anomaly `nu` `[rad]` from mean anomaly `M` `[rad]` at eccentricity `e`.
@@ -97,6 +129,28 @@ mod tests {
                 crate::types::InvalidInputKind::Eccentricity { .. },
             )) => {}
             other => panic!("expected InvalidInput, got {other:?}"),
+        }
+    }
+
+    // Near periapsis at near-parabolic eccentricity, `1 - e cos E` shrinks to
+    // ~1e-3, so an unglobalized Newton step overshoots ~100x and escapes; every
+    // valid mean anomaly must still resolve to a finite `E` solving Kepler's
+    // equation. Covers the full period at three eccentricities up to 0.9999.
+    #[test]
+    fn mean_to_eccentric_converges_at_near_parabolic_eccentricity() {
+        for &e in &[0.995, 0.999, 0.9999] {
+            let n = 20_000;
+            for k in 0..n {
+                let m = -PI + (k as f64 + 0.5) * (2.0 * PI) / (n as f64);
+                let ecc = mean_to_eccentric(m, e)
+                    .unwrap_or_else(|err| panic!("diverged at M = {m}, e = {e}: {err:?}"));
+                let mw = wrap_to_pi(m);
+                let resid = (ecc - e * ecc.sin() - mw).abs();
+                assert!(
+                    resid < 1e-13,
+                    "Kepler residual {resid:.3e} too large at M = {m}, e = {e}"
+                );
+            }
         }
     }
 }

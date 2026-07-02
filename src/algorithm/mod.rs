@@ -155,11 +155,11 @@ fn nearest_grid_indices(grid: &TimeGrid, times: &[f64]) -> Vec<usize> {
 ///   target `w` is zero or non-finite, or if the candidate-time set degenerates
 ///   to empty during refinement.
 /// - [`PlannerError::KeplerDivergence`] if evaluating `Γ(t)` runs a Kepler solve
-///   whose Newton iteration fails to converge. The built-in `J2Roe` validates
-///   its chief elements (all six finite, `a > 0`, `e ∈ [0,1)`), so a malformed
-///   chief is rejected as [`PlannerError::InvalidInput`] up front rather than
-///   diverging here; a custom `Dynamics` may likewise surface
-///   [`PlannerError::InvalidInput`] for an out-of-domain chief.
+///   that fails to converge — unreachable in practice, since the solve is
+///   globally convergent for every valid `e ∈ [0, 1)` (Newton with a bisection
+///   backstop) and the built-in `J2Roe` rejects a malformed chief (non-finite
+///   element, `a <= 0`, `e ∉ [0, 1)`) as [`PlannerError::InvalidInput`] up front,
+///   as should any custom `Dynamics` for an out-of-domain chief.
 /// - [`PlannerError::SolverFailed`] if the refinement or min-fuel convex solver
 ///   fails to set up or solve.
 /// - [`PlannerError::NotConverged`] if Algorithm 2 reaches its iteration cap
@@ -260,10 +260,11 @@ pub struct PrimerHistory {
 /// Ref: \[KD20\] Fig. 7 (contact curve `g(t)` over the candidate grid); eq. 30.
 ///
 /// # Errors
-/// Propagates the first [`Dynamics::gamma`] failure — an out-of-domain chief
-/// whose Kepler solve diverges ([`PlannerError::KeplerDivergence`]) or is
-/// rejected as non-elliptic ([`PlannerError::InvalidInput`]). Unreachable on the
-/// built-in `J2Roe`, which validates its chief in `new`.
+/// Propagates the first [`Dynamics::gamma`] failure — a chief rejected as
+/// non-elliptic ([`PlannerError::InvalidInput`]) or, as a backstop, a
+/// non-converging Kepler solve ([`PlannerError::KeplerDivergence`]). The latter
+/// is unreachable on the built-in `J2Roe`: its chief is validated in `new` and
+/// the Kepler solve is globally convergent for every valid `e`.
 pub fn primer_history<D: Dynamics, C: CostModel>(
     dynamics: &D,
     cost: &C,
