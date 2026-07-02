@@ -97,9 +97,8 @@ impl Dynamics for J2Roe {
     // state evolution); [CD18] eq. 1 (Phi(t_f, t_k) Gamma(t_k) propagation).
     fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError> {
         let orb_t = self.chief_ti.propagate(t - self.t_i);
-        let orb_tf = self.chief_ti.propagate(self.t_f - self.t_i);
         let b = control_input_matrix(&orb_t)?;
-        let phi = state_transition(&orb_t, &orb_tf, self.t_f - t);
+        let phi = state_transition(&orb_t, self.t_f - t);
         Ok(phi * b)
     }
 }

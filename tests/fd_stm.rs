@@ -102,7 +102,7 @@ fn fd_phi(chief_t: &AbsoluteOrbit, dt: f64) -> Matrix6<f64> {
 
 // Ref: [KGD17] eq. A6/A8; [KD20] STM display p. 13.
 fn report(name: &str, chief: &AbsoluteOrbit, dt: f64) -> f64 {
-    let analytic = state_transition(chief, &chief.propagate(dt), dt);
+    let analytic = state_transition(chief, dt);
     let fd = fd_phi(chief, dt);
     // Noise floor: ignore entries far below the matrix scale, where FD roundoff
     // (~1e-9) dominates a near-zero analytic entry.
