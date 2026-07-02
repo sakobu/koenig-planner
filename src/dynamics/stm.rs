@@ -9,19 +9,19 @@ use super::orbit::AbsoluteOrbit;
 use crate::types::N;
 use nalgebra::SMatrix;
 
-/// `Phi(t, t_f)` with `dt = t_f - t`. `orb_t` supplies `a, e, i, omega(t)` and
-/// the mean motion / secular `omega_dot`; `orb_tf` supplies `omega(t_f)`.
+/// `Phi(t, t_f)` with `dt = t_f - t`, for the chief `orb_t` at time `t`. Every
+/// element is a function of `orb_t` alone: `a, e, i, omega(t)`, the mean motion,
+/// and the secular `omega_dot`, with `omega(t_f) = omega(t) + omega_dot * dt`
+/// derived from the eq. 50 secular drift. `a, e, i` are secularly constant, so a
+/// single mean orbit fully determines `Phi(t, t_f)` — there is no second `t_f`
+/// orbit to keep consistent.
 ///
 /// Ref: \[KD20\] p. 13 — the assembled quasi-nonsingular J2 STM whose modified
 /// delta-lambda row 2 (the `/eta` on `Phi_23`/`Phi_24` and the `Phi_21` drift) is
 /// unique to \[KD20\] and matches neither \[KGD17\] eq. A6/A8 nor the other base
 /// forms. The unmodified base STM (rows 1, 3-6) is \[KGD17\] eq. 25 / eq. A6,
 /// \[CD18\] eq. 32, and \[H25\] eq. 76-77.
-pub fn state_transition(
-    orb_t: &AbsoluteOrbit,
-    orb_tf: &AbsoluteOrbit,
-    dt: f64,
-) -> SMatrix<f64, N, N> {
+pub fn state_transition(orb_t: &AbsoluteOrbit, dt: f64) -> SMatrix<f64, N, N> {
     let a = orb_t.a;
     let e = orb_t.e;
     let i = orb_t.i;
@@ -39,8 +39,12 @@ pub fn state_transition(
 
     let ex1 = e * orb_t.argp.cos(); // e cos omega(t)
     let ey1 = e * orb_t.argp.sin(); // e sin omega(t)
-    let ex2 = e * orb_tf.argp.cos(); // e cos omega(t_f)
-    let ey2 = e * orb_tf.argp.sin(); // e sin omega(t_f)
+
+    // omega(t_f) = omega(t) + omega_dot·dt (eq. 50 secular drift); deriving it here
+    // ties e_x2/e_y2 and the cos/sin(omega_dot·dt) rotation to one omega_dot·dt.
+    let argp_tf = orb_t.argp + w_dot * dt;
+    let ex2 = e * argp_tf.cos(); // e cos omega(t_f)
+    let ey2 = e * argp_tf.sin(); // e sin omega(t_f)
 
     let cwd = (w_dot * dt).cos(); // cos(omega_dot dt)
     let swd = (w_dot * dt).sin(); // sin(omega_dot dt)
@@ -96,7 +100,7 @@ mod tests {
     #[test]
     fn phi_tends_to_identity_as_dt_zero() {
         let o = fixture_t();
-        let phi = state_transition(&o, &o, 0.0);
+        let phi = state_transition(&o, 0.0);
         assert_relative_eq!(phi, SMatrix::<f64, N, N>::identity(), epsilon = 1e-12);
     }
 
@@ -106,7 +110,7 @@ mod tests {
         // Documented: under J2 the delta-lambda row couples to delta-e_y.
         // With omega(t) = 40 deg, e_{y1} != 0, so Phi[(1,3)] != 0. Never zero it.
         let o = fixture_t();
-        let phi = state_transition(&o, &o.propagate(39000.0), 39000.0);
+        let phi = state_transition(&o, 39000.0);
         assert!(phi[(1, 3)].abs() > 1e-6);
     }
 
@@ -115,7 +119,7 @@ mod tests {
     #[test]
     fn entrywise_matches_oracle() {
         let o = fixture_t();
-        let phi = state_transition(&o, &o.propagate(39000.0), 39000.0);
+        let phi = state_transition(&o, 39000.0);
         let expected = SMatrix::<f64, N, N>::from_row_slice(&[
             1.0,
             0.0,

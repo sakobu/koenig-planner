@@ -142,22 +142,21 @@ proptest! {
         prop_assume!(problem.is_some());
         let (dynamics, grid, w, seeds) = problem.unwrap();
         let params = SolveParams::default();
-        let mut converged = false;
-        for use_facemax in [false, true] {
-            let result = if use_facemax {
-                solve_from_initial_times(&dynamics, &UniformFaceMax, w, grid, &params, &seeds)
-            } else {
-                solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds)
-            };
-            if let Ok(sol) = result {
-                converged = true;
-                prop_assert!(
-                    sol.residual < 1e-6,
-                    "residual {} too large (facemax={})", sol.residual, use_facemax
-                );
-            }
-        }
-        prop_assume!(converged);
+        // Assert each gauge separately rather than sharing one convergence flag:
+        // Norm2 is the well-conditioned reference, so a solve failure there is a
+        // genuinely hard draw and the case is skipped; on any draw Norm2 solves,
+        // the FaceMax gauge over the same reachable target must solve too, so a
+        // FaceMax-only regression can no longer hide behind a converged Norm2 leg.
+        let norm2 = solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds);
+        prop_assume!(norm2.is_ok());
+        prop_assert!(norm2.unwrap().residual < 1e-6, "Norm2 residual too large");
+
+        let facemax = solve_from_initial_times(&dynamics, &UniformFaceMax, w, grid, &params, &seeds);
+        prop_assert!(
+            facemax.is_ok(),
+            "FaceMax failed to solve a target Norm2 solved: {:?}", facemax.as_ref().err()
+        );
+        prop_assert!(facemax.unwrap().residual < 1e-6, "FaceMax residual too large");
     }
 
     /// [KD20] Property 5 (p.4) / eq. 21 (S(c) = co S¹(c)): a control profile
@@ -228,26 +227,27 @@ proptest! {
         prop_assume!(problem.is_some());
         let (dynamics, grid, w, seeds) = problem.unwrap();
         let params = SolveParams::default();
-        let mut converged = false;
-        for use_facemax in [false, true] {
-            let sol = if use_facemax {
-                solve_from_initial_times(&dynamics, &UniformFaceMax, w, grid, &params, &seeds)
-            } else {
-                solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds)
-            };
-            let Ok(sol) = sol else { continue; };
-            converged = true;
-            let max_g = if use_facemax {
-                max_gauge(&dynamics, &UniformFaceMax, &grid, &sol.lambda)
-            } else {
-                max_gauge(&dynamics, &UniformNorm2, &grid, &sol.lambda)
-            };
-            prop_assert!(
-                max_g <= 1.0 + params.eps_cost + 1e-6,
-                "max_t g = {} exceeds 1 + eps_cost (facemax={})", max_g, use_facemax
-            );
-        }
-        prop_assume!(converged);
+        // Per gauge (not a shared flag): Norm2 gates the draw; on any draw it
+        // solves, FaceMax over the same reachable target must solve too, so a
+        // FaceMax-only regression can no longer pass vacuously behind Norm2.
+        let norm2 = solve_from_initial_times(&dynamics, &UniformNorm2, w, grid, &params, &seeds);
+        prop_assume!(norm2.is_ok());
+        let g_norm2 = max_gauge(&dynamics, &UniformNorm2, &grid, &norm2.unwrap().lambda);
+        prop_assert!(
+            g_norm2 <= 1.0 + params.eps_cost + 1e-6,
+            "Norm2 max_t g = {} exceeds 1 + eps_cost", g_norm2
+        );
+
+        let facemax = solve_from_initial_times(&dynamics, &UniformFaceMax, w, grid, &params, &seeds);
+        prop_assert!(
+            facemax.is_ok(),
+            "FaceMax failed to solve a target Norm2 solved: {:?}", facemax.as_ref().err()
+        );
+        let g_facemax = max_gauge(&dynamics, &UniformFaceMax, &grid, &facemax.unwrap().lambda);
+        prop_assert!(
+            g_facemax <= 1.0 + params.eps_cost + 1e-6,
+            "FaceMax max_t g = {} exceeds 1 + eps_cost", g_facemax
+        );
     }
 
     /// [KD20] Property 3 / eq. 24: the cost is a degree-1 gauge. Scaling the

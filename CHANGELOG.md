@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-07-02
+
 ### Added
 - WASM demo: the RTN relative-motion scene now draws per-maneuver burn markers
   with Δv (thrust) arrows and a swept primer arrow, matching the ECI scene (it
@@ -23,6 +25,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tolerance that is non-finite or `<= 0`. Additive and non-breaking
   (`InvalidInputKind` is `#[non_exhaustive]`); it maps to `ErrorClass::InvalidInput`
   like every other input error.
+
+### Changed
+- `dynamics::stm::state_transition` now takes the chief at `t` and `dt` only —
+  `state_transition(orb_t, dt)` instead of `state_transition(orb_t, orb_tf, dt)`.
+  It derives `ω(t_f) = ω(t) + ω_dot·dt` internally from the eq. 50 secular drift,
+  so `e_x2`/`e_y2` and the `cos`/`sin(ω_dot·dt)` rotation now share one `ω_dot·dt`
+  and a single mean orbit fully determines `Φ(t, t_f)`. The old three-argument form
+  let a caller pass an `orb_tf` that was not `orb_t.propagate(dt)`: only
+  `orb_tf.argp` was ever read, so a different `a`/`e`/`i` was silently ignored,
+  yielding a matrix that is the STM of no trajectory. **Breaking** (public function
+  signature) — the redundant argument is removed rather than runtime-checked, so the
+  inconsistent state is now unrepresentable and `Φ` stays infallible. The per-entry
+  STM and finite-difference oracles are byte-identical, and the worked-example
+  summary is unchanged (residual 1.135e-14, total_dv 81.3542 mm/s); the live-path
+  `Φ` can differ only at the f64-ULP level — a mathematically identical rerounding
+  of `ω(t_f)` (the old path anchored it at `t_i` rather than deriving it over `dt`).
 
 ### Removed
 - WASM `ChiefGeometry` no longer includes `relative_trajectory_rtn` (the deputy's
