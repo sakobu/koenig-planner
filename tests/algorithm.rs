@@ -3,7 +3,8 @@
 use koenig_damico_planner::cost::Piecewise;
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, Dynamics, J2Roe};
 use koenig_damico_planner::{
-    solve, solve_from_initial_times, InvalidInputKind, PlannerError, SolveParams, TimeGrid,
+    solve, solve_from_initial_times, ErrorClass, InvalidInputKind, PlannerError, SolveParams,
+    TimeGrid,
 };
 use nalgebra::{SMatrix, SVector};
 use std::f64::consts::TAU;
@@ -270,37 +271,10 @@ fn solution_residual_is_unpruned_and_kept_set_residual_is_bounded() {
     assert!(kept_residual < 1e-2, "kept-set residual {kept_residual}");
 }
 
-// Ref: [KD20] Algorithm 2.
-#[test]
-fn solve_reports_not_converged_through_public_api() {
-    // eps_cost = -0.5 => convergence target max_t g <= 0.5, which a binding
-    // reachable problem (optimal max_t g -> 1.0) can never meet. Refinement
-    // exhausts MAX_REFINE_ITERS (50) and surfaces NotConverged through solve().
-    let dynamics = SpinDyn { rate: 0.05 };
-    let grid = TimeGrid::uniform(0.0, 60.0, 1.0).unwrap();
-    let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
-    let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
-    let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
-    let cost = Piecewise::new(1.0e12).unwrap();
-    let params = SolveParams {
-        eps_cost: -0.5,
-        ..SolveParams::default()
-    };
-
-    let err = solve(&dynamics, &cost, w, grid, &params).unwrap_err();
-    match err {
-        PlannerError::NotConverged {
-            max_iters,
-            achieved,
-            target,
-        } => {
-            assert_eq!(max_iters, 50);
-            assert!((target - 0.5).abs() < 1e-12, "target {target}");
-            assert!(achieved > target, "achieved {achieved} > target {target}");
-        }
-        other => panic!("expected NotConverged, got {other:?}"),
-    }
-}
+// NotConverged surfacing through the public API previously relied on a negative
+// eps_cost, which is now rejected up front as InvalidInput(Tolerance) (see
+// `solve_rejects_invalid_tolerances`). The iteration-cap path itself is covered
+// by `refine::tests::refine_reports_not_converged_at_iteration_cap`.
 
 // Ref: [KD20] eq. 40.
 #[test]
@@ -346,6 +320,63 @@ fn solve_rejects_zero_n_init_with_solver_params_kind() {
         err,
         PlannerError::InvalidInput(InvalidInputKind::SolverParams { n_init: 0, .. })
     ));
+}
+
+// Ref: [KD20] Algorithm 2 (user-specified tolerances eps_cost > 0, eps_remove > 0).
+#[test]
+fn solve_rejects_invalid_tolerances() {
+    let dynamics = SpinDyn { rate: 0.05 };
+    let ua = SVector::<f64, M>::new(0.7, -0.3, 0.5);
+    let ub = SVector::<f64, M>::new(-0.2, 0.6, 0.4);
+    // A reachable target, so only the bad tolerance can make the solve fail.
+    let w = dynamics.gamma(12.0).unwrap() * ua + dynamics.gamma(47.0).unwrap() * ub;
+    let cost = Piecewise::new(1.0e12).unwrap();
+
+    // The paper requires both tolerances finite and strictly positive; NaN/±∞,
+    // zero, and negative must all be rejected as a caller-fixable InvalidInput.
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 0.0, -0.5] {
+        let cost_params = SolveParams {
+            eps_cost: bad,
+            ..SolveParams::default()
+        };
+        let err = solve(
+            &dynamics,
+            &cost,
+            w,
+            TimeGrid::uniform(0.0, 60.0, 1.0).unwrap(),
+            &cost_params,
+        )
+        .unwrap_err();
+        assert!(
+            matches!(
+                err,
+                PlannerError::InvalidInput(InvalidInputKind::Tolerance { .. })
+            ),
+            "eps_cost = {bad} should be rejected as InvalidInput(Tolerance), got {err:?}"
+        );
+        assert_eq!(err.class(), ErrorClass::InvalidInput);
+
+        let remove_params = SolveParams {
+            eps_remove: bad,
+            ..SolveParams::default()
+        };
+        let err = solve(
+            &dynamics,
+            &cost,
+            w,
+            TimeGrid::uniform(0.0, 60.0, 1.0).unwrap(),
+            &remove_params,
+        )
+        .unwrap_err();
+        assert!(
+            matches!(
+                err,
+                PlannerError::InvalidInput(InvalidInputKind::Tolerance { .. })
+            ),
+            "eps_remove = {bad} should be rejected as InvalidInput(Tolerance), got {err:?}"
+        );
+        assert_eq!(err.class(), ErrorClass::InvalidInput);
+    }
 }
 
 #[test]

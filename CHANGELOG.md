@@ -19,6 +19,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   orbit whose right-ascension, argument of perigee, or mean anomaly is non-finite.
   Additive and non-breaking (`InvalidInputKind` is `#[non_exhaustive]`); it maps
   to `ErrorClass::InvalidInput` like every other input error.
+- `InvalidInputKind::Tolerance { eps_cost, eps_remove }` classifies a refinement
+  tolerance that is non-finite or `<= 0`. Additive and non-breaking
+  (`InvalidInputKind` is `#[non_exhaustive]`); it maps to `ErrorClass::InvalidInput`
+  like every other input error.
 
 ### Removed
 - WASM `ChiefGeometry` no longer includes `relative_trajectory_rtn` (the deputy's
@@ -58,6 +62,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   unreachable is corrected to the accurate guarantee (a malformed chief is
   rejected up front). No numerical change on valid inputs (worked-example residual
   1.135e-14).
+- `solve` / `solve_from_initial_times` now validate `SolveParams.eps_cost` and
+  `eps_remove`, rejecting any non-finite or non-positive tolerance as
+  `PlannerError::InvalidInput(InvalidInputKind::Tolerance { .. })`. The paper's
+  Algorithm 2 requires both strictly positive; previously they reached refinement
+  unchecked, where a `NaN` tolerance burned all 50 refinement iterations and
+  surfaced as a mis-classified `NotConverged` (`ErrorClass::Unsolvable`) with a
+  `NaN` target (a negative tolerance did likewise) — a caller-fixable input now
+  reported as one. No effect on valid runs (defaults `0.01` / `0.01`); no numerical
+  change (worked-example residual 1.135e-14).
 
 ### Documentation
 - WASM `ChiefGeometry` doc comments (which surface as JSDoc on the npm

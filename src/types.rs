@@ -118,9 +118,11 @@ pub struct SolveParams {
     pub n_coarse: usize,
     /// Initial candidate-time count `n_init` (p. 10 prose: 6).
     pub n_init: usize,
-    /// Convergence tolerance `eps_cost` (p. 10 prose: 0.01).
+    /// Convergence tolerance `eps_cost`; must be finite and `> 0`
+    /// (\[KD20\] Algorithm 2). (p. 10 prose: 0.01.)
     pub eps_cost: f64,
-    /// Slack-removal tolerance `eps_remove` (p. 10 prose: 0.01).
+    /// Slack-removal tolerance `eps_remove`; must be finite and `> 0`
+    /// (\[KD20\] Algorithm 2). (p. 10 prose: 0.01.)
     pub eps_remove: f64,
 }
 
@@ -255,6 +257,9 @@ pub enum InvalidInputKind {
         /// The offending value `[rad]`.
         value: f64,
     },
+    /// A refinement tolerance (`eps_cost` or `eps_remove`) was non-finite or `<= 0`.
+    #[error("eps_cost and eps_remove must be finite and > 0 (got eps_cost={eps_cost}, eps_remove={eps_remove})")]
+    Tolerance { eps_cost: f64, eps_remove: f64 },
     // Append new variants at the end: with no `#[repr]`, inserting one mid-enum
     // shifts later variants' discriminants — a semver-breaking change.
 }
