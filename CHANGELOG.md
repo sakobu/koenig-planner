@@ -96,6 +96,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (Norm2 elsewhere) — it is not produced by the standalone `FaceMax` cost. Doc
   wording only; no type or behavior change. The demo's ECI-scene comment was
   corrected to match.
+- `J2Roe::new` documents the near-equatorial conditioning cliff in a new
+  `# Conditioning` rustdoc section: the `sin(i)` guard rejects only the exact
+  `1/tan(i)` singularity, but for a chief within `~1e-4` rad of equatorial the
+  cross-track `B(t)` entries grow to `~1e5` (vs `~1e-4` typical), so the SOCP data
+  is ill-conditioned and the solver may return degraded accuracy or a loud
+  `SolverFailed` — never a silently wrong plan. Documents an existing numerical
+  limitation; no behavior change.
 
 ## [0.3.0] — 2026-06-27
 

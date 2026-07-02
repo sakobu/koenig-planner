@@ -2,6 +2,17 @@
 //! (eq. 47-48). The algorithm consumes the cost only through its contact /
 //! support / cone-constraint forms, all expressed via `W = [0 | V_vertex]`
 //! (Table II); `V_face` itself is the cost definition and is not needed here.
+//!
+//! Gauge normalization: \[KD20\] is internally inconsistent about the FaceMax unit
+//! ball by a factor of 9. Table II, Fig. 6, and Table IV all operate on
+//! `U(1) = conv{V_vertex}` — each unit thruster direction `v_k` costs `f(v_k) = 1`
+//! — but the printed eq. 48 `V_face` carries a `1/3` prefactor that makes
+//! `f(v_k) = max_row(V_face v_k) = 1/9` (a reciprocal typo: the prefactor should be
+//! `3`, not `1/3`). This crate follows the operative Table II normalization across
+//! contact, support, cone rows, and the fuel gauge; the cross-check test pins the
+//! 9x gap. A 9x-cheaper window gauge would have pulled the worked-example
+//! maneuvers into the perigee windows and collapsed the totals — both the paper's
+//! and the crate's maneuvers land just outside, confirming `conv{V_vertex}`.
 
 use std::sync::LazyLock;
 
@@ -16,7 +27,7 @@ use nalgebra::{SMatrix, SVector};
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FaceMax;
 
-/// The four tetrahedral `V_vertex` support directions (eq. 48), computed once.
+/// The four tetrahedral `V_vertex` support directions (eq. 47), computed once.
 static VERTEX_COLUMNS: LazyLock<[SVector<f64, M>; 4]> = LazyLock::new(|| {
     let a = (2.0_f64 / 3.0).sqrt();
     let b = (1.0_f64 / 3.0).sqrt();
@@ -195,20 +206,40 @@ mod tests {
         );
     }
 
-    // Ref: [KD20] eq. 48 (V_face) vs eq. 47 (V_vertex).
+    // Ref: [KD20] eq. 48 (V_face) vs eq. 47 (V_vertex); Table II. Pins the
+    // module's gauge-normalization resolution of the paper's factor-of-9
+    // inconsistency (see the module header): the code uses U(1) = conv{V_vertex}
+    // (f(v_k) = 1), not the literal eq. 48 V_face (f(v_k) = 1/9).
     #[test]
-    fn vertex_face_transcription_cross_check() {
-        // V_face (eq. 48), 4x3. Used only to cross-check the transcription of
-        // both matrices: f(v_k) = max_row(V_face v_k) is the same (= 1/9) for
-        // every vertex column v_k of V_vertex.
+    fn gauge_normalization_resolves_eq48_table_ii_factor_of_9() {
+        let cols = vertex_columns();
+
+        // Operative Table II normalization the code implements: each unit
+        // thruster direction costs exactly 1.
+        for v in &cols {
+            assert_relative_eq!(FaceMax.contact(*v), 1.0, epsilon = 1e-12);
+        }
+
+        // Literal printed eq. 48 V_face (1/3 prefactor), 4x3: f(v_k) = 1/9, i.e. a
+        // unit ball 9x larger than conv{V_vertex}. Transcribed verbatim to pin both
+        // the transcription and the 9x gap.
         let s23 = (2.0_f64 / 3.0).sqrt();
         let s13 = (1.0_f64 / 3.0).sqrt();
         let v_face = SMatrix::<f64, 4, 3>::from_row_slice(&[
             -s23, 0.0, s13, s23, 0.0, s13, 0.0, -s23, -s13, 0.0, s23, -s13,
         ]) / 3.0;
-        let cols = vertex_columns();
         for v in &cols {
             assert_relative_eq!((v_face * v).max(), 1.0 / 9.0, epsilon = 1e-12);
+        }
+
+        // The corrected prefactor (3, not 1/3) is exactly 9x the printed matrix and
+        // reproduces the operative unit cost, confirming the factor-of-9 resolution.
+        for v in &cols {
+            assert_relative_eq!(
+                (v_face * v * 9.0).max(),
+                FaceMax.contact(*v),
+                epsilon = 1e-12
+            );
         }
     }
 
