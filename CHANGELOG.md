@@ -103,6 +103,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   is ill-conditioned and the solver may return degraded accuracy or a loud
   `SolverFailed` — never a silently wrong plan. Documents an existing numerical
   limitation; no behavior change.
+- `solver::extract_qp` documents in a new `# Accuracy` section that it returns
+  the raw Algorithm 3 QP optimum with no post-solve verification — the clarabel
+  status is accepted at reduced accuracy (`AlmostSolved`) and the magnitudes are
+  not residual- or budget-checked — matching the paper's gateless Algorithm 3 and
+  unlike the gated live `solve` extraction. A nonzero weighted residual is the
+  correct optimum when the budget or a nonnegativity bound is active, so callers
+  needing a verified, exactly-reachable plan should use `solve`. Documents the
+  existing contract of an off-`solve`-path primitive; no behavior change.
+- `AbsoluteOrbit::propagate` documents in a new `# Angle range` section that
+  `Ω, ω, M` are returned unbounded (faithful to eq. 50's linear form) and that
+  this is safe because every consumer uses these angles only through `sin`/`cos`,
+  with the Kepler solve re-wrapping `M` internally; callers needing a bounded
+  angle are pointed at `wrap_to_pi`. No behavior change.
 
 ## [0.3.0] — 2026-06-27
 
