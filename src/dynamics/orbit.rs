@@ -95,6 +95,17 @@ impl AbsoluteOrbit {
     ///
     /// Ref: \[KD20\] eq. 50 integrated (a, e, i secularly constant; angles linear
     /// in `dt`); \[KGD17\] eq. A1.
+    ///
+    /// # Angle range
+    /// `Omega, omega, M` are returned unbounded, preserving eq. 50's exact
+    /// linear form rather than wrapping to a principal interval. This is safe:
+    /// `B(t)`, `Phi`, and the presentation-frame rotations consume these angles
+    /// only through `sin`/`cos`, and [`mean_to_eccentric`](super::kepler::mean_to_eccentric)
+    /// re-wraps `M` before the Kepler solve. Re-propagation from the fixed `t_i`
+    /// anchor keeps the linear growth in `M` from accumulating, so its rounding
+    /// stays far below the pipeline tolerances (ulp ~3.6e-15 rad at the worked
+    /// example's `M(t_f) ~ 22 rad`). Callers needing a bounded angle should wrap
+    /// with [`wrap_to_pi`](super::kepler::wrap_to_pi).
     pub fn propagate(&self, dt: f64) -> AbsoluteOrbit {
         let r = self.secular_rates();
         AbsoluteOrbit {
