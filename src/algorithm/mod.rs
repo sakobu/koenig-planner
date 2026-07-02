@@ -63,7 +63,8 @@ fn cache_gamma<D: Dynamics>(
 }
 
 /// Shared `solve` preconditions: finite grid with `dt > 0`
-/// and `t_f > t_i`, `n_init`/`n_coarse ≥ 1`, and a nonzero finite target `w`.
+/// and `t_f > t_i`, `n_init`/`n_coarse ≥ 1`, finite `eps_cost`/`eps_remove > 0`,
+/// and a nonzero finite target `w`.
 fn validate_inputs(
     w: &Pseudostate,
     grid: &TimeGrid,
@@ -85,6 +86,16 @@ fn validate_inputs(
         return Err(PlannerError::InvalidInput(InvalidInputKind::SolverParams {
             n_init: params.n_init,
             n_coarse: params.n_coarse,
+        }));
+    }
+    if !params.eps_cost.is_finite()
+        || params.eps_cost <= 0.0
+        || !params.eps_remove.is_finite()
+        || params.eps_remove <= 0.0
+    {
+        return Err(PlannerError::InvalidInput(InvalidInputKind::Tolerance {
+            eps_cost: params.eps_cost,
+            eps_remove: params.eps_remove,
         }));
     }
     let w_norm = w.norm();
@@ -139,7 +150,8 @@ fn nearest_grid_indices(grid: &TimeGrid, times: &[f64]) -> Vec<usize> {
 ///
 /// # Errors
 /// - [`PlannerError::InvalidInput`] if the grid is non-finite or has `dt <= 0`
-///   or `t_f <= t_i`, if `params.n_init` or `params.n_coarse` is `0`, if the
+///   or `t_f <= t_i`, if `params.n_init` or `params.n_coarse` is `0`, if
+///   `params.eps_cost` or `params.eps_remove` is non-finite or `<= 0`, if the
 ///   target `w` is zero or non-finite, or if the candidate-time set degenerates
 ///   to empty during refinement.
 /// - [`PlannerError::KeplerDivergence`] if evaluating `Γ(t)` runs a Kepler solve
