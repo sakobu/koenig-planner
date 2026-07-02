@@ -16,12 +16,13 @@ const PRUNE_REL: f64 = 1e-3;
 /// Relative tolerance for the primal/dual self-consistency gate: the extracted
 /// min-fuel objective must agree with the refinement dual budget `c*` to within
 /// this fraction. `budget` and this primal are the dual and primal of the **same**
-/// converged active set `T^opt`, so conic strong duality forces them to coincide
-/// to interior-point solver accuracy — independent of `ε_cost`. The 5% bound is
-/// thus slack for solver noise on the ill-conditioned e=0.7 contacts, set
-/// comfortably above the largest gap seen in the validated regime (~0.6% on the
-/// worked example, p. 10's 82.4-vs-82.0 mm/s) while still catching a genuine
-/// primal/dual divergence.
+/// converged active set `T^opt`, so conic strong duality ties them to interior-point
+/// accuracy — ~1e-9 on the worked example (`total_dv` matches the refinement
+/// objective to the printed digits), independent of `ε_cost`. `ε_cost` instead
+/// bounds the *separate* gap between the restricted primal and the all-times dual
+/// (0.62% here, the paper's 82.4-vs-82.0 mm/s sandwich), which this gate never sees.
+/// So 5% is generous slack over interior-point noise on the ill-conditioned e=0.7
+/// contacts while still catching a genuine primal/dual divergence.
 const BUDGET_REL_TOL: f64 = 5e-2;
 
 /// Result of Algorithm 3.
