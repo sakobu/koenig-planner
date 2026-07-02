@@ -247,6 +247,16 @@ pub enum InvalidInputKind {
     /// `Dynamics`/`CostModel` implementation. Mirrors [`std::io::ErrorKind::Other`].
     #[error("{message}")]
     Other { message: String },
+    /// A chief angular element (`Omega`, `omega`, or `M`) was non-finite.
+    #[error("J2Roe: chief angle {name} must be finite, got {value} rad")]
+    NonFiniteChiefAngle {
+        /// Which chief angle: `"raan"`, `"argp"`, or `"mean_anom"`.
+        name: &'static str,
+        /// The offending value `[rad]`.
+        value: f64,
+    },
+    // Append new variants at the end: with no `#[repr]`, inserting one mid-enum
+    // shifts later variants' discriminants — a semver-breaking change.
 }
 
 /// Errors surfaced by the planner.

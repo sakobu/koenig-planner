@@ -9,9 +9,11 @@ pub trait Dynamics {
     ///
     /// # Errors
     /// Returns [`PlannerError`] if evaluating `B(t)` requires an out-of-domain
-    /// Kepler solve (non-elliptic chief). For a `J2Roe` built via its validating
-    /// constructor this cannot occur, but the trait is fallible so other
-    /// implementations may report domain failures rather than panic.
+    /// Kepler solve. A `J2Roe` built via its validating constructor rejects a
+    /// malformed chief (non-finite or non-elliptic elements) up front as
+    /// [`PlannerError::InvalidInput`], so it does not reach here for those
+    /// inputs; the trait is fallible so other implementations may report domain
+    /// failures rather than panic.
     fn gamma(&self, t: f64) -> Result<SMatrix<f64, N, M>, PlannerError>;
 }
 

@@ -144,9 +144,10 @@ fn nearest_grid_indices(grid: &TimeGrid, times: &[f64]) -> Vec<usize> {
 ///   to empty during refinement.
 /// - [`PlannerError::KeplerDivergence`] if evaluating `Γ(t)` runs a Kepler solve
 ///   whose Newton iteration fails to converge. The built-in `J2Roe` validates
-///   its chief eccentricity, so this is unreachable on that path; a custom
-///   `Dynamics` may instead surface [`PlannerError::InvalidInput`] for an
-///   out-of-domain (non-elliptic) chief.
+///   its chief elements (all six finite, `a > 0`, `e ∈ [0,1)`), so a malformed
+///   chief is rejected as [`PlannerError::InvalidInput`] up front rather than
+///   diverging here; a custom `Dynamics` may likewise surface
+///   [`PlannerError::InvalidInput`] for an out-of-domain chief.
 /// - [`PlannerError::SolverFailed`] if the refinement or min-fuel convex solver
 ///   fails to set up or solve.
 /// - [`PlannerError::NotConverged`] if Algorithm 2 reaches its iteration cap

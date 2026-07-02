@@ -30,14 +30,13 @@ impl J2Roe {
     /// # Errors
     /// Returns [`PlannerError::InvalidInput`] if the chief semimajor axis is not
     /// finite and positive (`a > 0`), the chief is non-elliptic (`e ∉ [0,1)`),
+    /// any chief angle (`i`, `Ω`, `ω`, `M`) is non-finite, the chief is
     /// equatorial (`i` within `1e-9` rad of `0` or `π`, where the `tan i` term in
     /// `B(t)` is singular), or the window is not `t_f > t_i` (finite).
     pub fn new(chief_ti: AbsoluteOrbit, t_i: f64, t_f: f64) -> Result<Self, PlannerError> {
-        // Bounded-ellipse preconditions on the chief (a, e together). `a` is the
-        // most fundamental: `mean_motion`/`secular_rates` are NaN without a finite,
-        // positive semimajor axis (\[KD20\] eq. 50), so guard it first — otherwise
-        // the NaN propagates silently through `Gamma` and is mis-reported as a
-        // solver failure instead of the caller-fixable input error it is.
+        // `a` first: `mean_motion`/`secular_rates` are NaN without a finite,
+        // positive semimajor axis (\[KD20\] eq. 50), so an unchecked `a` would
+        // surface as a solver failure rather than an input error.
         if !chief_ti.a.is_finite() || chief_ti.a <= 0.0 {
             return Err(PlannerError::InvalidInput(
                 InvalidInputKind::ChiefSemimajorAxis { a: chief_ti.a },
@@ -47,6 +46,25 @@ impl J2Roe {
             return Err(PlannerError::InvalidInput(InvalidInputKind::Eccentricity {
                 e: chief_ti.e,
             }));
+        }
+        // Chief angles must be finite before the guards below: a non-finite `i`
+        // would pass the `sin(i)` singularity check, and a non-finite Omega/omega/M
+        // would surface as a solver failure rather than an input error.
+        if !chief_ti.i.is_finite() {
+            return Err(PlannerError::InvalidInput(
+                InvalidInputKind::ChiefInclination { i: chief_ti.i },
+            ));
+        }
+        for (name, value) in [
+            ("raan", chief_ti.raan),
+            ("argp", chief_ti.argp),
+            ("mean_anom", chief_ti.mean_anom),
+        ] {
+            if !value.is_finite() {
+                return Err(PlannerError::InvalidInput(
+                    InvalidInputKind::NonFiniteChiefAngle { name, value },
+                ));
+            }
         }
         if chief_ti.i.sin().abs() < 1e-9 {
             return Err(PlannerError::InvalidInput(
@@ -130,6 +148,58 @@ mod tests {
                 ),
                 "a = {bad} must be InvalidInput(ChiefSemimajorAxis), got {err:?}"
             );
+        }
+    }
+
+    // A non-finite `i` evades the `sin(i)` singularity guard (`NaN < 1e-9` is
+    // false), so it needs its own finiteness check.
+    #[test]
+    fn new_rejects_nonfinite_inclination() {
+        let mk = |i: f64| AbsoluteOrbit::new(25_000e3, 0.7, i, 0.0, 0.0, 0.0);
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let err =
+                J2Roe::new(mk(bad), 0.0, 100.0).expect_err(&format!("i = {bad} must be rejected"));
+            assert!(
+                matches!(
+                    err,
+                    PlannerError::InvalidInput(InvalidInputKind::ChiefInclination { .. })
+                ),
+                "i = {bad} must be InvalidInput(ChiefInclination), got {err:?}"
+            );
+        }
+    }
+
+    // Omega/omega/M have no domain guard of their own, so each needs an explicit
+    // finiteness check to be rejected as an input error.
+    #[test]
+    fn new_rejects_nonfinite_chief_angles() {
+        let base = AbsoluteOrbit::new(25_000e3, 0.7, 40.0_f64.to_radians(), 0.5, 0.5, 0.5);
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for (label, chief) in [
+                ("raan", AbsoluteOrbit { raan: bad, ..base }),
+                ("argp", AbsoluteOrbit { argp: bad, ..base }),
+                (
+                    "mean_anom",
+                    AbsoluteOrbit {
+                        mean_anom: bad,
+                        ..base
+                    },
+                ),
+            ] {
+                let err = J2Roe::new(chief, 0.0, 100.0)
+                    .expect_err(&format!("{label} = {bad} must be rejected"));
+                let PlannerError::InvalidInput(InvalidInputKind::NonFiniteChiefAngle {
+                    name,
+                    value,
+                }) = err
+                else {
+                    panic!(
+                        "{label} = {bad} must be InvalidInput(NonFiniteChiefAngle), got {err:?}"
+                    );
+                };
+                assert_eq!(name, label);
+                assert!(value.is_nan() || value.is_infinite());
+            }
         }
     }
 
