@@ -225,14 +225,6 @@ pub enum InvalidInputKind {
     /// Chief inclination too close to 0 or pi.
     #[error("J2Roe: chief inclination must be bounded away from 0 and pi (B(t) has a 1/tan(i) singularity), got i = {i} rad")]
     ChiefInclination { i: f64 },
-    /// A chief angular element (`Omega`, `omega`, or `M`) was non-finite.
-    #[error("J2Roe: chief angle {name} must be finite, got {value} rad")]
-    NonFiniteChiefAngle {
-        /// Which chief angle: `"raan"`, `"argp"`, or `"mean_anom"`.
-        name: &'static str,
-        /// The offending value `[rad]`.
-        value: f64,
-    },
     /// Chief propagation window non-finite or `t_f <= t_i`.
     #[error("J2Roe: window must satisfy finite t_i, t_f and t_f > t_i (got t_i={t_i}, t_f={t_f})")]
     Window { t_i: f64, t_f: f64 },
@@ -255,6 +247,16 @@ pub enum InvalidInputKind {
     /// `Dynamics`/`CostModel` implementation. Mirrors [`std::io::ErrorKind::Other`].
     #[error("{message}")]
     Other { message: String },
+    /// A chief angular element (`Omega`, `omega`, or `M`) was non-finite.
+    #[error("J2Roe: chief angle {name} must be finite, got {value} rad")]
+    NonFiniteChiefAngle {
+        /// Which chief angle: `"raan"`, `"argp"`, or `"mean_anom"`.
+        name: &'static str,
+        /// The offending value `[rad]`.
+        value: f64,
+    },
+    // Append new variants at the end: with no `#[repr]`, inserting one mid-enum
+    // shifts later variants' discriminants — a semver-breaking change.
 }
 
 /// Errors surfaced by the planner.
