@@ -15,6 +15,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Δv) and `primer_rtn` (the RTN primer history) — an additive, non-breaking change
   to the generated TypeScript types (npm `koenig-planner`). Presentation-only,
   reusing the core's Kepler solver; the numerical core is untouched.
+- `InvalidInputKind::NonFiniteChiefAngle { name, value }` classifies a chief
+  orbit whose right-ascension, argument of perigee, or mean anomaly is non-finite.
+  Additive and non-breaking (`InvalidInputKind` is `#[non_exhaustive]`); it maps
+  to `ErrorClass::InvalidInput` like every other input error.
 
 ### Removed
 - WASM `ChiefGeometry` no longer includes `relative_trajectory_rtn` (the deputy's
@@ -42,6 +46,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`[0, 117990]` @ 30 s) and the Hunter cross-check (`[0, 39000]` @ 10 s) are
   commensurate and unaffected (solver output byte-identical; worked-example
   residual 1.135e-14).
+- `J2Roe::new` now rejects a chief whose inclination, right-ascension, argument
+  of perigee, or mean anomaly is non-finite (NaN or ±∞), returning
+  `PlannerError::InvalidInput` (a caller-fixable "bad request"). Previously the
+  inclination's `sin(i).abs() < 1e-9` singularity guard let a non-finite `i`
+  through (`NaN < 1e-9` is false) and `Ω`/`ω`/`M` had no finiteness check at all,
+  so a malformed chief either surfaced later as a mis-classified `KeplerDivergence`
+  (`ErrorClass::Unsolvable`) once the NaN reached the Kepler solve, or — for `Ω`,
+  which `B(t)` and the STM never read — produced a wrongly-successful solve.
+  Rustdoc that described a validating `J2Roe` as making `KeplerDivergence`
+  unreachable is corrected to the accurate guarantee (a malformed chief is
+  rejected up front). No numerical change on valid inputs (worked-example residual
+  1.135e-14).
 
 ### Documentation
 - WASM `ChiefGeometry` doc comments (which surface as JSDoc on the npm
