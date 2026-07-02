@@ -33,6 +33,15 @@ impl J2Roe {
     /// any chief angle (`i`, `Ω`, `ω`, `M`) is non-finite, the chief is
     /// equatorial (`i` within `1e-9` rad of `0` or `π`, where the `tan i` term in
     /// `B(t)` is singular), or the window is not `t_f > t_i` (finite).
+    ///
+    /// # Conditioning
+    /// The `1e-9` inclination guard rejects only the exact `1/tan(i)` singularity,
+    /// not the ill-conditioning near it. For a chief within `~1e-4` rad of
+    /// equatorial (but outside the guard) the cross-track `B(t)` entries `B[2,2]` /
+    /// `B[3,2]` grow to `~1e5` (vs `~1e-4` typical) — data the SOCPs accept as finite
+    /// but ill-conditioned. Expect degraded solver accuracy or a loud
+    /// [`PlannerError::SolverFailed`], never a silently wrong plan. Such
+    /// near-equatorial chiefs are outside the paper's demonstrated `i = 40°` regime.
     pub fn new(chief_ti: AbsoluteOrbit, t_i: f64, t_f: f64) -> Result<Self, PlannerError> {
         // `a` first: `mean_motion`/`secular_rates` are NaN without a finite,
         // positive semimajor axis (\[KD20\] eq. 50), so an unchecked `a` would
@@ -66,6 +75,8 @@ impl J2Roe {
                 ));
             }
         }
+        // Singularity guard only (`tan i -> 0`). Conditioning still degrades for
+        // `i` within ~1e-4 rad of equatorial; see the `# Conditioning` doc above.
         if chief_ti.i.sin().abs() < 1e-9 {
             return Err(PlannerError::InvalidInput(
                 InvalidInputKind::ChiefInclination { i: chief_ti.i },
