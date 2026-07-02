@@ -24,6 +24,18 @@ use nalgebra::{SMatrix, SVector};
 ///
 /// Ref: \[KD20\] Algorithm 3 (fixed-direction magnitude QP); eq. 42; eq. 32.
 ///
+/// # Accuracy
+/// Returns the raw QP optimum with no post-solve verification — matching the
+/// paper's gateless Algorithm 3 ("the residual error will be negligible for
+/// practical applications"). The clarabel status is accepted at reduced accuracy
+/// (`AlmostSolved`), and the magnitudes are not residual- or budget-checked. This
+/// is deliberately weaker than the live [`crate::solve()`] extraction, which
+/// gates [`crate::solver::min_fuel_socp()`] with a non-finite check and a
+/// primal/dual budget cross-check. A nonzero weighted residual is the *correct*
+/// optimum whenever the budget or a nonnegativity bound is active, so callers
+/// needing a verified, exactly-reachable plan should use [`crate::solve()`]
+/// rather than post-checking these magnitudes.
+///
 /// # Errors
 /// - [`PlannerError::InvalidInput`] if `ys` is empty (no maneuver directions) or
 ///   if `budget` is negative or `NaN`.
