@@ -71,6 +71,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `NaN` target (a negative tolerance did likewise) — a caller-fixable input now
   reported as one. No effect on valid runs (defaults `0.01` / `0.01`); no numerical
   change (worked-example residual 1.135e-14).
+- The Kepler solver (`mean_to_eccentric`) is now globally convergent for every
+  valid eccentricity `e ∈ [0, 1)`. The unglobalized Newton iteration diverged near
+  periapsis for near-parabolic chiefs (`e >= ~0.995`; ~0.3 % of mean anomalies at
+  `e = 0.999`), where the derivative `1 - e cos E` shrinks to ~1e-3 and a Newton
+  step overshoots ~100×; a single such grid time failed the entire solve with
+  `KeplerDivergence` (`ErrorClass::Unsolvable`), even though the chief was
+  physically valid (e.g. a high-apogee `e = 0.995` orbit with perigee above
+  Earth). The solve now falls back to bisection on the bracket `[-π, π]`, where
+  `F(E) = E - e sin E - M` is strictly increasing (`F' = 1 - e cos E > 0`) with a
+  single bracketed root, so convergence is guaranteed. The Newton fast path is
+  unchanged, so every previously-converging input returns a bit-identical `E`
+  (checked across 12M evaluations up to `e = 0.9999`); `KeplerDivergence` is
+  retained as a now-unreachable regression backstop. Rustdoc that described the
+  divergence as "not reachable for valid `e`" is corrected to the guarantee the
+  solver now actually provides. No numerical change on valid inputs
+  (worked-example residual 1.135e-14).
 
 ### Documentation
 - WASM `ChiefGeometry` doc comments (which surface as JSDoc on the npm
