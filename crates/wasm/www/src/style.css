@@ -613,6 +613,14 @@ header.fault .status-lamp {
 .error.internal::before {
   content: "internal error";
 }
+/* Overlay variant: a transient error kept above a still-mounted instrument so
+   the scenes retain their camera and scrub state. */
+.error.overlay {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
 
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 880px) {

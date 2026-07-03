@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { SolveOutcome, SolveResponse } from "./wasm";
+import { pickDisplay, type ApiError } from "./outcomeDisplay";
 import { Kpis } from "./charts/Kpis";
 import { Timeline } from "./charts/Timeline";
 import { PrimerMagnitude } from "./charts/PrimerMagnitude";
@@ -10,11 +11,16 @@ import { EciScene } from "./scene/EciScene";
 import { RtnScene } from "./scene/RtnScene";
 import { Playback } from "./scene/Playback";
 
-function OkReadout({ r }: { r: SolveResponse }) {
+function OkReadout({ r, error }: { r: SolveResponse; error: ApiError | null }) {
   const sampleCount = r.geometry.chief_track_eci.length;
   const [index, setIndex] = useState(0);
   return (
     <section id="output">
+      {error && (
+        <div className={`error ${error.kind} overlay`}>
+          {`${error.kind}: ${error.message}`}
+        </div>
+      )}
       <Kpis r={r} />
       <Panel title="Orbit (ECI)">
         <EciScene g={r.geometry} sampleIndex={Math.min(index, Math.max(0, sampleCount - 1))} />
@@ -42,15 +48,22 @@ function OkReadout({ r }: { r: SolveResponse }) {
 }
 
 export function Readout({ outcome }: { outcome: SolveOutcome | null }) {
-  if (!outcome) return <section id="output" />;
-  if (outcome.status === "err") {
+  // Retain the last good response so a transient error (e.g. a mid-edit
+  // bad_request) overlays the error without unmounting the scenes — which would
+  // reset their camera poses and the scrub index.
+  const lastGood = useRef<SolveResponse | null>(null);
+  if (outcome?.status === "ok") lastGood.current = outcome.value;
+
+  const d = pickDisplay(outcome, lastGood.current);
+  if (d.view === "empty") return <section id="output" />;
+  if (d.view === "error") {
     return (
       <section id="output">
-        <div className={`error ${outcome.error.kind}`}>
-          {`${outcome.error.kind}: ${outcome.error.message}`}
+        <div className={`error ${d.error.kind}`}>
+          {`${d.error.kind}: ${d.error.message}`}
         </div>
       </section>
     );
   }
-  return <OkReadout r={outcome.value} />;
+  return <OkReadout r={d.r} error={d.error} />;
 }
