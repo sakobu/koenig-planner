@@ -25,6 +25,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`cargo semver-checks` clean); this is a numerical-output change only, and it is
   **byte-identical for `t_i = 0`**, so the paper's worked example and every golden
   are unchanged. \[KD20\] eq. 49.
+- **Breaking (behavioral): WASM presentation geometry changes for `t_i ≠ 0`.**
+  `crates/wasm` `chief_geometry` now evaluates the chief/deputy at the `t_i` epoch
+  by propagating each absolute grid time `t` as the duration `t - t_i`; previously
+  it passed the absolute time directly to `AbsoluteOrbit::propagate` (which advances
+  the epoch by a *duration*), so for a non-zero `t_i` every burn marker, playback
+  track, and primer arrow was over-propagated by `t_i`. The `ChiefGeometry` values
+  (npm `koenig-planner`) therefore change for `t_i ≠ 0` — presentation-only: the
+  plan/maneuvers and the numerical core are unchanged.
 - **Breaking (behavioral): WASM `solve` outcome and error kind.** A valid solve
   whose target ROE reconstructs a non-elliptic deputy (`e ≥ 1`) now returns `Ok`
   with the deputy-derived geometry fields (`deputy_track_rtn`, `maneuver_rtn`)
@@ -33,14 +41,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `kind: "internal"` instead of the mislabeled `"solver"`. Callers switching on the
   outcome `status` or `error.kind` for these cases will observe the new values; the
   `SolveOutcome` / `ApiErrorKind` types are unchanged.
-
-### Fixed
-- WASM presentation geometry (`crates/wasm` `chief_geometry`) now evaluates the
-  chief/deputy at the `t_i` epoch by propagating each absolute grid time `t` as the
-  duration `t - t_i`. Previously it passed the absolute time directly to
-  `AbsoluteOrbit::propagate` (which advances the epoch by a *duration*), so for a
-  non-zero `t_i` every burn marker, playback track, and primer arrow was
-  over-propagated by `t_i`. Presentation-only; the numerical core is untouched.
 
 ## [0.4.0] — 2026-07-02
 
