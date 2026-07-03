@@ -25,11 +25,16 @@ export function Playback({
 
   return (
     <div className="playback">
-      <button type="button" onClick={() => setPlaying((p) => !p)}>
+      <button
+        type="button"
+        aria-label={playing ? "pause" : "play"}
+        onClick={() => setPlaying((p) => !p)}
+      >
         {playing ? "❚❚" : "▶"}
       </button>
       <input
         type="range"
+        aria-label="playback position"
         min={0}
         max={Math.max(0, count - 1)}
         step={1}

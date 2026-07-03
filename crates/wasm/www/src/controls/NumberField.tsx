@@ -56,6 +56,7 @@ export function NumberField({
       <input
         className="slider"
         type="range"
+        aria-label={label}
         min={min}
         max={max}
         step={step}
