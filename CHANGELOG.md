@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- WASM presentation geometry (`crates/wasm` `chief_geometry`) now evaluates the
+  chief/deputy at the `t_i` epoch by propagating each absolute grid time `t` as the
+  duration `t - t_i`. Previously it passed the absolute time directly to
+  `AbsoluteOrbit::propagate` (which advances the epoch by a *duration*), so for a
+  non-zero `t_i` every burn marker, playback track, and primer arrow was
+  over-propagated by `t_i`. Presentation-only; the numerical core is untouched.
+
 ## [0.4.0] — 2026-07-02
 
 ### Added

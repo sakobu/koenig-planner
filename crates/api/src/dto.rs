@@ -116,7 +116,8 @@ pub struct SolveRequest {
 /// A single impulsive maneuver in the RTN frame.
 #[derive(Debug, Clone, Serialize)]
 pub struct ManeuverDto {
-    /// Application time `[s]`, measured from `t_i`.
+    /// Application time `[s]`: an absolute grid time `t_i + k·dt` (equal to `t_i`
+    /// at the first sample), on the same axis as the request `t_i`/`t_f`.
     pub t: f64,
     /// Delta-v `[m/s]`, RTN components `[R, T, N]`.
     pub dv: [f64; 3],
