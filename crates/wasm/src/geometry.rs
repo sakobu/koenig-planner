@@ -85,8 +85,9 @@ pub fn chief_geometry(
     let perigee_window = match &req.cost {
         dto::CostSpec::Piecewise { period, t_perigee0 } => {
             let period = period.unwrap_or(TAU / chief.mean_motion());
-            let t_pc =
-                t_perigee0.unwrap_or((-chief.mean_anom / chief.mean_motion()).rem_euclid(period));
+            // Duration from the t_i epoch to perigee; the same default the solver
+            // uses (api::run), so the drawn window matches the applied cost.
+            let t_pc = t_perigee0.unwrap_or_else(|| chief.time_to_perigee());
             let pw = match t_perigee0 {
                 Some(tp) => Piecewise::with_perigee_epoch(period, *tp),
                 None => Piecewise::with_perigee_epoch(period, t_pc),
