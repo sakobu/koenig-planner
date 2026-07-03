@@ -28,6 +28,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `AbsoluteOrbit::propagate` (which advances the epoch by a *duration*), so for a
   non-zero `t_i` every burn marker, playback track, and primer arrow was
   over-propagated by `t_i`. Presentation-only; the numerical core is untouched.
+- WASM `solve` no longer discards a successful plan when the presentation-only
+  deputy reconstruction is non-elliptic (an extreme target ROE with `e ≥ 1`). The
+  deputy-derived geometry fields (`deputy_track_rtn`, `maneuver_rtn`) now degrade
+  to empty while the solve result and chief-frame geometry are returned as `Ok`;
+  a genuine (now-unreachable) geometry fault reports `internal` rather than the
+  previously mislabeled `solver`.
 
 ## [0.4.0] — 2026-07-02
 

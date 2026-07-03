@@ -26,6 +26,27 @@ fn chief_orbit(c: &dto::OrbitDto) -> AbsoluteOrbit {
     )
 }
 
+/// Deputy position relative to the chief, in the chief RTN frame, at a duration
+/// `dur` from the shared `t_i` epoch.
+///
+/// # Errors
+/// Fails when the deputy reconstructed from an extreme target ROE is
+/// non-elliptic (`e ≥ 1`), which has no Kepler solution. Callers treat this as
+/// "relative track not drawable" (best-effort) — it is a presentation artifact,
+/// not a solver failure, so it must not sink an otherwise-valid solve.
+fn deputy_rel_rtn(
+    chief: &AbsoluteOrbit,
+    deputy: &AbsoluteOrbit,
+    dur: f64,
+) -> Result<[f64; 3], PlannerError> {
+    let c_t = chief.propagate(dur);
+    let d_t = deputy.propagate(dur);
+    let r_c = frames::position_eci(&c_t)?;
+    let r_d = frames::position_eci(&d_t)?;
+    let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
+    frames::eci_to_rtn(&c_t, rel_eci)
+}
+
 /// Presentation geometry for the 3D scene + orbit panel, computed by REUSING
 /// the core's Kepler solver and J2-secular propagation. Reads maneuver times,
 /// Δv, and the primer history from the api response. The deputy's relative
@@ -33,7 +54,11 @@ fn chief_orbit(c: &dto::OrbitDto) -> AbsoluteOrbit {
 /// inversion and propagated with the same core dynamics as the chief.
 ///
 /// # Errors
-/// Propagates the core `true_anomaly`/`Piecewise` errors (non-elliptic `e`).
+/// Propagates the core `true_anomaly` / `Piecewise` errors for the **chief**
+/// (e.g. a non-elliptic chief) — unreachable once the solver has accepted the
+/// request. The **deputy**-derived fields (`deputy_track_rtn`, `maneuver_rtn`)
+/// are best-effort: they degrade to empty for a non-elliptic reconstructed
+/// deputy rather than failing the whole geometry (see [`deputy_rel_rtn`]).
 pub fn chief_geometry(
     req: &dto::SolveRequest,
     resp: &api::SolveResponse,
@@ -131,16 +156,15 @@ pub fn chief_geometry(
     let deputy = frames::deputy_from_roe(&chief, roe);
 
     // Deputy position in chief RTN at each playback (primer_times) sample, so the
-    // RTN view's glyph tracks the same scrubber as the ECI spacecraft.
-    let mut deputy_track_rtn = Vec::with_capacity(resp.primer_times.len());
-    for &t in &resp.primer_times {
-        let c_t = chief.propagate(dur(t));
-        let d_t = deputy.propagate(dur(t));
-        let r_c = frames::position_eci(&c_t)?;
-        let r_d = frames::position_eci(&d_t)?;
-        let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
-        deputy_track_rtn.push(frames::eci_to_rtn(&c_t, rel_eci)?);
-    }
+    // RTN view's glyph tracks the same scrubber as the ECI spacecraft. Best-effort:
+    // empty when the target ROE implies a non-elliptic deputy (see deputy_rel_rtn),
+    // so an extreme target degrades the relative track, not the whole solve.
+    let deputy_track_rtn: Vec<[f64; 3]> = resp
+        .primer_times
+        .iter()
+        .map(|&t| deputy_rel_rtn(&chief, &deputy, dur(t)))
+        .collect::<Result<_, _>>()
+        .unwrap_or_default();
 
     // Burn position + native-RTN Δv per maneuver, in the chief RTN frame (the
     // RTN analog of maneuver_eci). Anchor only: position_rtn is the deputy's
@@ -151,18 +175,18 @@ pub fn chief_geometry(
     // visibly at meters scale; only the Δv DIRECTION is exact (magnitude lives
     // in the R/T/N Δv-component bars). dv_rtn is m.dv echoed with no rotation —
     // it is already in the chief RTN frame (like target_roe echoes w_meters).
-    let mut maneuver_rtn = Vec::with_capacity(resp.maneuvers.len());
-    for m in &resp.maneuvers {
-        let c_t = chief.propagate(dur(m.t));
-        let d_t = deputy.propagate(dur(m.t));
-        let r_c = frames::position_eci(&c_t)?;
-        let r_d = frames::position_eci(&d_t)?;
-        let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
-        maneuver_rtn.push(dto::ManeuverRtnDto {
-            position_rtn: frames::eci_to_rtn(&c_t, rel_eci)?,
-            dv_rtn: m.dv,
-        });
-    }
+    // Best-effort, like deputy_track_rtn: empty for a non-elliptic deputy.
+    let maneuver_rtn: Vec<dto::ManeuverRtnDto> = resp
+        .maneuvers
+        .iter()
+        .map(|m| {
+            Ok(dto::ManeuverRtnDto {
+                position_rtn: deputy_rel_rtn(&chief, &deputy, dur(m.t))?,
+                dv_rtn: m.dv,
+            })
+        })
+        .collect::<Result<_, PlannerError>>()
+        .unwrap_or_default();
 
     // Primer vector in the chief RTN frame at each playback sample — presentation
     // copy of resp.primer_rtn (mirrors primer_eci) so the RTN scene draws the

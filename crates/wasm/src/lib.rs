@@ -37,10 +37,14 @@ pub fn solve(req: dto::SolveRequest) -> dto::SolveOutcome {
             Ok(geom) => dto::SolveOutcome::Ok {
                 value: (resp, geom).into(),
             },
+            // The solve succeeded; only presentation geometry failed. Deputy-
+            // derived fields degrade in place (see geometry::chief_geometry), so
+            // this arm is unreachable for a solved request — a residual error is
+            // an internal invariant break, not a solver or input failure.
             Err(e) => dto::SolveOutcome::Err {
                 error: dto::ApiError {
-                    kind: dto::ApiErrorKind::Solver,
-                    message: e.to_string(),
+                    kind: dto::ApiErrorKind::Internal,
+                    message: format!("presentation geometry: {e}"),
                 },
             },
         },
