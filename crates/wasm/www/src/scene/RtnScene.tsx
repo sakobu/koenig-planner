@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls, Text } from "@react-three/drei";
 import type { ChiefGeometry } from "../wasm";
@@ -19,7 +20,7 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
   // honestly: an in-plane-dominated orbit shows the tilted 2:1 ellipse, a
   // cross-track-dominated one (e.g. the paper's δi-heavy example) reads as a 3D
   // loop. Data stays [radial, transverse, normal]; only the mapping changes.
-  const curve = scaleAll(track.map(rtnToView), k);
+  const curve = useMemo(() => scaleAll(track.map(rtnToView), k), [track, k]);
   const axis = 0.8; // reference-gnomon length; kept short so labels stay inside the viewport
 
   // Deputy glyph: position at the current playback sample, same scale/mapping as the curve.

@@ -1,7 +1,8 @@
+import { memo } from "react";
 import type { SolveResponse } from "../wasm";
 import { niceStep, stackRows } from "./svgUtil";
 
-export function Timeline({ r }: { r: SolveResponse }) {
+export const Timeline = memo(function Timeline({ r }: { r: SolveResponse }) {
   const W = 760,
     H = 300;
   const padL = 58,
@@ -60,4 +61,4 @@ export function Timeline({ r }: { r: SolveResponse }) {
       })()}
     </svg>
   );
-}
+});
