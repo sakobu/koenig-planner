@@ -13,27 +13,34 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reused by both the solver (`api::run`) and the WASM presentation geometry.
   Additive and non-breaking.
 
+### Changed
+- **Breaking (behavioral): planner output changes for `t_i ≠ 0` piecewise-default
+  requests.** The default piecewise perigee epoch
+  (`CostSpec::Piecewise { t_perigee0: None }`) now anchors the eq.-49 FaceMax
+  windows at the chief's actual perigee in absolute grid time,
+  `t_i + time_to_perigee()`. The previous default computed `(-M₀/n) mod period`,
+  omitting `t_i`, so for a non-zero `t_i` the cheap-fuel perigee window was shifted
+  by `t_i (mod period)` and the solver returned a valid but sub-optimal plan.
+  Affects every frontend (all route through `api::run`). No public API changed
+  (`cargo semver-checks` clean); this is a numerical-output change only, and it is
+  **byte-identical for `t_i = 0`**, so the paper's worked example and every golden
+  are unchanged. \[KD20\] eq. 49.
+- **Breaking (behavioral): WASM `solve` outcome and error kind.** A valid solve
+  whose target ROE reconstructs a non-elliptic deputy (`e ≥ 1`) now returns `Ok`
+  with the deputy-derived geometry fields (`deputy_track_rtn`, `maneuver_rtn`)
+  empty, where it previously returned `Err { kind: "solver" }` and discarded the
+  plan. Separately, a genuine (now-unreachable) presentation-geometry fault reports
+  `kind: "internal"` instead of the mislabeled `"solver"`. Callers switching on the
+  outcome `status` or `error.kind` for these cases will observe the new values; the
+  `SolveOutcome` / `ApiErrorKind` types are unchanged.
+
 ### Fixed
-- Default piecewise perigee epoch (`CostSpec::Piecewise { t_perigee0: None }`) now
-  anchors the eq.-49 FaceMax windows at the chief's actual perigee in absolute grid
-  time, `t_i + time_to_perigee()`. The previous default computed `(-M₀/n) mod
-  period`, omitting `t_i`, so for a non-zero `t_i` the cheap-fuel perigee window was
-  shifted by `t_i (mod period)` and the solver could return a valid but sub-optimal
-  plan. Affects every frontend (all route through `api::run`); **byte-identical for
-  `t_i = 0`**, so the paper's worked example and all goldens are unchanged.
-  \[KD20\] eq. 49.
 - WASM presentation geometry (`crates/wasm` `chief_geometry`) now evaluates the
   chief/deputy at the `t_i` epoch by propagating each absolute grid time `t` as the
   duration `t - t_i`. Previously it passed the absolute time directly to
   `AbsoluteOrbit::propagate` (which advances the epoch by a *duration*), so for a
   non-zero `t_i` every burn marker, playback track, and primer arrow was
   over-propagated by `t_i`. Presentation-only; the numerical core is untouched.
-- WASM `solve` no longer discards a successful plan when the presentation-only
-  deputy reconstruction is non-elliptic (an extreme target ROE with `e ≥ 1`). The
-  deputy-derived geometry fields (`deputy_track_rtn`, `maneuver_rtn`) now degrade
-  to empty while the solve result and chief-frame geometry are returned as `Ok`;
-  a genuine (now-unreachable) geometry fault reports `internal` rather than the
-  previously mislabeled `solver`.
 
 ## [0.4.0] — 2026-07-02
 
