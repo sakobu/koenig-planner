@@ -1,6 +1,7 @@
+import { memo } from "react";
 import type { SolveResponse } from "../wasm";
 
-export function Kpis({ r }: { r: SolveResponse }) {
+export const Kpis = memo(function Kpis({ r }: { r: SolveResponse }) {
   const cells: [string, string][] = [
     ["Δv cost", `${r.total_dv.toFixed(4)} m/s`],
     ["maneuvers", String(r.maneuvers.length)],
@@ -17,4 +18,4 @@ export function Kpis({ r }: { r: SolveResponse }) {
       ))}
     </div>
   );
-}
+});

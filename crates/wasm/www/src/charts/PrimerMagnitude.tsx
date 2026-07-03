@@ -1,7 +1,8 @@
+import { memo } from "react";
 import type { SolveResponse } from "../wasm";
 import { stackRows } from "./svgUtil";
 
-export function PrimerMagnitude({ r }: { r: SolveResponse }) {
+export const PrimerMagnitude = memo(function PrimerMagnitude({ r }: { r: SolveResponse }) {
   const W = 760,
     H = 300;
   const padL = 58,
@@ -61,4 +62,4 @@ export function PrimerMagnitude({ r }: { r: SolveResponse }) {
       })()}
     </svg>
   );
-}
+});

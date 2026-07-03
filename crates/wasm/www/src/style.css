@@ -20,7 +20,7 @@
   /* ── Ink ─────────────────────────────────────────────────────────── */
   --ink: #e3ebf6; /* primary text */
   --ink-dim: #8496ad; /* secondary labels / eyebrows */
-  --ink-faint: #51637c; /* captions, grid lines, axis ticks */
+  --ink-faint: #78869e; /* captions, grid lines, axis ticks — ≥4.5:1 (AA) on dark surfaces */
 
   /* ── Edges ───────────────────────────────────────────────────────── */
   --edge: #18222f; /* hairline borders */
@@ -28,7 +28,6 @@
 
   /* ── Functional channels (also the plot data-encoding colors) ────── */
   --cyan: #5cc8ff; /* primary accent / Δv-thrust */
-  --cyan-deep: #15384e; /* low-intensity cyan for tracks/fills */
   --amber: #ffb454; /* window / primer */
   --green: #5ef2a8; /* nominal */
   --red: #ff6b6b; /* fault */
@@ -214,15 +213,6 @@ select:focus-visible {
 }
 input::placeholder {
   color: var(--ink-faint);
-}
-/* Piecewise-only inputs (period / t_perigee0) — hidden by default, revealed
-   only when the piecewise cost model is selected (data-cost mirrored from the
-   form in the React layer). */
-.pw {
-  display: none;
-}
-form[data-cost="piecewise"] .pw {
-  display: flex;
 }
 
 /* ── Synced range sliders ────────────────────────────────────────── */
@@ -557,6 +547,20 @@ header.fault .status-lamp {
   box-shadow: var(--glow-cyan);
   border-radius: 3px;
 }
+.playback select {
+  background: var(--bg-input);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  padding: 0.2rem 0.4rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+.playback select:focus-visible {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
 
 /* ── Fault arm — typed error surface ─────────────────────────────── */
 .error {
@@ -598,6 +602,14 @@ header.fault .status-lamp {
 }
 .error.internal::before {
   content: "internal error";
+}
+/* Overlay variant: a transient error kept above a still-mounted instrument so
+   the scenes retain their camera and scrub state. */
+.error.overlay {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Responsive ──────────────────────────────────────────────────── */

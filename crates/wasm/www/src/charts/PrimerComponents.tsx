@@ -3,6 +3,7 @@
 // thrust direction — the optimal impulse fires along the support image s(Γᵀλ),
 // parallel to the primer only for the L2 cost. Reading it alongside the
 // magnitude panel shows which way the dual rewards thrust at each time.
+import { memo } from "react";
 import type { SolveResponse } from "../wasm";
 import { maxAbs } from "./svgUtil";
 
@@ -14,7 +15,7 @@ function pathFor(times: number[], ys: number[], x: (t: number) => number, y: (v:
   return times.map((t, k) => `${k === 0 ? "M" : "L"}${x(t).toFixed(2)},${y(ys[k]).toFixed(2)}`).join(" ");
 }
 
-export function PrimerComponents({ r }: { r: SolveResponse }) {
+export const PrimerComponents = memo(function PrimerComponents({ r }: { r: SolveResponse }) {
   const W = 760,
     H = 280;
   const padL = 58,
@@ -94,4 +95,4 @@ export function PrimerComponents({ r }: { r: SolveResponse }) {
       })}
     </svg>
   );
-}
+});
