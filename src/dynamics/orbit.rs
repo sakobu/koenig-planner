@@ -4,6 +4,7 @@
 use super::constants::{j2_secular_numerator, MU};
 use super::kepler::mean_to_true;
 use crate::types::PlannerError;
+use std::f64::consts::TAU;
 
 /// A mean absolute Keplerian orbit `[a, e, i, Omega, omega, M]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -58,6 +59,24 @@ impl AbsoluteOrbit {
     /// Ref: \[KGD17\] eq. 9; \[KD20\] eq. 50 (the leading Keplerian term of `Mdot`).
     pub fn mean_motion(&self) -> f64 {
         (MU / self.a.powi(3)).sqrt()
+    }
+
+    /// Duration `[s]` from this orbit's epoch to its next perigee passage (mean
+    /// anomaly `M ≡ 0`), referenced to the **Keplerian** mean motion `n`. Always
+    /// in `[0, 2π/n)`.
+    ///
+    /// Keplerian `n` is used deliberately (not the J2-secular `Mdot` from
+    /// [`secular_rates`](Self::secular_rates)): it keeps the perigee reference
+    /// consistent with the `2π/n` orbit-period default that tiles the eq.-49
+    /// windows, and with the paper's worked example. The `n`-vs-`Mdot` difference
+    /// displaces the perigee reference by only seconds against the window's 1-hr
+    /// half-width. Used to place the default eq.-49 perigee windows in absolute
+    /// grid time as `t_i + time_to_perigee()` (the chief epoch is `t_i`).
+    ///
+    /// Ref: \[KD20\] eq. 49 (perigee-window default); eq. 50 (Keplerian `n`).
+    pub fn time_to_perigee(&self) -> f64 {
+        let n = self.mean_motion();
+        (-self.mean_anom / n).rem_euclid(TAU / n)
     }
 
     /// `eta = sqrt(1 - e^2)`.
@@ -170,5 +189,33 @@ mod tests {
         );
         let p0 = o.propagate(0.0);
         assert_abs_diff_eq!(p0.mean_anom, o.mean_anom, epsilon = 1e-15);
+    }
+
+    // Ref: [KD20] eq. 49 perigee-window default — perigee (M ≡ 0) referenced to
+    // the Keplerian mean motion, consistent with the 2π/n period default.
+    #[test]
+    fn time_to_perigee_reaches_perigee_at_keplerian_rate() {
+        use std::f64::consts::{PI, TAU};
+        let mk = |m0: f64| AbsoluteOrbit::new(25_000e3, 0.7, 40.0_f64.to_radians(), 0.0, 0.0, m0);
+        for m0 in [0.0, PI / 2.0, PI, 3.0 * PI / 2.0, 2.5] {
+            let o = mk(m0);
+            let n = o.mean_motion();
+            let tau_p = o.time_to_perigee();
+            // A positive duration to the *next* perigee, within one period.
+            assert!(
+                (0.0..TAU / n).contains(&tau_p),
+                "m0={m0}: tau_p={tau_p} out of [0, period)"
+            );
+            // Advancing M at the Keplerian rate by tau_p lands on a multiple of 2π.
+            let m = (o.mean_anom + n * tau_p).rem_euclid(TAU);
+            assert!(
+                m < 1e-9 || TAU - m < 1e-9,
+                "m0={m0}: mean anomaly at perigee = {m}, not ≡ 0 (mod 2π)"
+            );
+        }
+        // Anchors: perigee-start (M0=0) → 0; apogee-start (M0=π) → half period.
+        let n = mk(0.0).mean_motion();
+        assert_abs_diff_eq!(mk(0.0).time_to_perigee(), 0.0, epsilon = 1e-12);
+        assert_abs_diff_eq!(mk(PI).time_to_perigee(), PI / n, epsilon = 1e-6);
     }
 }

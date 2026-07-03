@@ -28,7 +28,7 @@ const request = {
   cost: { type: "piecewise" }, // or { type: "norm2" } / { type: "facemax" }
 };
 
-const outcome = solve(request); // typed SolveOutcome — never throws
+const outcome = solve(request); // typed SolveOutcome — never throws for a valid SolveRequest
 if (outcome.status === "ok") {
   const { maneuvers, total_dv } = outcome.value;
   console.log(`${maneuvers.length} burns, Δv cost ${total_dv} m/s`);
@@ -44,8 +44,11 @@ the [Build](#build) section below is for running the bundled demo locally.
 
 ## Interface
 
-- `solve(req: SolveRequest): SolveOutcome` — typed; never throws (errors are a
-  `{ status: "err", error: { kind, message } }` value).
+- `solve(req: SolveRequest): SolveOutcome` — typed; never throws for a valid
+  `SolveRequest` (errors are a `{ status: "err", error: { kind, message } }`
+  value). Untyped JS passing a malformed object throws at the deserialization
+  boundary before the solver runs; unknown keys are ignored on this path (unlike
+  `solve_json`, which rejects them).
 - `solve_json(json: string): string` — string-in/string-out escape hatch; returns
   the response JSON, or **throws** the serialized `{ kind, message }` JSON on failure.
 - `version(): string` — the crate version (used by the demo footer).

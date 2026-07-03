@@ -95,6 +95,20 @@ fn dispatch<C: CostModel>(
     Ok((sol, primer))
 }
 
+/// Absolute epoch `[s]` of the chief's first perigee at/after `t_i`, used to
+/// place the default eq.-49 perigee windows when the caller omits `t_perigee0`.
+///
+/// The chief's mean anomaly is anchored at `t_i` (see [`J2Roe`]), and the cost
+/// selector compares **absolute** grid times, so the perigee epoch is
+/// `t_i + time_to_perigee()`. Omitting `t_i` would shift every FaceMax window by
+/// `t_i (mod period)`. Reduces to `time_to_perigee()` for the `t_i = 0` worked
+/// example.
+///
+/// Ref: \[KD20\] eq. 49 (piecewise perigee windows).
+fn default_perigee_epoch(chief: &AbsoluteOrbit, t_i: f64) -> f64 {
+    t_i + chief.time_to_perigee()
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Public entry point
 // ──────────────────────────────────────────────────────────────────────────────
@@ -173,10 +187,9 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
             let period = period.unwrap_or_else(|| TAU / chief.mean_motion());
             let cost = match t_perigee0 {
                 Some(tp) => Piecewise::with_perigee_epoch(period, tp),
-                None => Piecewise::with_perigee_epoch(
-                    period,
-                    (-chief.mean_anom / chief.mean_motion()).rem_euclid(period),
-                ),
+                None => {
+                    Piecewise::with_perigee_epoch(period, default_perigee_epoch(&chief, req.t_i))
+                }
             }
             .map_err(bad_request)?;
             dispatch(&dyn_, &cost, w, grid, &params, its)
@@ -239,4 +252,43 @@ pub fn run_json(input: &str) -> Result<String, ApiError> {
         kind: ApiErrorKind::Solver,
         message: format!("failed to serialize response: {e}"),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use koenig_damico_planner::cost::Piecewise;
+
+    // Ref: [KD20] eq. 49 — the default perigee windows must sit on the chief's
+    // ACTUAL perigee. The chief's mean anomaly is anchored at t_i (J2Roe) and the
+    // cost selector compares absolute grid times, so the absolute perigee epoch is
+    // t_i + time_to_perigee(). A default omitting t_i misplaces the FaceMax window
+    // by t_i (mod period) for any t_i != 0.
+    #[test]
+    fn default_perigee_epoch_places_window_on_true_perigee_for_nonzero_t_i() {
+        let chief = AbsoluteOrbit::new(
+            25_000e3,
+            0.7,
+            40.0_f64.to_radians(),
+            358.0_f64.to_radians(),
+            0.0,
+            90.0_f64.to_radians(),
+        );
+        let period = TAU / chief.mean_motion();
+        // A t_i whose remainder mod period exceeds the 3600 s window half-width,
+        // so omitting it moves the true perigee clear out of the window.
+        let t_i = 10_000.0;
+        let true_perigee = t_i + chief.time_to_perigee(); // absolute time, M ≡ 0
+
+        assert_eq!(default_perigee_epoch(&chief, t_i), true_perigee);
+
+        // FaceMax is active at the true perigee under the correct (t_i-anchored)
+        // epoch...
+        let correct = Piecewise::with_perigee_epoch(period, true_perigee).unwrap();
+        assert!(correct.in_perigee_window(true_perigee));
+        // ...but the t_i-less epoch (the pre-fix default) puts the window a full
+        // t_i off, so the true perigee falls outside it.
+        let buggy = Piecewise::with_perigee_epoch(period, chief.time_to_perigee()).unwrap();
+        assert!(!buggy.in_perigee_window(true_perigee));
+    }
 }

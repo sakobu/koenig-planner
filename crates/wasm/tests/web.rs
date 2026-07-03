@@ -104,6 +104,34 @@ fn solve_non_elliptic_is_bad_request() {
 }
 
 #[wasm_bindgen_test]
+fn solve_keeps_plan_when_deputy_reconstruction_is_non_elliptic() {
+    // A large δeₓ pushes the *reconstructed* deputy past e = 1 (0.7 + ~0.30), so
+    // the presentation-only deputy track can't be built — but the ROE target is
+    // still reachable, so the solve must succeed and be returned, not discarded.
+    let mut req = golden_req();
+    req.w_meters = [50.0, 5000.0, 7.6e6, 100.0, 0.0, 400.0];
+    match solve(req) {
+        SolveOutcome::Ok { value } => {
+            // The valid plan and the chief-frame geometry are present...
+            assert!(!value.primer_times.is_empty());
+            assert!(!value.geometry.orbit_eci.is_empty());
+            assert_eq!(value.geometry.maneuver_nu.len(), value.maneuvers.len());
+            // ...but the deputy-derived fields degrade to empty (non-elliptic
+            // deputy) rather than sinking the whole solve.
+            assert!(
+                value.geometry.deputy_track_rtn.is_empty(),
+                "deputy track should degrade to empty for a non-elliptic deputy"
+            );
+            assert!(value.geometry.maneuver_rtn.is_empty());
+        }
+        SolveOutcome::Err { error } => panic!(
+            "expected Ok (valid solve), got err: {:?} {}",
+            error.kind, error.message
+        ),
+    }
+}
+
+#[wasm_bindgen_test]
 fn solve_outcome_status_tags_are_stable() {
     let ok = SolveOutcome::Ok {
         value: SolveResponse {

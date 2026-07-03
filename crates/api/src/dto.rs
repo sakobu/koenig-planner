@@ -51,10 +51,11 @@ pub enum CostSpec {
         /// chief — strongly preferred so the perigee windows align correctly.
         #[serde(default)]
         period: Option<f64>,
-        /// First perigee-passage epoch `[s]`.  When `None`, derived from the
-        /// chief's mean anomaly `M₀` as the first perigee passage at or after
-        /// `t = 0` (`(-M₀ / n) mod period`); this reduces to `period / 2` for
-        /// the worked example where `M₀ = 180°`.
+        /// First perigee-passage epoch `[s]`, on the same absolute axis as
+        /// `t_i`/`t_f`.  When `None`, derived from the chief as the first perigee
+        /// at or after `t_i`: the chief's mean anomaly is anchored at `t_i`, so
+        /// this is `t_i + time_to_perigee()` (`= t_i + (-M₀ / n) mod (2π/n)`).
+        /// Reduces to `period / 2` for the worked example (`M₀ = 180°`, `t_i = 0`).
         #[serde(default)]
         t_perigee0: Option<f64>,
     },
