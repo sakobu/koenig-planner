@@ -10,7 +10,8 @@
     "prebuild": "npm run build:wasm",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "koenig-damico-planner-wasm": "file:../pkg",
@@ -27,6 +28,7 @@
     "three": "^0.180.0",
     "typescript": "^6.0.0",
     "vite": "^8.0.0",
-    "vite-plugin-wasm": "^3.6.0"
+    "vite-plugin-wasm": "^3.6.0",
+    "vitest": "^4.1.9"
   }
 }
