@@ -130,9 +130,12 @@ impl From<api::ApiErrorKind> for dto::ApiErrorKind {
 
 impl From<api::ApiError> for dto::ApiError {
     fn from(e: api::ApiError) -> Self {
+        // Destructure (no `..`) so a new api::ApiError field breaks compilation
+        // here, matching the no-drift contract of every other conversion above.
+        let api::ApiError { kind, message } = e;
         dto::ApiError {
-            kind: e.kind.into(),
-            message: e.message,
+            kind: kind.into(),
+            message,
         }
     }
 }
