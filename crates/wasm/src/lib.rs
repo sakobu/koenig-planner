@@ -26,9 +26,25 @@ pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-/// Plan a maneuver set from a typed request. NEVER throws: the outcome
-/// (success or error) is returned as a [`dto::SolveOutcome`] value so the
-/// error type is visible in TypeScript.
+/// Plan a maneuver set from a typed request. The outcome (success or error) is
+/// returned as a [`dto::SolveOutcome`] value so the error type is visible in
+/// TypeScript.
+///
+/// # Never throws — for schema-conforming input
+/// The body never panics or throws; every failure is an `Err` variant of the
+/// returned value. The one throw is *outside* the body: called from untyped JS
+/// with a value that is not a valid `SolveRequest` (missing / mistyped fields),
+/// wasm-bindgen rejects it at the argument-deserialization boundary before this
+/// function runs. A TypeScript caller cannot reach that path — the typed
+/// `SolveRequest` parameter makes it a compile error.
+///
+/// # Unknown fields
+/// The typed path (serde-wasm-bindgen) silently **ignores** unknown top-level or
+/// `params` keys, whereas [`solve_json`] and the HTTP / Python frontends reject
+/// them (`#[serde(deny_unknown_fields)]`). Adding `deny_unknown_fields` to the
+/// wasm mirror DTOs is a no-op — serde-wasm-bindgen never surfaces unknown JS
+/// properties — but a TypeScript `SolveRequest` forbids unknown keys at compile
+/// time regardless.
 #[wasm_bindgen]
 pub fn solve(req: dto::SolveRequest) -> dto::SolveOutcome {
     let api_req: koenig_damico_planner_api::SolveRequest = (&req).into();
