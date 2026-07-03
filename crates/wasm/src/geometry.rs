@@ -39,11 +39,14 @@ pub fn chief_geometry(
     resp: &api::SolveResponse,
 ) -> Result<dto::ChiefGeometry, PlannerError> {
     let chief = chief_orbit(&req.chief);
+    // Maneuver and primer grid times are ABSOLUTE (`t_i + k·dt`, [KD20]); the core's
+    // `propagate` advances the `t_i` epoch by a DURATION, so evaluate at `t - t_i`.
+    let dur = |t: f64| t - req.t_i;
 
-    // True anomaly at each maneuver time (unchanged behavior).
+    // True anomaly at each maneuver time.
     let mut maneuver_nu = Vec::with_capacity(resp.maneuvers.len());
     for m in &resp.maneuvers {
-        maneuver_nu.push(chief.propagate(m.t).true_anomaly()?);
+        maneuver_nu.push(chief.propagate(dur(m.t)).true_anomaly()?);
     }
 
     // Closed-loop chief-orbit shape in ECI (sampled by evenly-spaced true
@@ -60,13 +63,13 @@ pub fn chief_geometry(
     // Chief position at each primer sample (playback track).
     let mut chief_track_eci = Vec::with_capacity(resp.primer_times.len());
     for &t in &resp.primer_times {
-        chief_track_eci.push(frames::position_eci(&chief.propagate(t))?);
+        chief_track_eci.push(frames::position_eci(&chief.propagate(dur(t)))?);
     }
 
     // Burn position + Δv direction in ECI.
     let mut maneuver_eci = Vec::with_capacity(resp.maneuvers.len());
     for m in &resp.maneuvers {
-        let orb = chief.propagate(m.t);
+        let orb = chief.propagate(dur(m.t));
         maneuver_eci.push(dto::ManeuverEciDto {
             position_eci: frames::position_eci(&orb)?,
             dv_eci: frames::rtn_to_eci(&orb, m.dv)?,
@@ -76,7 +79,7 @@ pub fn chief_geometry(
     // Primer vector in ECI at each primer sample (RTN→ECI at the chief there).
     let mut primer_eci = Vec::with_capacity(resp.primer_times.len());
     for (&t, &p_rtn) in resp.primer_times.iter().zip(resp.primer_rtn.iter()) {
-        primer_eci.push(frames::rtn_to_eci(&chief.propagate(t), p_rtn)?);
+        primer_eci.push(frames::rtn_to_eci(&chief.propagate(dur(t)), p_rtn)?);
     }
 
     let perigee_window = match &req.cost {
@@ -130,8 +133,8 @@ pub fn chief_geometry(
     // RTN view's glyph tracks the same scrubber as the ECI spacecraft.
     let mut deputy_track_rtn = Vec::with_capacity(resp.primer_times.len());
     for &t in &resp.primer_times {
-        let c_t = chief.propagate(t);
-        let d_t = deputy.propagate(t);
+        let c_t = chief.propagate(dur(t));
+        let d_t = deputy.propagate(dur(t));
         let r_c = frames::position_eci(&c_t)?;
         let r_d = frames::position_eci(&d_t)?;
         let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
@@ -143,14 +146,14 @@ pub fn chief_geometry(
     // relative RTN location at the burn time, reconstructed exactly like
     // deputy_track_rtn (same target-ROE deputy), so each marker sits on the
     // drawn deputy curve. The real initial→target transition arc isn't
-    // reconstructable from (t, Δv), so this position is schematic and can differ
+    // reconstructible from (t, Δv), so this position is schematic and can differ
     // visibly at meters scale; only the Δv DIRECTION is exact (magnitude lives
     // in the R/T/N Δv-component bars). dv_rtn is m.dv echoed with no rotation —
     // it is already in the chief RTN frame (like target_roe echoes w_meters).
     let mut maneuver_rtn = Vec::with_capacity(resp.maneuvers.len());
     for m in &resp.maneuvers {
-        let c_t = chief.propagate(m.t);
-        let d_t = deputy.propagate(m.t);
+        let c_t = chief.propagate(dur(m.t));
+        let d_t = deputy.propagate(dur(m.t));
         let r_c = frames::position_eci(&c_t)?;
         let r_d = frames::position_eci(&d_t)?;
         let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
@@ -239,6 +242,25 @@ mod tests {
         );
         assert!(g.perigee_window.is_none(), "norm2 has no perigee window");
         assert!(g.perigee_arc_eci.is_none(), "norm2 has no perigee arc");
+    }
+
+    #[wasm_bindgen_test]
+    fn geometry_uses_relative_epoch_for_nonzero_t_i() {
+        // Chief at perigee at its t_i epoch (M0 = 0). A burn exactly at t = t_i is a
+        // zero-duration propagation, so ν ≈ 0 — independently of the absolute t_i.
+        // With the pre-fix absolute-time propagation this lands ~1.7 rad off perigee.
+        let mut req = req_with(dto::CostSpec::Norm2, 0.0);
+        req.t_i = 50_000.0;
+        req.t_f = 167_990.0;
+        let mut resp = resp_with(&[req.t_i]); // one maneuver at t = t_i
+        resp.primer_times = vec![req.t_i, req.t_i + 1000.0];
+        resp.primer_rtn = vec![[0.0, 1.0, 0.0], [0.0, 1.0, 0.0]];
+        let g = chief_geometry(&req, &resp).unwrap();
+        assert!(
+            g.maneuver_nu[0].abs() < 1e-9,
+            "burn at t=t_i must be ν≈0 (relative epoch), got {}",
+            g.maneuver_nu[0]
+        );
     }
 
     #[wasm_bindgen_test]

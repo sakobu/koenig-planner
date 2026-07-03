@@ -60,6 +60,12 @@ wasm-pack build crates/wasm --target web      # → crates/wasm/pkg/
 cd crates/wasm/www && npm install && npm run dev
 ```
 
+`crates/wasm/pkg/` is a generated wasm-pack artifact (gitignored) that the demo
+consumes via its `file:../pkg` dependency. `npm run dev` and `npm run build`
+rebuild it first (the `predev`/`prebuild` hooks), so the standalone `wasm-pack
+build` line is only needed once before the initial `npm install`, which must
+resolve `file:../pkg`.
+
 ## Demo
 
 `crates/wasm/www` is a React + React-Three-Fiber app (built with Vite) — the

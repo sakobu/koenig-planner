@@ -4,6 +4,7 @@
 // parallel to the primer only for the L2 cost. Reading it alongside the
 // magnitude panel shows which way the dual rewards thrust at each time.
 import type { SolveResponse } from "../wasm";
+import { maxAbs } from "./svgUtil";
 
 const RTN_COLORS = { R: "#ff6b6b", T: "#4dd2ff", N: "#ffb454" } as const;
 const RTN_NAME = { R: "radial", T: "transverse", N: "normal" } as const;
@@ -27,7 +28,7 @@ export function PrimerComponents({ r }: { r: SolveResponse }) {
   const t0 = n ? times[0] : 0;
   const t1 = n ? times[n - 1] : 1;
   const span = Math.max(1e-9, t1 - t0);
-  const maxComp = Math.max(1e-12, ...rtn.flatMap((p) => p.map(Math.abs)));
+  const maxComp = maxAbs(rtn.flat(), 1e-12);
   const domainMax = maxComp * 1.1;
   const cy0 = padT + (H - padT - padB) / 2; // zero axis
   const half = (H - padT - padB) / 2;
