@@ -25,3 +25,17 @@ export function stackRows(xs: number[], minGap: number): number[] {
   }
   return rows;
 }
+
+/**
+ * Largest absolute value over `values`, floored to `floor` so a derived scale
+ * stays positive. Spread-free by design: `Math.max(...arr)` on a grid-sized
+ * array (>~125k entries) overflows the V8 argument-stack and white-screens.
+ */
+export function maxAbs(values: number[], floor: number): number {
+  let m = floor;
+  for (const v of values) {
+    const a = Math.abs(v);
+    if (a > m) m = a;
+  }
+  return m;
+}
