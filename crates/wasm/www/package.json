@@ -14,18 +14,18 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "koenig-damico-planner-wasm": "file:../pkg",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
-  },
-  "devDependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "koenig-damico-planner-wasm": "file:../pkg",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "three": "^0.180.0",
     "typescript": "^6.0.0",
     "vite": "^8.0.0",
     "vite-plugin-wasm": "^3.6.0",

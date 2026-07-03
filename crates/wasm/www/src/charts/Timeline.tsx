@@ -1,6 +1,6 @@
 import { memo } from "react";
 import type { SolveResponse } from "../wasm";
-import { niceStep, stackRows } from "./svgUtil";
+import { maxAbs, niceStep, stackRows } from "./svgUtil";
 
 export const Timeline = memo(function Timeline({ r }: { r: SolveResponse }) {
   const W = 760,
@@ -13,8 +13,19 @@ export const Timeline = memo(function Timeline({ r }: { r: SolveResponse }) {
   const plotH = yBase - padT;
   const plotW = W - padL - padR;
 
+  const n = r.maneuvers.length;
+  if (n === 0) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
+        <text x={W / 2} y={H / 2} className="axis-label" textAnchor="middle">
+          no maneuvers
+        </text>
+      </svg>
+    );
+  }
+
   const mags = r.maneuvers.map((m) => Math.hypot(m.dv[0], m.dv[1], m.dv[2]));
-  const maxMag = Math.max(1e-12, ...mags);
+  const maxMag = maxAbs(mags, 1e-12);
   const step = niceStep(maxMag / 4);
   const domainMax = Math.max(step, Math.ceil(maxMag / step) * step);
 
