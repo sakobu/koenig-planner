@@ -141,12 +141,14 @@ form,
 .section:not([open]) {
   gap: 0;
 }
-/* Scenario preset picker: a card with one full-width select (names are longer
-   than the 7.5rem numeric-input default). */
+/* Scenario preset picker: the select fills the rail's remaining width (wider
+   than the 7.5rem numeric-input default) but must never force the fixed-width
+   command rail open. min-width:0 lets it shrink to fit and truncate a long
+   scenario name in the closed control — the dropdown still lists names in full —
+   rather than size to its widest option and overflow the deck. */
 .preset-section select {
-  width: auto;
-  min-width: 9.5rem;
   flex: 1;
+  min-width: 0;
 }
 .section > summary {
   position: relative;
