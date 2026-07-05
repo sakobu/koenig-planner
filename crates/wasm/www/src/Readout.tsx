@@ -1,12 +1,13 @@
 import { useRef, useState } from "react";
-import type { SolveOutcome, SolveResponse } from "./wasm";
-import { pickDisplay, type ApiError } from "./outcomeDisplay";
+import type { ApiError, SolveOutcome, SolveResponse } from "./wasm";
+import { pickDisplay } from "./outcomeDisplay";
+import { ErrorBanner } from "./ErrorBanner";
 import { Kpis } from "./charts/Kpis";
 import { Timeline } from "./charts/Timeline";
 import { PrimerMagnitude } from "./charts/PrimerMagnitude";
 import { RtnComponents } from "./charts/RtnComponents";
 import { PrimerComponents } from "./charts/PrimerComponents";
-import { Panel } from "./charts/Panel";
+import { Panel } from "./Panel";
 import { EciScene } from "./scene/EciScene";
 import { RtnScene } from "./scene/RtnScene";
 import { Playback } from "./scene/Playback";
@@ -14,19 +15,20 @@ import { Playback } from "./scene/Playback";
 function OkReadout({ r, error }: { r: SolveResponse; error: ApiError | null }) {
   const sampleCount = r.geometry.chief_track_eci.length;
   const [index, setIndex] = useState(0);
+  // The single clamp for the playback grid. The ChiefGeometry contract keeps all
+  // playback-grid arrays (chief_track_eci, deputy_track_rtn, primer_*) equal
+  // length, so one clamped frame drives both scenes consistently — rather than
+  // each scene re-clamping against its own array and risking a split picture.
+  const frame = Math.min(index, Math.max(0, sampleCount - 1));
   return (
     <section id="output">
-      {error && (
-        <div className={`error ${error.kind} overlay`}>
-          {`${error.kind}: ${error.message}`}
-        </div>
-      )}
+      {error && <ErrorBanner kind={error.kind} message={error.message} variant="overlay" />}
       <Kpis r={r} />
       <Panel title="Orbit (ECI)">
-        <EciScene g={r.geometry} sampleIndex={Math.min(index, Math.max(0, sampleCount - 1))} />
+        <EciScene g={r.geometry} sampleIndex={frame} />
       </Panel>
       <Panel title="Relative orbit (RTN, chief at origin)">
-        <RtnScene g={r.geometry} sampleIndex={Math.min(index, Math.max(0, sampleCount - 1))} />
+        <RtnScene g={r.geometry} sampleIndex={frame} />
       </Panel>
       <Panel title="Δv timeline">
         <Timeline r={r} />
@@ -59,9 +61,7 @@ export function Readout({ outcome }: { outcome: SolveOutcome | null }) {
   if (d.view === "error") {
     return (
       <section id="output">
-        <div className={`error ${d.error.kind}`}>
-          {`${d.error.kind}: ${d.error.message}`}
-        </div>
+        <ErrorBanner kind={d.error.kind} message={d.error.message} />
       </section>
     );
   }

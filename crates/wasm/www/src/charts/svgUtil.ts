@@ -1,3 +1,18 @@
+/** Build an SVG `path` `d` from parallel `xs`/`ys` sample arrays mapped through
+ *  the plot's `x`/`y` scales: `M` to the first point, `L` to the rest. Empty
+ *  when there are no samples. Coordinates are rounded to 2 dp to keep the path
+ *  string compact. */
+export function linePath(
+  xs: number[],
+  ys: number[],
+  x: (v: number) => number,
+  y: (v: number) => number,
+): string {
+  return xs
+    .map((xv, k) => `${k === 0 ? "M" : "L"}${x(xv).toFixed(2)},${y(ys[k]).toFixed(2)}`)
+    .join(" ");
+}
+
 /** Round a raw step up to a 1/2/5 ×10ⁿ "nice" increment for axis ticks. */
 export function niceStep(raw: number): number {
   const exp = Math.floor(Math.log10(raw));

@@ -4,15 +4,16 @@ import { Line, OrbitControls, Stars } from "@react-three/drei";
 import { BackSide } from "three";
 import type { ChiefGeometry } from "../wasm";
 import { scaleAll, type V3 } from "./vec";
+import { ARROW, SCENE } from "./palette";
 import { Arrow } from "./Arrow";
 
 const EARTH_RADIUS_M = 6.378e6;
 
 export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
   const k = 1 / g.a; // meters → scene units (a ≈ 1)
-  const orbit = useMemo(() => scaleAll(g.orbit_eci as V3[], k), [g, k]);
+  const orbit = useMemo(() => scaleAll(g.orbit_eci, k), [g, k]);
   const arc = useMemo(
-    () => (g.perigee_arc_eci ? scaleAll(g.perigee_arc_eci as V3[], k) : null),
+    () => (g.perigee_arc_eci ? scaleAll(g.perigee_arc_eci, k) : null),
     [g, k],
   );
   const earthR = EARTH_RADIUS_M * k;
@@ -31,24 +32,24 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         <group>
           <mesh>
             <sphereGeometry args={[earthR * 0.99, 32, 32]} />
-            <meshStandardMaterial color="#0d2336" />
+            <meshStandardMaterial color={SCENE.earthCore} />
           </mesh>
           <mesh>
             <sphereGeometry args={[earthR, 24, 24]} />
-            <meshBasicMaterial color="#3f86b3" wireframe />
+            <meshBasicMaterial color={SCENE.earthWire} wireframe />
           </mesh>
           <mesh>
             <sphereGeometry args={[earthR * 1.06, 24, 24]} />
-            <meshBasicMaterial color="#5cc8ff" transparent opacity={0.05} side={BackSide} />
+            <meshBasicMaterial color={SCENE.earthAtmo} transparent opacity={0.05} side={BackSide} />
           </mesh>
         </group>
         {/* ECI reference axes */}
         <axesHelper args={[1.6]} />
         {/* Chief orbit */}
-        <Line points={orbit} color="#7c8b9a" lineWidth={1.5} />
+        <Line points={orbit} color={SCENE.chiefOrbit} lineWidth={1.5} />
         {/* Perigee attitude-constraint window arc (piecewise only — eq. 49's T1,
             where the cost switches to FaceMax; Norm2 elsewhere) */}
-        {arc && <Line points={arc} color="#ffb454" lineWidth={3} />}
+        {arc && <Line points={arc} color={SCENE.perigeeArc} lineWidth={3} />}
         {/* Burn nodes + Δv (thrust) arrows — cyan. Arrows show DIRECTION only
             (fixed length); per-burn magnitude is read from the Δv-component
             bars (RtnComponents). Same for the amber primer arrow below. */}
@@ -58,26 +59,25 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
             <group key={j}>
               <mesh position={pos}>
                 <sphereGeometry args={[0.02, 12, 12]} />
-                <meshStandardMaterial color="#5cc8ff" />
+                <meshStandardMaterial color={SCENE.burn} />
               </mesh>
-              <Arrow origin={pos} dir={m.dv_eci as V3} length={0.35} color="#5cc8ff" />
+              <Arrow origin={pos} dir={m.dv_eci} length={ARROW.burn} color={SCENE.burn} />
             </group>
           );
         })}
         {/* Spacecraft + swept primer at the current playback sample. */}
         {g.chief_track_eci.length > 0 &&
           (() => {
-            const i = Math.min(sampleIndex, g.chief_track_eci.length - 1);
-            const c = g.chief_track_eci[i];
+            const c = g.chief_track_eci[sampleIndex];
             const pos: V3 = [c[0] * k, c[1] * k, c[2] * k];
-            const primer = g.primer_eci[i] ?? g.primer_eci[0];
+            const primer = g.primer_eci[sampleIndex] ?? g.primer_eci[0];
             return (
               <group>
                 <mesh position={pos}>
                   <sphereGeometry args={[0.03, 16, 16]} />
-                  <meshStandardMaterial color="#dce6f0" />
+                  <meshStandardMaterial color={SCENE.spacecraft} />
                 </mesh>
-                {primer && <Arrow origin={pos} dir={primer as V3} length={0.5} color="#ffb454" />}
+                {primer && <Arrow origin={pos} dir={primer} length={ARROW.primer} color={SCENE.primer} />}
               </group>
             );
           })()}

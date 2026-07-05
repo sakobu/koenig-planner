@@ -1,6 +1,6 @@
 import { memo } from "react";
 import type { SolveResponse } from "../wasm";
-import { stackRows } from "./svgUtil";
+import { linePath, stackRows } from "./svgUtil";
 
 export const PrimerMagnitude = memo(function PrimerMagnitude({ r }: { r: SolveResponse }) {
   const W = 760,
@@ -24,7 +24,7 @@ export const PrimerMagnitude = memo(function PrimerMagnitude({ r }: { r: SolveRe
   const x = (t: number) => padL + ((t - t0) / span) * plotW;
   const y = (m: number) => yBase - (m / domainMax) * plotH;
 
-  const path = times.map((t, k) => `${k === 0 ? "M" : "L"}${x(t).toFixed(2)},${y(mags[k]).toFixed(2)}`).join(" ");
+  const path = linePath(times, mags, x, y);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-primer">

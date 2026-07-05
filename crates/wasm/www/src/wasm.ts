@@ -1,11 +1,17 @@
-import init, {
-  solve,
-  version,
-  type SolveRequest,
-  type SolveResponse,
-  type SolveOutcome,
-  type CostSpec,
-  type ChiefGeometry,
+import init from "koenig-damico-planner-wasm";
+
+// Curated facade over the generated wasm-bindgen package: the sole importer of
+// it, re-exporting only what the app is meant to use — hiding the generated
+// noise (raw init/initSync, solve_json, internal DTOs) — behind one local
+// specifier that also absorbs package renames.
+export { solve, version } from "koenig-damico-planner-wasm";
+export type {
+  SolveRequest,
+  SolveResponse,
+  SolveOutcome,
+  CostSpec,
+  ChiefGeometry,
+  ApiError,
 } from "koenig-damico-planner-wasm";
 
 let ready: Promise<void> | null = null;
@@ -24,12 +30,3 @@ export function initWasm(): Promise<void> {
   }
   return ready;
 }
-
-export { solve, version };
-export type {
-  SolveRequest,
-  SolveResponse,
-  SolveOutcome,
-  CostSpec,
-  ChiefGeometry,
-};

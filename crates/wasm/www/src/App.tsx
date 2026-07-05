@@ -1,20 +1,28 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { initWasm, version, type SolveRequest } from "./wasm";
 import { GOLDEN } from "./defaults";
 import { useSolveOutcome } from "./useSolve";
 import { Controls } from "./controls/Controls";
 import { Readout } from "./Readout";
+import { ErrorBanner } from "./ErrorBanner";
 
 export default function App() {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [req, setReq] = useState<SolveRequest>(GOLDEN);
-  useEffect(() => {
+
+  // Re-runnable so the init-failure fork can retry (initWasm drops its cached
+  // rejection, so a fresh call re-attempts the load).
+  const runInit = useCallback(() => {
+    setInitError(null);
     initWasm().then(
       () => setReady(true),
       (e: unknown) => setInitError(e instanceof Error ? e.message : String(e)),
     );
   }, []);
+  useEffect(() => {
+    runInit();
+  }, [runInit]);
 
   const outcome = useSolveOutcome(req, ready);
   const fault = initError !== null || outcome?.status === "err";
@@ -32,7 +40,10 @@ export default function App() {
         <Controls req={req} setReq={setReq} />
         {initError ? (
           <section id="output">
-            <div className="error internal">{`wasm init failed: ${initError}`}</div>
+            <ErrorBanner variant="internal" message={`wasm init failed: ${initError}`} />
+            <button type="button" className="retry" onClick={runInit}>
+              retry
+            </button>
           </section>
         ) : (
           <Readout outcome={outcome} />

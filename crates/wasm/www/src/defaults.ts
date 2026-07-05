@@ -1,4 +1,4 @@
-import type { SolveRequest } from "koenig-damico-planner-wasm";
+import type { SolveRequest } from "./wasm";
 
 /** The canonical worked-example fixture (angles in degrees, lengths in meters). */
 export const GOLDEN: SolveRequest = {
