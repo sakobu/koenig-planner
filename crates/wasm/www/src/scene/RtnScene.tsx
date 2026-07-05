@@ -4,7 +4,7 @@ import { Line, OrbitControls, Text } from "@react-three/drei";
 import type { ChiefGeometry } from "../wasm";
 import { maxRadius, rtnToView, scaleAll, type V3 } from "./vec";
 import { RTN_BASIS, RTN_COLORS } from "../rtn";
-import { SCENE } from "./palette";
+import { ARROW, SCENE } from "./palette";
 import { Arrow } from "./Arrow";
 
 export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
@@ -61,13 +61,14 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         })}
         {/* Deputy relative orbit */}
         <Line points={curve} color={SCENE.deputy} lineWidth={2} />
-        {/* Burn nodes + Δv (thrust) arrows — violet. Arrows show DIRECTION only
+        {/* Burn nodes + Δv (thrust) arrows — cyan, the same Δv/thrust channel as
+            the ECI scene (and the timeline stems). Arrows show DIRECTION only
             (fixed length); per-burn magnitude is read from the Δv-component bars
-            (RtnComponents), matching the ECI scene. Both the position and the Δv
-            pass through rtnToView so they align with the gnomon and the deputy
-            curve; dv_rtn is already the native RTN frame, so no extra rotation.
-            The node sits on the deputy curve as a schematic anchor (see
-            geometry.rs) — only the arrow direction is exact. */}
+            (RtnComponents). Both the position and the Δv pass through rtnToView so
+            they align with the gnomon and the deputy curve; dv_rtn is already the
+            native RTN frame, so no extra rotation. The node sits on the deputy
+            curve as a schematic anchor (see geometry.rs) — only the arrow
+            direction is exact. */}
         {g.maneuver_rtn.map((m, j) => {
           const p = rtnToView(m.position_rtn);
           const pos: V3 = [p[0] * k, p[1] * k, p[2] * k];
@@ -75,9 +76,9 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
             <group key={j}>
               <mesh position={pos}>
                 <sphereGeometry args={[0.03, 12, 12]} />
-                <meshStandardMaterial color={SCENE.rtnBurn} />
+                <meshStandardMaterial color={SCENE.burn} />
               </mesh>
-              <Arrow origin={pos} dir={rtnToView(m.dv_rtn)} length={0.3} color={SCENE.rtnBurn} />
+              <Arrow origin={pos} dir={rtnToView(m.dv_rtn)} length={ARROW.burn} color={SCENE.burn} />
             </group>
           );
         })}
@@ -93,7 +94,7 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
               <Arrow
                 origin={deputyPos}
                 dir={rtnToView(g.primer_rtn[sampleIndex] ?? g.primer_rtn[0])}
-                length={0.4}
+                length={ARROW.primer}
                 color={SCENE.primer}
               />
             )}

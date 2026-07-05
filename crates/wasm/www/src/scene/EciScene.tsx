@@ -4,7 +4,7 @@ import { Line, OrbitControls, Stars } from "@react-three/drei";
 import { BackSide } from "three";
 import type { ChiefGeometry } from "../wasm";
 import { scaleAll, type V3 } from "./vec";
-import { SCENE } from "./palette";
+import { ARROW, SCENE } from "./palette";
 import { Arrow } from "./Arrow";
 
 const EARTH_RADIUS_M = 6.378e6;
@@ -59,9 +59,9 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
             <group key={j}>
               <mesh position={pos}>
                 <sphereGeometry args={[0.02, 12, 12]} />
-                <meshStandardMaterial color={SCENE.eciBurn} />
+                <meshStandardMaterial color={SCENE.burn} />
               </mesh>
-              <Arrow origin={pos} dir={m.dv_eci} length={0.35} color={SCENE.eciBurn} />
+              <Arrow origin={pos} dir={m.dv_eci} length={ARROW.burn} color={SCENE.burn} />
             </group>
           );
         })}
@@ -77,7 +77,7 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
                   <sphereGeometry args={[0.03, 16, 16]} />
                   <meshStandardMaterial color={SCENE.spacecraft} />
                 </mesh>
-                {primer && <Arrow origin={pos} dir={primer} length={0.5} color={SCENE.primer} />}
+                {primer && <Arrow origin={pos} dir={primer} length={ARROW.primer} color={SCENE.primer} />}
               </group>
             );
           })()}
