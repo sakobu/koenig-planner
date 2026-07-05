@@ -120,6 +120,13 @@ form,
 .section:not([open]) {
   gap: 0;
 }
+/* Scenario preset picker: a card with one full-width select (names are longer
+   than the 7.5rem numeric-input default). */
+.preset-section select {
+  width: auto;
+  min-width: 9.5rem;
+  flex: 1;
+}
 .section > summary {
   position: relative;
   display: flex;
