@@ -1,9 +1,8 @@
 import { memo } from "react";
 import type { SolveResponse } from "../wasm";
-import { niceStep } from "./svgUtil";
-
-const RTN_COLORS = { R: "#ff6b6b", T: "#4dd2ff", N: "#ffb454" } as const;
-const RTN_NAME = { R: "radial", T: "transverse", N: "normal" } as const;
+import { maxAbs, niceStep } from "./svgUtil";
+import { RTN_COLORS } from "../rtn";
+import { RtnLegend } from "./RtnLegend";
 
 export const RtnComponents = memo(function RtnComponents({ r }: { r: SolveResponse }) {
   const n = r.maneuvers.length;
@@ -33,8 +32,7 @@ export const RtnComponents = memo(function RtnComponents({ r }: { r: SolveRespon
     );
   }
 
-  const allAbsVals = r.maneuvers.flatMap((m) => m.dv.map(Math.abs));
-  const maxComp = Math.max(1e-12, ...allAbsVals);
+  const maxComp = maxAbs(r.maneuvers.flatMap((m) => m.dv), 1e-12);
   const plotW = W - padL - padR;
   const cx = padL + plotW / 2; // zero axis x-coordinate
   const labelRoom = 72; // reserve space at bar tips for value text
@@ -46,9 +44,6 @@ export const RtnComponents = memo(function RtnComponents({ r }: { r: SolveRespon
     blockH = 3 * bh + 2 * gap;
   const axisTop = padT - 6;
   const axisBot = padT + n * rowH + 2;
-
-  // Legend x-positions spread across the header row.
-  const lstep = (W - padR - 120 - padL) / 2;
 
   // Vertical grid tick values (symmetric about zero).
   const gridTicks: number[] = [];
@@ -64,17 +59,7 @@ export const RtnComponents = memo(function RtnComponents({ r }: { r: SolveRespon
       className="chart chart-rtncomp"
     >
       {/* Legend */}
-      {(["R", "T", "N"] as const).map((comp, k) => {
-        const lx = padL + k * lstep;
-        return (
-          <g key={comp}>
-            <rect x={lx} y={padT - 30} width={11} height={11} rx={2} fill={RTN_COLORS[comp]} />
-            <text x={lx + 17} y={padT - 20} className="legend-label">
-              {RTN_NAME[comp]}
-            </text>
-          </g>
-        );
-      })}
+      <RtnLegend x={padL} y={padT} width={W} padR={padR} />
       <text x={W - padR} y={padT - 20} className="axis-label" textAnchor="end">
         [m/s]
       </text>

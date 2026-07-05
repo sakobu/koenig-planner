@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCommit } from "./NumberField";
+import { optionalCommit, parseCommit } from "./NumberField";
 
 describe("parseCommit", () => {
   it("commits a plain number", () => {
@@ -32,5 +32,23 @@ describe("parseCommit", () => {
 
   it("commits a trailing-dot draft (Number('1.') === 1) so typing can continue", () => {
     expect(parseCommit("1.")).toBe(1);
+  });
+});
+
+describe("optionalCommit (piecewise period / t_perigee0)", () => {
+  it("commits undefined for an empty draft ('auto')", () => {
+    expect(optionalCommit("")).toEqual({ commit: true, value: undefined });
+    expect(optionalCommit("   ")).toEqual({ commit: true, value: undefined });
+  });
+
+  it("commits a finite number, including scientific notation", () => {
+    expect(optionalCommit("5000")).toEqual({ commit: true, value: 5000 });
+    expect(optionalCommit("1e5")).toEqual({ commit: true, value: 100000 });
+  });
+
+  it("does NOT commit an in-progress draft, so NaN never reaches the solver", () => {
+    expect(optionalCommit("-")).toEqual({ commit: false });
+    expect(optionalCommit("1e")).toEqual({ commit: false });
+    expect(optionalCommit("abc")).toEqual({ commit: false });
   });
 });

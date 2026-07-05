@@ -1,7 +1,4 @@
-import type { SolveOutcome, SolveResponse } from "./wasm";
-
-/** The error payload of a failed solve outcome. */
-export type ApiError = Extract<SolveOutcome, { status: "err" }>["error"];
+import type { ApiError, SolveOutcome, SolveResponse } from "./wasm";
 
 /** What the readout should render for a given outcome. */
 export type Display =

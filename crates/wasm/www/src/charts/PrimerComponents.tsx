@@ -5,15 +5,9 @@
 // magnitude panel shows which way the dual rewards thrust at each time.
 import { memo } from "react";
 import type { SolveResponse } from "../wasm";
-import { maxAbs } from "./svgUtil";
-
-const RTN_COLORS = { R: "#ff6b6b", T: "#4dd2ff", N: "#ffb454" } as const;
-const RTN_NAME = { R: "radial", T: "transverse", N: "normal" } as const;
-
-function pathFor(times: number[], ys: number[], x: (t: number) => number, y: (v: number) => number): string {
-  if (times.length === 0) return "";
-  return times.map((t, k) => `${k === 0 ? "M" : "L"}${x(t).toFixed(2)},${y(ys[k]).toFixed(2)}`).join(" ");
-}
+import { linePath, maxAbs } from "./svgUtil";
+import { RTN_COLORS } from "../rtn";
+import { RtnLegend } from "./RtnLegend";
 
 export const PrimerComponents = memo(function PrimerComponents({ r }: { r: SolveResponse }) {
   const W = 760,
@@ -36,9 +30,6 @@ export const PrimerComponents = memo(function PrimerComponents({ r }: { r: Solve
   const x = (t: number) => padL + ((t - t0) / span) * (W - padL - padR);
   const y = (v: number) => cy0 - (v / domainMax) * half;
 
-  // Legend x-positions spread across the header row.
-  const lstep = (W - padR - 120 - padL) / 2;
-
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -47,17 +38,7 @@ export const PrimerComponents = memo(function PrimerComponents({ r }: { r: Solve
       className="chart chart-primer-rtn"
     >
       {/* Legend */}
-      {(["R", "T", "N"] as const).map((comp, k) => {
-        const lx = padL + k * lstep;
-        return (
-          <g key={comp}>
-            <rect x={lx} y={padT - 30} width={11} height={11} rx={2} fill={RTN_COLORS[comp]} />
-            <text x={lx + 17} y={padT - 20} className="legend-label">
-              {RTN_NAME[comp]}
-            </text>
-          </g>
-        );
-      })}
+      <RtnLegend x={padL} y={padT} width={W} padR={padR} />
 
       {/* Centered zero axis */}
       <line x1={padL} y1={cy0} x2={W - padR} y2={cy0} className="zero-axis" />
@@ -87,7 +68,7 @@ export const PrimerComponents = memo(function PrimerComponents({ r }: { r: Solve
         return (
           <path
             key={comp}
-            d={pathFor(times, ys, x, y)}
+            d={linePath(times, ys, x, y)}
             className="primer-comp"
             stroke={RTN_COLORS[comp]}
           />

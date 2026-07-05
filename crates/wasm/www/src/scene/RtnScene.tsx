@@ -3,6 +3,8 @@ import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls, Text } from "@react-three/drei";
 import type { ChiefGeometry } from "../wasm";
 import { maxRadius, rtnToView, scaleAll, type V3 } from "./vec";
+import { RTN_BASIS, RTN_COLORS } from "../rtn";
+import { SCENE } from "./palette";
 import { Arrow } from "./Arrow";
 
 export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
@@ -12,7 +14,7 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
   // non-zero δa gives the deputy a slightly different period, so the curve is an
   // open, drifting spiral rather than a single closed loop: that secular
   // along-track drift is real physics, shown honestly rather than hidden.
-  const track = g.deputy_track_rtn as V3[];
+  const track = g.deputy_track_rtn;
   const rmax = Math.max(1e-6, maxRadius(track)); // rotation-invariant, so map order is irrelevant
   const k = 1 / rmax; // auto-fit meters → ~unit scene
   // Orient with the conventional radial-up / transverse-right / normal-depth
@@ -24,10 +26,9 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
   const axis = 0.8; // reference-gnomon length; kept short so labels stay inside the viewport
 
   // Deputy glyph: position at the current playback sample, same scale/mapping as the curve.
-  const clampedIdx = Math.min(sampleIndex, Math.max(0, track.length - 1));
   let deputyPos: V3 | null = null;
   if (track.length > 0) {
-    const v = rtnToView(track[clampedIdx]);
+    const v = rtnToView(track[sampleIndex]);
     deputyPos = [v[0] * k, v[1] * k, v[2] * k];
   }
 
@@ -39,19 +40,27 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         {/* Chief at origin */}
         <mesh>
           <sphereGeometry args={[0.03, 16, 16]} />
-          <meshStandardMaterial color="#dce6f0" />
+          <meshStandardMaterial color={SCENE.spacecraft} />
         </mesh>
-        {/* RTN axes, reoriented: T transverse (horizontal, +X), R radial
-            (vertical, +Y), N normal (depth, −Z). Colors keep their physical
-            binding: R radial red, T transverse cyan, N normal amber. */}
-        <Line points={[[0, 0, 0], [axis, 0, 0]]} color="#4dd2ff" lineWidth={1.5} />
-        <Line points={[[0, 0, 0], [0, axis, 0]]} color="#ff6b6b" lineWidth={1.5} />
-        <Line points={[[0, 0, 0], [0, 0, -axis]]} color="#ffb454" lineWidth={1.5} />
-        <Text position={[axis + 0.1, 0, 0]} fontSize={0.12} color="#4dd2ff">T</Text>
-        <Text position={[0, axis + 0.1, 0]} fontSize={0.12} color="#ff6b6b">R</Text>
-        <Text position={[0, 0, -axis - 0.1]} fontSize={0.12} color="#ffb454">N</Text>
+        {/* RTN axis gnomon, derived from rtnToView(basis) so the drawn axes and
+            labels can never drift from the data's view mapping: T transverse
+            (+X), R radial (+Y), N normal (−Z). Physical color binding — R radial
+            red, T transverse cyan, N normal amber (see ../rtn). */}
+        {(["R", "T", "N"] as const).map((comp) => {
+          const dir = rtnToView(RTN_BASIS[comp]);
+          const end: V3 = [dir[0] * axis, dir[1] * axis, dir[2] * axis];
+          const lpos: V3 = [dir[0] * (axis + 0.1), dir[1] * (axis + 0.1), dir[2] * (axis + 0.1)];
+          return (
+            <group key={comp}>
+              <Line points={[[0, 0, 0], end]} color={RTN_COLORS[comp]} lineWidth={1.5} />
+              <Text position={lpos} fontSize={0.12} color={RTN_COLORS[comp]}>
+                {comp}
+              </Text>
+            </group>
+          );
+        })}
         {/* Deputy relative orbit */}
-        <Line points={curve} color="#5ef2a8" lineWidth={2} />
+        <Line points={curve} color={SCENE.deputy} lineWidth={2} />
         {/* Burn nodes + Δv (thrust) arrows — violet. Arrows show DIRECTION only
             (fixed length); per-burn magnitude is read from the Δv-component bars
             (RtnComponents), matching the ECI scene. Both the position and the Δv
@@ -60,15 +69,15 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
             The node sits on the deputy curve as a schematic anchor (see
             geometry.rs) — only the arrow direction is exact. */}
         {g.maneuver_rtn.map((m, j) => {
-          const p = rtnToView(m.position_rtn as V3);
+          const p = rtnToView(m.position_rtn);
           const pos: V3 = [p[0] * k, p[1] * k, p[2] * k];
           return (
             <group key={j}>
               <mesh position={pos}>
                 <sphereGeometry args={[0.03, 12, 12]} />
-                <meshStandardMaterial color="#c792ff" />
+                <meshStandardMaterial color={SCENE.rtnBurn} />
               </mesh>
-              <Arrow origin={pos} dir={rtnToView(m.dv_rtn as V3)} length={0.3} color="#c792ff" />
+              <Arrow origin={pos} dir={rtnToView(m.dv_rtn)} length={0.3} color={SCENE.rtnBurn} />
             </group>
           );
         })}
@@ -78,14 +87,14 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
           <group>
             <mesh position={deputyPos}>
               <sphereGeometry args={[0.04, 16, 16]} />
-              <meshStandardMaterial color="#5ef2a8" />
+              <meshStandardMaterial color={SCENE.deputy} />
             </mesh>
             {g.primer_rtn.length > 0 && (
               <Arrow
                 origin={deputyPos}
-                dir={rtnToView((g.primer_rtn[clampedIdx] ?? g.primer_rtn[0]) as V3)}
+                dir={rtnToView(g.primer_rtn[sampleIndex] ?? g.primer_rtn[0])}
                 length={0.4}
-                color="#ffb454"
+                color={SCENE.primer}
               />
             )}
           </group>

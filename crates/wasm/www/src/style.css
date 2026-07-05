@@ -31,9 +31,6 @@
   --amber: #ffb454; /* window / primer */
   --green: #5ef2a8; /* nominal */
   --red: #ff6b6b; /* fault */
-  --rtn-r: #ff6b6b;
-  --rtn-t: #4dd2ff;
-  --rtn-n: #ffb454;
   --glow-cyan: 0 0 12px rgba(92, 200, 255, 0.3);
 
   /* ── Type ────────────────────────────────────────────────────────── */
@@ -610,6 +607,28 @@ header.fault .status-lamp {
   top: 0;
   z-index: 5;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+/* Retry affordance on the init-failure fault surface. */
+.retry {
+  justify-self: start;
+  width: auto;
+  background: var(--bg-input);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  padding: 0.3rem 0.9rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.retry:hover,
+.retry:focus-visible {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
 }
 
 /* ── Responsive ──────────────────────────────────────────────────── */
