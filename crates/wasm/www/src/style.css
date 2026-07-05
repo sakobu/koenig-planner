@@ -80,6 +80,27 @@ header h1 {
   color: var(--ink-faint);
 }
 
+/* Slim "what is this" bar under the title bar: one sentence + repo/paper links. */
+.about {
+  margin: 0;
+  padding: 0.7rem 2rem;
+  background: var(--bg-rail);
+  border-bottom: 1px solid var(--edge);
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+.about a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+.about a:hover,
+.about a:focus-visible {
+  outline: none;
+  text-decoration: underline;
+}
+
 /* ── Deck ────────────────────────────────────────────────────────── */
 main {
   display: grid;
@@ -411,6 +432,18 @@ input::placeholder {
   width: 10px;
   height: 1px;
   background: var(--cyan);
+}
+
+/* One-line panel caption: what the instrument means, in the AA-safe faint ink,
+   pulled up snug under the title rule. */
+.panel-caption {
+  flex: none;
+  margin: -0.5rem 0 0.9rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
 }
 
 /* ── Charts ──────────────────────────────────────────────────────── */

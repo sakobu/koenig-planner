@@ -32,28 +32,46 @@ function OkReadout({
     <section id="output">
       {error && <ErrorBanner kind={error.kind} message={error.message} variant="overlay" />}
       <Kpis r={r} />
-      <Panel title="Orbit (ECI)">
+      <Panel
+        title="Orbit (ECI)"
+        caption="Chief orbit and burn geometry in the Earth-centered inertial frame. The amber arc (piecewise cost) is the perigee attitude-constraint window."
+      >
         <EciScene g={r.geometry} sampleIndex={frame} />
       </Panel>
-      <Panel title="Relative orbit (RTN, chief at origin)">
+      <Panel
+        title="Target relative orbit (RTN, chief at origin)"
+        caption="The deputy's target relative orbit. Burn markers are schematic anchors on that orbit — only the Δv direction is exact; the true transfer trajectory is a later phase."
+      >
         <RtnScene g={r.geometry} sampleIndex={frame} />
       </Panel>
-      <Panel title="Δv timeline">
+      <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
         <Timeline r={r} />
       </Panel>
-      <Panel title="Primer magnitude vs time">
+      <Panel
+        title="Primer magnitude vs time"
+        caption="|p(t)| reaches the amber |p| = 1 bound exactly at optimal burn times; touching 1 between burns signals slack in the plan."
+      >
         <PrimerMagnitude r={r} />
       </Panel>
-      <Panel title="Δv components (R/T/N)">
+      <Panel
+        title="Δv components (R/T/N)"
+        caption="Executed Δv per burn in the chief RTN frame — radial (R), along-track (T), cross-track (N)."
+      >
         <RtnComponents r={r} />
       </Panel>
-      <Panel title="Primer components (R/T/N)">
+      <Panel
+        title="Primer components (R/T/N)"
+        caption="The primer vector p(t) = Γᵀλ in RTN — the dual certificate; each burn's direction is the support direction of p (parallel to p only under the norm2 cost)."
+      >
         <PrimerComponents r={r} />
       </Panel>
-      <Panel title="Playback">
+      <Panel title="Playback" caption="Scrub the maneuver grid; both 3D scenes track the selected time.">
         <Playback count={sampleCount} index={index} setIndex={setIndex} />
       </Panel>
-      <Panel title="Plan (precise)">
+      <Panel
+        title="Plan (precise)"
+        caption="Full-precision burns (m/s) and downloads. The charts round for display; these values and the exports do not."
+      >
         <PlanTable req={req} r={r} />
       </Panel>
     </section>

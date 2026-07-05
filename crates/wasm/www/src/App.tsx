@@ -36,6 +36,22 @@ export default function App() {
         </span>
         <span className="status-lamp">{fault ? "● fault" : "● nominal"}</span>
       </header>
+      <p className="about">
+        Interactive demo of a finite-difference-verified Rust port of the
+        Koenig–D'Amico fuel-optimal impulsive control algorithm — minimum-Δv
+        maneuver planning for spacecraft relative orbits (ROEs) under J2.{" "}
+        <a href="https://github.com/sakobu/koenig-planner" target="_blank" rel="noopener noreferrer">
+          GitHub
+        </a>
+        {" · "}
+        <a
+          href="https://ieeexplore.ieee.org/document/9209144"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Paper (Koenig &amp; D'Amico, IEEE TAC 2020)
+        </a>
+      </p>
       <main>
         <Controls req={req} setReq={setReq} />
         {initError ? (
