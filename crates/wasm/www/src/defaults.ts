@@ -40,12 +40,14 @@ export const PRESETS: Preset[] = [
     id: "leo-rendezvous",
     name: "LEO rendezvous (co-elliptic)",
     req: {
-      // ~500 km, ISS-like inclination; a pure along-track rephasing.
+      // ~500 km, ISS-like inclination. Co-elliptic: the relative eccentricity
+      // (δe_x) traces a coplanar 2:1 R/T ellipse centred ~400 m ahead of the
+      // chief — the classic co-elliptic relative orbit, not just a fixed offset.
       chief: { a: 6_878e3, e: 0.0005, i: 51.6, raan: 0, argp: 0, mean_anom: 0 },
       t_i: 0,
       t_f: 11_400,
       dt: 30,
-      w_meters: [0, 400, 0, 0, 0, 0],
+      w_meters: [0, 400, 150, 0, 0, 0],
       cost: { type: "norm2" },
     },
   },
