@@ -24,7 +24,7 @@ export default function App() {
     runInit();
   }, [runInit]);
 
-  const outcome = useSolveOutcome(req, ready);
+  const { req: solvedReq, outcome } = useSolveOutcome(req, ready);
   const fault = initError !== null || outcome?.status === "err";
 
   return (
@@ -62,7 +62,7 @@ export default function App() {
             </button>
           </section>
         ) : (
-          <Readout outcome={outcome} req={req} />
+          <Readout outcome={outcome} req={solvedReq} />
         )}
       </main>
     </>

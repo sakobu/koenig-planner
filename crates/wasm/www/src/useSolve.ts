@@ -35,11 +35,15 @@ export function useThrottled<T>(value: T, ms: number): T {
 
 /** Solve the (throttled) request once wasm is ready. Memoized on the request.
  *  solve() never throws — it returns the tagged union — and is pure, so the
- *  memo body has no side effects (safe under React 19 StrictMode double-invoke). */
+ *  memo body has no side effects (safe under React 19 StrictMode double-invoke).
+ *  Returns `throttledReq` alongside `outcome` (not the live `req`) because that
+ *  is the exact request that produced `outcome` — callers pairing the two for
+ *  display or export need them to always match. */
 export function useSolveOutcome(
   req: SolveRequest,
   ready: boolean,
-): SolveOutcome | null {
+): { req: SolveRequest; outcome: SolveOutcome | null } {
   const throttledReq = useThrottled(req, SOLVE_INTERVAL_MS);
-  return useMemo(() => (ready ? solve(throttledReq) : null), [throttledReq, ready]);
+  const outcome = useMemo(() => (ready ? solve(throttledReq) : null), [throttledReq, ready]);
+  return { req: throttledReq, outcome };
 }

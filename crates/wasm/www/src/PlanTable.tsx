@@ -25,13 +25,13 @@ export function PlanTable({ req, r }: { req: SolveRequest; r: SolveResponse }) {
       <table className="burns">
         <thead>
           <tr>
-            <th>#</th>
-            <th>t [s]</th>
-            <th>Δv_R</th>
-            <th>Δv_T</th>
-            <th>Δv_N</th>
-            <th>|Δv| [m/s]</th>
-            <th>ν [rad]</th>
+            <th scope="col">#</th>
+            <th scope="col">t [s]</th>
+            <th scope="col">Δv_R</th>
+            <th scope="col">Δv_T</th>
+            <th scope="col">Δv_N</th>
+            <th scope="col">|Δv| [m/s]</th>
+            <th scope="col">ν [rad]</th>
           </tr>
         </thead>
         <tbody>

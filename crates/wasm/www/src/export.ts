@@ -22,13 +22,15 @@ export function toPlanJson(req: SolveRequest, r: SolveResponse): string {
 }
 
 /** Trigger a client-side download of `text` as `filename`: a Blob behind a
- *  transient object URL clicked through a throwaway anchor, revoked after. DOM
- *  side-effect only, so it is not unit-tested — the pure builders above are. */
+ *  transient object URL clicked through a throwaway anchor, with the URL
+ *  revoked on a deferred tick so engines that read the blob asynchronously
+ *  don't race the revoke. DOM side-effect only, so it is not unit-tested — the
+ *  pure builders above are. */
 export function downloadBlob(filename: string, mime: string, text: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: mime }));
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
