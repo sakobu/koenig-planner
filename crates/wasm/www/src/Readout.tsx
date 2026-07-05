@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { ApiError, SolveOutcome, SolveResponse } from "./wasm";
+import type { ApiError, SolveOutcome, SolveRequest, SolveResponse } from "./wasm";
 import { pickDisplay } from "./outcomeDisplay";
 import { ErrorBanner } from "./ErrorBanner";
 import { Kpis } from "./charts/Kpis";
@@ -8,17 +8,25 @@ import { PrimerMagnitude } from "./charts/PrimerMagnitude";
 import { RtnComponents } from "./charts/RtnComponents";
 import { PrimerComponents } from "./charts/PrimerComponents";
 import { Panel } from "./Panel";
+import { PlanTable } from "./PlanTable";
 import { EciScene } from "./scene/EciScene";
 import { RtnScene } from "./scene/RtnScene";
 import { Playback } from "./scene/Playback";
 
-function OkReadout({ r, error }: { r: SolveResponse; error: ApiError | null }) {
+function OkReadout({
+  r,
+  req,
+  error,
+}: {
+  r: SolveResponse;
+  req: SolveRequest;
+  error: ApiError | null;
+}) {
   const sampleCount = r.geometry.chief_track_eci.length;
   const [index, setIndex] = useState(0);
   // The single clamp for the playback grid. The ChiefGeometry contract keeps all
   // playback-grid arrays (chief_track_eci, deputy_track_rtn, primer_*) equal
-  // length, so one clamped frame drives both scenes consistently — rather than
-  // each scene re-clamping against its own array and risking a split picture.
+  // length, so one clamped frame drives both scenes consistently.
   const frame = Math.min(index, Math.max(0, sampleCount - 1));
   return (
     <section id="output">
@@ -45,18 +53,28 @@ function OkReadout({ r, error }: { r: SolveResponse; error: ApiError | null }) {
       <Panel title="Playback">
         <Playback count={sampleCount} index={index} setIndex={setIndex} />
       </Panel>
+      <Panel title="Plan (precise)">
+        <PlanTable req={req} r={r} />
+      </Panel>
     </section>
   );
 }
 
-export function Readout({ outcome }: { outcome: SolveOutcome | null }) {
-  // Retain the last good response so a transient error (e.g. a mid-edit
-  // bad_request) overlays the error without unmounting the scenes — which would
-  // reset their camera poses and the scrub index.
-  const lastGood = useRef<SolveResponse | null>(null);
-  if (outcome?.status === "ok") lastGood.current = outcome.value;
+export function Readout({
+  outcome,
+  req,
+}: {
+  outcome: SolveOutcome | null;
+  req: SolveRequest;
+}) {
+  // Retain the last good response AND the request that produced it: the pairing
+  // lets a transient error overlay without unmounting the scenes (keeping camera
+  // + scrub state) while the JSON export always ships a response beside the exact
+  // request that generated it.
+  const lastGood = useRef<{ req: SolveRequest; r: SolveResponse } | null>(null);
+  if (outcome?.status === "ok") lastGood.current = { req, r: outcome.value };
 
-  const d = pickDisplay(outcome, lastGood.current);
+  const d = pickDisplay(outcome, lastGood.current?.r ?? null);
   if (d.view === "empty") return <section id="output" />;
   if (d.view === "error") {
     return (
@@ -65,5 +83,8 @@ export function Readout({ outcome }: { outcome: SolveOutcome | null }) {
       </section>
     );
   }
-  return <OkReadout r={d.r} error={d.error} />;
+  // The on-screen response is either the current solve (pairs with the current
+  // req) or the retained last-good one (pairs with its stored req).
+  const shownReq = outcome?.status === "ok" ? req : lastGood.current!.req;
+  return <OkReadout r={d.r} req={shownReq} error={d.error} />;
 }

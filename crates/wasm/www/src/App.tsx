@@ -46,7 +46,7 @@ export default function App() {
             </button>
           </section>
         ) : (
-          <Readout outcome={outcome} />
+          <Readout outcome={outcome} req={req} />
         )}
       </main>
     </>
