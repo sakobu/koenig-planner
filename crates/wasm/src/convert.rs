@@ -224,6 +224,7 @@ mod tests {
             a: 25_000e3,
             e: 0.7,
             maneuver_nu: vec![0.5],
+            chief_nu_track: vec![0.25],
             perigee_window: Some([0.1, 0.2]),
             orbit_eci: vec![[1.0, 2.0, 3.0]],
             chief_track_eci: vec![[4.0, 5.0, 6.0]],
@@ -238,7 +239,8 @@ mod tests {
             primer_eci: vec![[0.4, 0.5, 0.6]],
             primer_rtn: vec![[0.7, 0.8, 0.9]],
             perigee_arc_eci: Some(vec![[1.1, 1.2, 1.3]]),
-            deputy_track_rtn: vec![[1.0, 2.0, 3.0]],
+            target_track_rtn: vec![[1.0, 2.0, 3.0]],
+            transfer_track_rtn: vec![[2.0, 3.0, 4.0]],
             roe_track: vec![[1.5, 2.5, 3.5, 4.5, 5.5, 6.5]],
             roe_jumps: vec![[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]],
             target_roe: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
@@ -257,6 +259,9 @@ mod tests {
         assert_eq!(got.geometry.a, 25_000e3);
         assert_eq!(got.geometry.e, 0.7);
         assert_eq!(got.geometry.maneuver_nu, vec![0.5]);
+        assert_eq!(got.geometry.chief_nu_track, vec![0.25]);
+        assert_eq!(got.geometry.target_track_rtn, vec![[1.0, 2.0, 3.0]]);
+        assert_eq!(got.geometry.transfer_track_rtn, vec![[2.0, 3.0, 4.0]]);
         assert_eq!(got.geometry.perigee_window, Some([0.1, 0.2]));
         assert_eq!(got.geometry.maneuver_rtn.len(), 1);
         assert_eq!(got.geometry.maneuver_rtn[0].position_rtn, [0.7, 0.8, 0.9]);

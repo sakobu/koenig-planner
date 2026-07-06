@@ -98,9 +98,9 @@ pub struct ManeuverEciDto {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 pub struct ManeuverRtnDto {
-    /// Deputy relative burn position in the chief RTN frame `[m]`. A schematic
-    /// anchor on the target-ROE deputy track (see `geometry.rs`); only the Δv
-    /// direction is exact.
+    /// Deputy relative burn position in the chief RTN frame `[m]` — the true
+    /// transfer position at the burn's grid sample (post-burn state), so each
+    /// marker sits exactly on the drawn transfer trajectory.
     pub position_rtn: [f64; 3],
     /// Executed Δv in the chief RTN frame `[m/s]` `[R, T, N]` — the native
     /// solver frame, echoed with no rotation.
@@ -120,6 +120,9 @@ pub struct ChiefGeometry {
     pub a: f64,
     pub e: f64,
     pub maneuver_nu: Vec<f64>,
+    /// Chief true anomaly `[rad]` at each `primer_times` sample (playback
+    /// readout; same Kepler chain as `maneuver_nu`).
+    pub chief_nu_track: Vec<f64>,
     #[tsify(optional)]
     pub perigee_window: Option<[f64; 2]>,
     /// Closed-loop chief-orbit samples in ECI `[m]` (orbit-shape curve).
@@ -141,9 +144,20 @@ pub struct ChiefGeometry {
     /// only) — eq. 49's T1 region, where the gauge is FaceMax.
     #[tsify(optional)]
     pub perigee_arc_eci: Option<Vec<[f64; 3]>>,
-    /// Deputy position in the chief RTN frame `[m]` at each `primer_times` sample
-    /// (the playback grid) — the deputy glyph that tracks the scrubber.
-    pub deputy_track_rtn: Vec<[f64; 3]>,
+    /// Deputy position in the chief RTN frame `[m]` at each `primer_times`
+    /// sample for the **target** relative orbit — the deputy whose ROE relative
+    /// to the chief at `t_f` is `target_roe` (where the solver enforces the
+    /// target), drawn as the ghost curve the transfer lands on.
+    pub target_track_rtn: Vec<[f64; 3]>,
+    /// Deputy position in the chief RTN frame `[m]` at each `primer_times`
+    /// sample along the **true transfer**: the controlled pseudostate
+    /// `roe_track` mapped through the exact ROE inverse at each sample's chief.
+    /// Starts at the origin (`δα = 0` at `t_i`: deputy coincident with the
+    /// chief), kinks at each burn (the burn's sample carries the post-burn
+    /// state), and reaches the target orbit at `t_f` up to the solver residual.
+    /// Best-effort like the target track: empty when a sample's reconstructed
+    /// deputy is non-elliptic.
+    pub transfer_track_rtn: Vec<[f64; 3]>,
     /// Controlled mean-ROE trajectory at each `primer_times` sample, meters
     /// = `[δa, δλ, δeₓ, δe_y, δiₓ, δi_y]·a` (the `target_roe` scaling): the
     /// pseudostate accumulated from `δα = 0` at `t_i` by the plan's burns —
