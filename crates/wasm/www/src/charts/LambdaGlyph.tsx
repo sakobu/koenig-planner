@@ -27,7 +27,7 @@ export const LambdaGlyph = memo(function LambdaGlyph({ r }: { r: SolveResponse }
         const pos = b.frac >= 0;
         return (
           <g key={b.label}>
-            <text x={padL - 10} y={yc + 4} className="row-label" textAnchor="end">
+            <text x={14} y={yc + 4} className="row-label" textAnchor="start">
               {b.label}
             </text>
             <rect
