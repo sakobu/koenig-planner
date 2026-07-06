@@ -2,27 +2,38 @@ import { memo } from "react";
 import type { SolveResponse } from "../wasm";
 import { axisTicks, linePath, nearestIndex, stackRows } from "./svgUtil";
 import { periodGridTimes } from "../orbit";
+import { cursorTime } from "./cursorUtil";
 
-export const PrimerMagnitude = memo(function PrimerMagnitude({ r, period }: { r: SolveResponse; period: number }) {
-  const W = 760,
-    H = 300;
-  const padL = 58,
-    padR = 30,
-    padT = 54, // headroom so close-maneuver labels can stack upward
-    padB = 44;
-  const yBase = H - padB;
-  const plotH = yBase - padT;
-  const plotW = W - padL - padR;
+const W = 760,
+  H = 300;
+const padL = 58,
+  padR = 30,
+  padT = 54, // headroom so close-maneuver labels can stack upward
+  padB = 44;
+const yBase = H - padB;
+const plotH = yBase - padT;
+const plotW = W - padL - padR;
 
+/** x-scale over the primer grid — shared by the static body and the cursor. */
+function xScale(times: number[]): (t: number) => number {
+  const n = times.length;
+  const t0 = n ? times[0] : 0;
+  const t1 = n ? times[n - 1] : 1;
+  const span = Math.max(1e-9, t1 - t0);
+  return (t) => padL + ((t - t0) / span) * plotW;
+}
+
+/* Static layer, memoized on {r, period}: playback ticks (up to 20/s) redraw
+ * only the cursor line above, never these grid-sized path strings. */
+const Body = memo(function PrimerMagnitudeBody({ r, period }: { r: SolveResponse; period: number }) {
   const times = r.primer_times;
   const mags = r.primer_magnitude;
   const n = times.length;
   const t0 = n ? times[0] : 0;
   const t1 = n ? times[n - 1] : 1;
-  const span = Math.max(1e-9, t1 - t0);
   const peak = mags.reduce((a, b) => Math.max(a, b), 1.0);
   const domainMax = Math.max(1.12, peak + 0.08);
-  const x = (t: number) => padL + ((t - t0) / span) * plotW;
+  const x = xScale(times);
   const y = (m: number) => yBase - (m / domainMax) * plotH;
 
   const path = linePath(times, mags, x, y);
@@ -31,7 +42,7 @@ export const PrimerMagnitude = memo(function PrimerMagnitude({ r, period }: { r:
   const pGrid = periodGridTimes(t0, t1, period);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-primer">
+    <g>
       {[0, 0.25, 0.5, 0.75].map((v) => (
         <g key={v}>
           <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} className={v === 0 ? "axis" : "grid"} />
@@ -75,6 +86,25 @@ export const PrimerMagnitude = memo(function PrimerMagnitude({ r, period }: { r:
           );
         });
       })()}
+    </g>
+  );
+});
+
+export const PrimerMagnitude = memo(function PrimerMagnitude({
+  r,
+  period,
+  frame,
+}: {
+  r: SolveResponse;
+  period: number;
+  frame: number;
+}) {
+  const x = xScale(r.primer_times);
+  const ct = cursorTime(r.primer_times, frame);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-primer">
+      <Body r={r} period={period} />
+      {ct !== null && <line x1={x(ct)} y1={padT} x2={x(ct)} y2={yBase} className="time-cursor" />}
     </svg>
   );
 });

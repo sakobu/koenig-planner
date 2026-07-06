@@ -2,29 +2,26 @@ import { memo } from "react";
 import type { SolveResponse } from "../wasm";
 import { axisTicks, maxAbs, niceStep, stackRows } from "./svgUtil";
 import { periodGridTimes } from "../orbit";
+import { clampToWindow, cursorTime } from "./cursorUtil";
 
-export const Timeline = memo(function Timeline({ r, period }: { r: SolveResponse; period: number }) {
-  const W = 760,
-    H = 300;
-  const padL = 58,
-    padR = 30,
-    padT = 46,
-    padB = 44;
-  const yBase = H - padB;
-  const plotH = yBase - padT;
-  const plotW = W - padL - padR;
+const W = 760,
+  H = 300;
+const padL = 58,
+  padR = 30,
+  padT = 46,
+  padB = 44;
+const yBase = H - padB;
+const plotH = yBase - padT;
+const plotW = W - padL - padR;
 
-  const n = r.maneuvers.length;
-  if (n === 0) {
-    return (
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
-        <text x={W / 2} y={H / 2} className="axis-label" textAnchor="middle">
-          no maneuvers
-        </text>
-      </svg>
-    );
-  }
+/** x-scale over the burn window (10% insets) — shared by body and cursor. */
+function xScale(t_i: number, t_f: number): (t: number) => number {
+  const inset = 0.1 * plotW;
+  const span = Math.max(1e-9, t_f - t_i);
+  return (t) => padL + inset + ((t - t_i) / span) * (plotW - 2 * inset);
+}
 
+const Body = memo(function TimelineBody({ r, period }: { r: SolveResponse; period: number }) {
   const mags = r.maneuvers.map((m) => Math.hypot(m.dv[0], m.dv[1], m.dv[2]));
   const maxMag = maxAbs(mags, 1e-12);
   const step = niceStep(maxMag / 4);
@@ -33,9 +30,7 @@ export const Timeline = memo(function Timeline({ r, period }: { r: SolveResponse
   const tVals = r.maneuvers.map((m) => m.t);
   const t_i = tVals.length ? Math.min(...tVals) : 0;
   const t_f = tVals.length ? Math.max(...tVals) : 1;
-  const inset = 0.1 * plotW;
-  const span = Math.max(1e-9, t_f - t_i);
-  const x = (t: number) => padL + inset + ((t - t_i) / span) * (plotW - 2 * inset);
+  const x = xScale(t_i, t_f);
   const y = (mag: number) => yBase - (mag / domainMax) * plotH;
 
   const ticks: number[] = [];
@@ -49,7 +44,7 @@ export const Timeline = memo(function Timeline({ r, period }: { r: SolveResponse
   const pGrid = periodGridTimes(epoch, t_f, period).filter((t) => t >= t_i);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
+    <g>
       {ticks.map((v) => (
         <g key={v}>
           <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} className={v === 0 ? "axis" : "grid"} />
@@ -90,6 +85,41 @@ export const Timeline = memo(function Timeline({ r, period }: { r: SolveResponse
           );
         });
       })()}
+    </g>
+  );
+});
+
+export const Timeline = memo(function Timeline({
+  r,
+  period,
+  frame,
+}: {
+  r: SolveResponse;
+  period: number;
+  frame: number;
+}) {
+  const n = r.maneuvers.length;
+  if (n === 0) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
+        <text x={W / 2} y={H / 2} className="axis-label" textAnchor="middle">
+          no maneuvers
+        </text>
+      </svg>
+    );
+  }
+  // ≤ ~6 burns: spreading is safe here (the maxAbs warning is about grid-sized arrays).
+  const tVals = r.maneuvers.map((m) => m.t);
+  const t_i = Math.min(...tVals);
+  const t_f = Math.max(...tVals);
+  const x = xScale(t_i, t_f);
+  // This chart spans only the burn window — hide the cursor when the scrubbed
+  // time is outside it rather than pinning it misleadingly to an edge.
+  const ct = clampToWindow(cursorTime(r.primer_times, frame), t_i, t_f);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
+      <Body r={r} period={period} />
+      {ct !== null && <line x1={x(ct)} y1={padT} x2={x(ct)} y2={yBase} className="time-cursor" />}
     </svg>
   );
 });

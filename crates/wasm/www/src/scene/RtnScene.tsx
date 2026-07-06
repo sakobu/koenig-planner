@@ -8,27 +8,29 @@ import { ARROW, SCENE } from "./palette";
 import { Arrow } from "./Arrow";
 
 export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
-  // The deputy track is sampled on the playback grid over the FULL mission
-  // window (several chief periods), and is BOTH the drawn curve and the glyph
-  // source — so the glyph rides the line exactly for the entire scrub. A
-  // non-zero δa gives the deputy a slightly different period, so the curve is an
-  // open, drifting spiral rather than a single closed loop: that secular
-  // along-track drift is real physics, shown honestly rather than hidden.
-  const track = g.deputy_track_rtn;
-  const rmax = Math.max(1e-6, maxRadius(track)); // rotation-invariant, so map order is irrelevant
+  // Two curves share one auto-fit: the true transfer (green — the deputy's
+  // actual controlled path from its chief-coincident start, kinked at each
+  // burn) and the target relative orbit (gray ghost, anchored at t_f, where
+  // the transfer lands). A non-zero δa gives open, drifting spirals rather
+  // than closed loops: that secular along-track drift is real physics, shown
+  // honestly rather than hidden.
+  const transfer = g.transfer_track_rtn;
+  const target = g.target_track_rtn;
+  const rmax = Math.max(1e-6, maxRadius(transfer), maxRadius(target));
   const k = 1 / rmax; // auto-fit meters → ~unit scene
   // Orient with the conventional radial-up / transverse-right / normal-depth
   // axes (see rtnToView), viewed obliquely so the genuinely 3D shape reads
-  // honestly: an in-plane-dominated orbit shows the tilted 2:1 ellipse, a
-  // cross-track-dominated one (e.g. the paper's δi-heavy example) reads as a 3D
-  // loop. Data stays [radial, transverse, normal]; only the mapping changes.
-  const curve = useMemo(() => scaleAll(track.map(rtnToView), k), [track, k]);
+  // honestly. Data stays [radial, transverse, normal]; only the mapping changes.
+  const transferCurve = useMemo(() => scaleAll(transfer.map(rtnToView), k), [transfer, k]);
+  const targetCurve = useMemo(() => scaleAll(target.map(rtnToView), k), [target, k]);
   const axis = 0.8; // reference-gnomon length; kept short so labels stay inside the viewport
 
-  // Deputy glyph: position at the current playback sample, same scale/mapping as the curve.
+  // Deputy glyph rides the transfer when it is drawable, else the target ghost
+  // (degraded transfer), else hides.
+  const glyphTrack = transfer.length > 0 ? transfer : target;
   let deputyPos: V3 | null = null;
-  if (track.length > 0) {
-    const v = rtnToView(track[sampleIndex]);
+  if (glyphTrack.length > 0) {
+    const v = rtnToView(glyphTrack[sampleIndex] ?? glyphTrack[0]);
     deputyPos = [v[0] * k, v[1] * k, v[2] * k];
   }
 
@@ -59,16 +61,20 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
             </group>
           );
         })}
-        {/* Deputy relative orbit */}
-        <Line points={curve} color={SCENE.deputy} lineWidth={2} />
+        {/* Target relative orbit — the destination, drawn faint under the transfer. */}
+        {targetCurve.length > 1 && (
+          <Line points={targetCurve} color={SCENE.targetOrbit} lineWidth={1} />
+        )}
+        {/* True transfer trajectory — the primary curve; kinks are the burns. */}
+        {transferCurve.length > 1 && (
+          <Line points={transferCurve} color={SCENE.deputy} lineWidth={2} />
+        )}
         {/* Burn nodes + Δv (thrust) arrows — cyan, the same Δv/thrust channel as
-            the ECI scene (and the timeline stems). Arrows show DIRECTION only
-            (fixed length); per-burn magnitude is read from the Δv-component bars
-            (RtnComponents). Both the position and the Δv pass through rtnToView so
-            they align with the gnomon and the deputy curve; dv_rtn is already the
-            native RTN frame, so no extra rotation. The node sits on the deputy
-            curve as a schematic anchor (see geometry.rs) — only the arrow
-            direction is exact. */}
+            the ECI scene (and the timeline stems). Nodes sit on the transfer's
+            kinks (the burn's grid sample); arrows show DIRECTION only (fixed
+            length) — per-burn magnitude is read from the Δv-component bars
+            (RtnComponents). Both pass through rtnToView so they align with the
+            gnomon and the curves; dv_rtn is already the native RTN frame. */}
         {g.maneuver_rtn.map((m, j) => {
           const p = rtnToView(m.position_rtn);
           const pos: V3 = [p[0] * k, p[1] * k, p[2] * k];
@@ -83,7 +89,9 @@ export function RtnScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
           );
         })}
         {/* Deputy glyph + swept primer arrow (amber, like the ECI primer),
-            synced to the playback scrubber. */}
+            synced to the playback scrubber. At a burn sample the primer arrow
+            aligns with that burn's Δv arrow while |p| = 1 — the optimality
+            condition made visible. */}
         {deputyPos && (
           <group>
             <mesh position={deputyPos}>

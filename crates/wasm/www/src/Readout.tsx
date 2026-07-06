@@ -29,7 +29,7 @@ function OkReadout({
   const sampleCount = r.geometry.chief_track_eci.length;
   const [index, setIndex] = useState(0);
   // The single clamp for the playback grid. The ChiefGeometry contract keeps all
-  // playback-grid arrays (chief_track_eci, deputy_track_rtn, primer_*) equal
+  // playback-grid arrays (chief_track_eci, target/transfer tracks, primer_*) equal
   // length, so one clamped frame drives both scenes consistently.
   const frame = Math.min(index, Math.max(0, sampleCount - 1));
   const period = chiefPeriod(req.chief.a);
@@ -50,8 +50,8 @@ function OkReadout({
         <EciScene g={r.geometry} sampleIndex={frame} />
       </Panel>
       <Panel
-        title="Target relative orbit (RTN, chief at origin)"
-        caption="The deputy's target relative orbit. Burn markers are schematic anchors on that orbit — only the Δv direction is exact; the true transfer trajectory is a later phase."
+        title="Relative transfer (RTN, chief at origin)"
+        caption="The deputy's true controlled transfer — from a chief-coincident start (δα = 0) under the solver's mean-element STM dynamics — with the t_f-anchored target orbit as the gray ghost. Burn markers sit on the trajectory; arrows show the Δv direction only."
       >
         <RtnScene g={r.geometry} sampleIndex={frame} />
       </Panel>
@@ -59,10 +59,10 @@ function OkReadout({
         title="ROE phase planes (δe, δi, δa–δλ)"
         caption="The controlled mean-ROE pseudostate δα(t), accumulated from 0 at t_i: coasts follow the J2 STM, amber arrows are the exact B·Δv jump at each burn, ★ marks the target w. δe and δi panes are equal-aspect."
       >
-        <RoePlanes r={r} />
+        <RoePlanes r={r} frame={frame} />
       </Panel>
       <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
-        <Timeline r={r} period={period} />
+        <Timeline r={r} period={period} frame={frame} />
       </Panel>
       <Panel
         title="Cost vs horizon (trade study)"
@@ -74,7 +74,7 @@ function OkReadout({
         title="Primer magnitude vs time"
         caption="|p(t)| reaches the amber |p| = 1 bound exactly at optimal burn times; touching 1 between burns signals slack in the plan."
       >
-        <PrimerMagnitude r={r} period={period} />
+        <PrimerMagnitude r={r} period={period} frame={frame} />
       </Panel>
       <Panel
         title="Δv components (R/T/N)"
@@ -86,10 +86,18 @@ function OkReadout({
         title="Primer components (R/T/N)"
         caption="The primer vector p(t) = Γᵀλ in RTN — the dual certificate; each burn's direction is the support direction of p (parallel to p only under the norm2 cost)."
       >
-        <PrimerComponents r={r} period={period} />
+        <PrimerComponents r={r} period={period} frame={frame} />
       </Panel>
-      <Panel title="Playback" caption="Scrub the maneuver grid; both 3D scenes track the selected time.">
-        <Playback count={sampleCount} index={index} setIndex={setIndex} />
+      <Panel title="Playback" caption="Scrub the maneuver grid; the 3D scenes and the chart cursors track the selected time.">
+        <Playback
+          count={sampleCount}
+          index={index}
+          setIndex={setIndex}
+          times={r.primer_times}
+          nu={r.geometry.chief_nu_track}
+          burnTimes={r.maneuvers.map((m) => m.t)}
+          period={period}
+        />
       </Panel>
       <Panel
         title="Plan (full precision)"

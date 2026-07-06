@@ -11,7 +11,8 @@ export const SCENE = {
   earthCore: "#0d2336", // ECI central-body core
   earthWire: "#3f86b3", // ECI central-body wireframe
   earthAtmo: "#5cc8ff", // ECI atmosphere rim shell
-  deputy: "#5ef2a8", // RTN deputy marker + relative-orbit curve
+  deputy: "#5ef2a8", // RTN deputy marker + true-transfer curve
+  targetOrbit: "#7c8b9a", // RTN target-orbit ghost (same neutral as the ECI chief orbit)
 } as const;
 
 /** Direction-only arrow lengths (scene units; both scenes normalize to a ~unit

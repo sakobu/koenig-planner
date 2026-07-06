@@ -96,6 +96,37 @@ fn solve_golden_is_ok_within_bands() {
             let nrm2: f64 = (0..6).map(|i| target[i].powi(2)).sum();
             let rel = (err2 / nrm2).sqrt();
             assert!(rel < 1e-2, "roe_track endpoint rel err = {rel}");
+            // True transfer: grid-aligned, and its endpoint lands on the
+            // t_f-anchored target track within the same band as the roe_track
+            // endpoint pin (residual + pruning of tiny burns).
+            assert_eq!(
+                value.geometry.transfer_track_rtn.len(),
+                value.primer_times.len()
+            );
+            assert_eq!(
+                value.geometry.target_track_rtn.len(),
+                value.primer_times.len()
+            );
+            assert_eq!(
+                value.geometry.chief_nu_track.len(),
+                value.primer_times.len()
+            );
+            let te = value.geometry.transfer_track_rtn.last().unwrap();
+            let ge = value.geometry.target_track_rtn.last().unwrap();
+            let dist =
+                ((te[0] - ge[0]).powi(2) + (te[1] - ge[1]).powi(2) + (te[2] - ge[2]).powi(2))
+                    .sqrt();
+            let wnorm = value
+                .geometry
+                .target_roe
+                .iter()
+                .map(|w| w * w)
+                .sum::<f64>()
+                .sqrt();
+            assert!(
+                dist < 1e-2 * wnorm,
+                "transfer endpoint missed the target track by {dist} m"
+            );
         }
         SolveOutcome::Err { error } => {
             panic!("expected Ok, got err: {:?} {}", error.kind, error.message)
@@ -129,9 +160,12 @@ fn solve_keeps_plan_when_deputy_reconstruction_is_non_elliptic() {
             // ...but the deputy-derived fields degrade to empty (non-elliptic
             // deputy) rather than sinking the whole solve.
             assert!(
-                value.geometry.deputy_track_rtn.is_empty(),
-                "deputy track should degrade to empty for a non-elliptic deputy"
+                value.geometry.target_track_rtn.is_empty(),
+                "target track should degrade to empty for a non-elliptic deputy"
             );
+            // The transfer approaches the same non-elliptic state near t_f, so
+            // it degrades too — and with it the on-transfer burn markers.
+            assert!(value.geometry.transfer_track_rtn.is_empty());
             assert!(value.geometry.maneuver_rtn.is_empty());
             // The controlled-ROE track is chief-derived — it must survive the
             // deputy degradation so the ROE phase panes stay drawable.
@@ -161,6 +195,7 @@ fn solve_outcome_status_tags_are_stable() {
                 a: 0.0,
                 e: 0.0,
                 maneuver_nu: vec![],
+                chief_nu_track: vec![],
                 perigee_window: None,
                 orbit_eci: vec![],
                 chief_track_eci: vec![],
@@ -169,7 +204,8 @@ fn solve_outcome_status_tags_are_stable() {
                 primer_eci: vec![],
                 primer_rtn: vec![],
                 perigee_arc_eci: None,
-                deputy_track_rtn: vec![],
+                target_track_rtn: vec![],
+                transfer_track_rtn: vec![],
                 roe_track: vec![],
                 roe_jumps: vec![],
                 target_roe: [0.0; 6],

@@ -553,6 +553,16 @@ input::placeholder {
   stroke-dasharray: 4 3;
 }
 
+/* Scrub-time cursor on the time charts — the playback "now". Bright ink with
+   its own dash so it never reads as the sweep's amber t_f cursor; unlabeled,
+   the playback readout carries the number. */
+.time-cursor {
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: 0.85;
+}
+
 /* ── ROE phase planes — three square panes; cyan coast track, amber burn
    jumps, ink target star (all house tokens, as in the primer charts). ── */
 .chart-roeplanes {
@@ -580,6 +590,10 @@ input::placeholder {
 }
 .roe-start {
   fill: var(--ink-dim);
+}
+/* Playback "now" marker on the ROE panes — bright ink over the cyan track. */
+.roe-now {
+  fill: var(--ink);
 }
 .roe-target {
   fill: var(--ink);
@@ -749,8 +763,40 @@ header.fault .status-lamp {
 /* ── Playback ────────────────────────────────────────────────────── */
 .playback {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.playback-controls {
+  display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+/* The range sits in a positioned wrapper so burn ticks can overlay it. */
+.playback-track {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.playback-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.playback-tick {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 14px;
+  background: var(--cyan);
+  opacity: 0.55;
+}
+.playback-readout {
+  font: 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: var(--ink-dim);
 }
 .playback button {
   background: var(--bg-input);
