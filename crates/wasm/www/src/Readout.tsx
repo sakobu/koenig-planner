@@ -69,7 +69,7 @@ function OkReadout({
         <Playback count={sampleCount} index={index} setIndex={setIndex} />
       </Panel>
       <Panel
-        title="Plan (precise)"
+        title="Plan (full precision)"
         caption="Full-precision burns (m/s) and downloads. The charts round for display; these values and the exports do not."
       >
         <PlanTable req={req} r={r} />
