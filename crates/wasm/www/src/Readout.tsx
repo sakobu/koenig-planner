@@ -3,6 +3,7 @@ import type { ApiError, SolveOutcome, SolveRequest, SolveResponse } from "./wasm
 import { pickDisplay } from "./outcomeDisplay";
 import { ErrorBanner } from "./ErrorBanner";
 import { Kpis } from "./charts/Kpis";
+import { LambdaGlyph } from "./charts/LambdaGlyph";
 import { Timeline } from "./charts/Timeline";
 import { PrimerMagnitude } from "./charts/PrimerMagnitude";
 import { RtnComponents } from "./charts/RtnComponents";
@@ -33,6 +34,12 @@ function OkReadout({
     <section id="output">
       {error && <ErrorBanner kind={error.kind} message={error.message} variant="overlay" />}
       <Kpis r={r} />
+      <Panel
+        title="λ dual certificate"
+        caption="The optimal dual λ (the KKT certificate). The primer p(t) = Γᵀ(t)·λ, so the magnitude and component panels below are this vector projected into control space over time."
+      >
+        <LambdaGlyph r={r} />
+      </Panel>
       <Panel
         title="Orbit (ECI)"
         caption="Chief orbit and burn geometry in the Earth-centered inertial frame. The amber arc (piecewise cost) is the perigee attitude-constraint window."

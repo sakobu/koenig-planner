@@ -270,6 +270,7 @@ input::placeholder {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
     "kpis       kpis"
+    "lambda     lambda"
     "eci        rtn"
     "roeplanes  roeplanes"
     "play       play"
@@ -281,6 +282,9 @@ input::placeholder {
 }
 .kpis {
   grid-area: kpis;
+}
+.panel:has(.chart-lambda) {
+  grid-area: lambda;
 }
 .panel:has(.canvas-eci) {
   grid-area: eci;
@@ -472,6 +476,12 @@ input::placeholder {
 }
 .chart-primer-rtn {
   max-width: 1180px;
+}
+.chart-lambda {
+  max-width: 1180px;
+}
+.lambda-bar {
+  fill: var(--cyan);
 }
 
 /* ── ROE phase planes — three square panes; cyan coast track, amber burn
@@ -787,6 +797,7 @@ header.fault .status-lamp {
     grid-template-columns: 1fr;
     grid-template-areas:
       "kpis"
+      "lambda"
       "eci"
       "rtn"
       "roeplanes"
