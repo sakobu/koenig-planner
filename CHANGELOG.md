@@ -20,6 +20,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `control_input_matrix` (\[KD20\] eq. 11, eq. 51); the final grid sample
   reaches `target_roe` up to the solver residual. Additive and non-breaking.
   The demo renders them as three ROE phase-plane panes (δe, δi, δa–δλ).
+- WASM `ChiefGeometry.transfer_track_rtn` / `ChiefGeometry.chief_nu_track` — the
+  deputy's true transfer trajectory in the chief RTN frame (the controlled
+  pseudostate `roe_track` mapped through the exact ROE inverse at each playback
+  sample: origin start at `t_i`, kinks at each burn, arrival on the target orbit
+  at `t_f` up to the solver residual — \[KD20\] eq. 11/51, faithful by reuse of
+  the FD-verified `state_transition`/`control_input_matrix` and the exact ROE
+  inversion), and the chief true anomaly per playback sample. The demo draws
+  the transfer as the primary RTN curve with the target orbit as a ghost, and
+  instruments the playback bar: time/orbit/ν readout, burn ticks and
+  step-to-burn buttons on the scrubber, and a shared scrub-time cursor across
+  the primer charts, Δv timeline, and ROE phase planes.
 
 ### Changed
 - **Breaking (behavioral): planner output changes for `t_i ≠ 0` piecewise-default
@@ -43,12 +54,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   plan/maneuvers and the numerical core are unchanged.
 - **Breaking (behavioral): WASM `solve` outcome and error kind.** A valid solve
   whose target ROE reconstructs a non-elliptic deputy (`e ≥ 1`) now returns `Ok`
-  with the deputy-derived geometry fields (`deputy_track_rtn`, `maneuver_rtn`)
+  with the deputy-derived geometry fields (`target_track_rtn`, `maneuver_rtn`)
   empty, where it previously returned `Err { kind: "solver" }` and discarded the
   plan. Separately, a genuine (now-unreachable) presentation-geometry fault reports
   `kind: "internal"` instead of the mislabeled `"solver"`. Callers switching on the
   outcome `status` or `error.kind` for these cases will observe the new values; the
   `SolveOutcome` / `ApiErrorKind` types are unchanged.
+- **Breaking (behavioral): the WASM ROE inversion is η-weighted.** The
+  presentation-geometry inverse (`deputy_from_roe`) now inverts the modified
+  relative mean longitude `δλ = δM + η·(δω + δΩ·cos i)` (\[KD20\] eq. 51) — the
+  same convention as the core's Φ/B matrices and FD oracles. It previously
+  inverted the unweighted `δu + δΩ·cos i`, displacing the drawn relative-orbit
+  geometry along-track by `a·(1−η)·(δω + δΩ·cos i)` (≈180 m for the paper's
+  worked HEO example). Presentation-only: the plan, maneuvers, and the
+  numerical core are unchanged.
+- **Breaking (behavioral): the WASM target relative orbit anchors at `t_f`.**
+  The target deputy is now reconstructed from `target_roe` relative to the
+  chief at `t_f` — the epoch where the solver enforces the target — and
+  propagated to each playback sample, instead of being anchored at `t_i`. For
+  `δa ≠ 0` the previous anchor drifted the drawn target along-track by
+  `1.5·n·δa·(t_f−t_i)` (≈1.4 km over the worked example's window), so the true
+  transfer would have visibly missed it.
+- **Breaking (behavioral): WASM `maneuver_rtn.position_rtn` is the true
+  transfer position.** Burn markers now sit on `transfer_track_rtn` at the
+  burn's grid sample (previously a schematic anchor on the target orbit; only
+  the Δv direction was exact). They also degrade together with the transfer
+  track rather than with the target track.
+- **Breaking: WASM `ChiefGeometry.deputy_track_rtn` renamed
+  `target_track_rtn`** (npm `koenig-planner` TypeScript surface) — the field is
+  now one of two deputy curves, and the name says which. The core crate's
+  semver CI gate is unaffected (core untouched).
 
 ## [0.4.0] — 2026-07-02
 
