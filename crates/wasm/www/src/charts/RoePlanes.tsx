@@ -17,7 +17,9 @@ import {
 } from "./roePlanesUtil";
 
 const W = 320,
-  H = 300;
+  // H = 312 (not 300) makes plotH == plotW == 240 despite the asymmetric
+  // top/bottom padding, so the equal-aspect δe/δi panes render a true 1 m = 1 m.
+  H = 312;
 const padL = 62,
   padR = 18,
   padT = 30,
