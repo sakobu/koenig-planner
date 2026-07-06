@@ -4,6 +4,7 @@
 
 use crate::dto;
 use crate::frames;
+use crate::roe_track;
 use koenig_damico_planner_api as api;
 use koenig_damico_planner_api::core::cost::Piecewise;
 use koenig_damico_planner_api::core::dynamics::AbsoluteOrbit;
@@ -193,6 +194,16 @@ pub fn chief_geometry(
     // swept primer arrow from geometry alone.
     let primer_rtn = resp.primer_rtn.clone();
 
+    // Controlled mean-ROE trajectory + per-burn jumps ([KD20] eq. 11): the
+    // pseudostate accumulated from δα = 0 at t_i by the plan's burns, on the
+    // playback grid. Chief-only reuse of the core's Φ/B — independent of the
+    // reconstructed deputy, so it stays available when the deputy-derived
+    // fields above degrade. Best-effort for idiom uniformity only (a chief
+    // that already solved cannot fail B here).
+    let (roe_track, roe_jumps) =
+        roe_track::controlled_roe_track(&chief, req.t_i, &resp.maneuvers, &resp.primer_times)
+            .unwrap_or_default();
+
     Ok(dto::ChiefGeometry {
         a: req.chief.a,
         e: req.chief.e,
@@ -206,6 +217,8 @@ pub fn chief_geometry(
         primer_rtn,
         perigee_arc_eci,
         deputy_track_rtn,
+        roe_track,
+        roe_jumps,
         target_roe: req.w_meters,
     })
 }

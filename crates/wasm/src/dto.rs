@@ -144,6 +144,17 @@ pub struct ChiefGeometry {
     /// Deputy position in the chief RTN frame `[m]` at each `primer_times` sample
     /// (the playback grid) — the deputy glyph that tracks the scrubber.
     pub deputy_track_rtn: Vec<[f64; 3]>,
+    /// Controlled mean-ROE trajectory at each `primer_times` sample, meters
+    /// = `[δa, δλ, δeₓ, δe_y, δiₓ, δi_y]·a` (the `target_roe` scaling): the
+    /// pseudostate accumulated from `δα = 0` at `t_i` by the plan's burns —
+    /// jumps of `B(t_j)·Δv_j` at each burn, J2/Keplerian coasts between
+    /// (`[KD20]` eq. 11). Its final sample (`t_f` on commensurate grids)
+    /// reaches `target_roe` up to the solver residual.
+    pub roe_track: Vec<[f64; 6]>,
+    /// Instantaneous mean-ROE change per burn, meters = `a·B(t_j)·Δv_j`,
+    /// parallel to `maneuvers`. `roe_track[k_j] − roe_jumps[j]` is the exact
+    /// pre-burn state at the burn's grid sample.
+    pub roe_jumps: Vec<[f64; 6]>,
     /// Echo of the request `w_meters` `[m]` = `[δa, δλ, δeₓ, δe_y, δiₓ, δi_y]·a`.
     pub target_roe: [f64; 6],
 }

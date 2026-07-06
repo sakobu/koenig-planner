@@ -12,6 +12,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   single source of truth for placing the default eq.-49 piecewise perigee windows,
   reused by both the solver (`api::run`) and the WASM presentation geometry.
   Additive and non-breaking.
+- WASM `ChiefGeometry.roe_track` / `ChiefGeometry.roe_jumps` — the controlled
+  mean-ROE trajectory `δα(t) = Σ_{t_j ≤ t} Φ(t_j→t)·B(t_j)·Δv_j` accumulated
+  from `δα = 0` at `t_i` on the playback grid, and the exact per-burn jumps
+  `a·B(t_j)·Δv_j`, both in meters (the `target_roe` scaling). Faithful by
+  reuse of the core's FD-verified `state_transition` /
+  `control_input_matrix` (\[KD20\] eq. 11, eq. 51); the final grid sample
+  reaches `target_roe` up to the solver residual. Additive and non-breaking.
+  The demo renders them as three ROE phase-plane panes (δe, δi, δa–δλ).
 
 ### Changed
 - **Breaking (behavioral): planner output changes for `t_i ≠ 0` piecewise-default
