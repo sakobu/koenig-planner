@@ -9,38 +9,44 @@ import { axisTicks, linePath, maxAbs } from "./svgUtil";
 import { periodGridTimes } from "../orbit";
 import { RTN_COLORS } from "../rtn";
 import { RtnLegend } from "./RtnLegend";
+import { cursorTime } from "./cursorUtil";
 
-export const PrimerComponents = memo(function PrimerComponents({ r, period }: { r: SolveResponse; period: number }) {
-  const W = 760,
-    H = 280;
-  const padL = 58,
-    padR = 30,
-    padT = 40,
-    padB = 44;
+const W = 760,
+  H = 280;
+const padL = 58,
+  padR = 30,
+  padT = 40,
+  padB = 44;
 
+/** x-scale over the primer grid — shared by the static body and the cursor. */
+function xScale(times: number[]): (t: number) => number {
+  const n = times.length;
+  const t0 = n ? times[0] : 0;
+  const t1 = n ? times[n - 1] : 1;
+  const span = Math.max(1e-9, t1 - t0);
+  return (t) => padL + ((t - t0) / span) * (W - padL - padR);
+}
+
+/* Static layer, memoized on {r, period}: playback ticks (up to 20/s) redraw
+ * only the cursor line above, never these grid-sized path strings. */
+const Body = memo(function PrimerComponentsBody({ r, period }: { r: SolveResponse; period: number }) {
   const times = r.primer_times;
   const rtn = r.primer_rtn;
   const n = times.length;
   const t0 = n ? times[0] : 0;
   const t1 = n ? times[n - 1] : 1;
-  const span = Math.max(1e-9, t1 - t0);
   const maxComp = maxAbs(rtn.flat(), 1e-12);
   const domainMax = maxComp * 1.1;
   const cy0 = padT + (H - padT - padB) / 2; // zero axis
   const half = (H - padT - padB) / 2;
-  const x = (t: number) => padL + ((t - t0) / span) * (W - padL - padR);
+  const x = xScale(times);
   const y = (v: number) => cy0 - (v / domainMax) * half;
 
   const tTicks = axisTicks(t0, t1, 5);
   const pGrid = periodGridTimes(t0, t1, period);
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      preserveAspectRatio="xMidYMid meet"
-      className="chart chart-primer-rtn"
-    >
+    <g>
       {/* Legend */}
       <RtnLegend x={padL} y={padT} width={W} padR={padR} />
 
@@ -97,6 +103,30 @@ export const PrimerComponents = memo(function PrimerComponents({ r, period }: { 
           />
         );
       })}
+    </g>
+  );
+});
+
+export const PrimerComponents = memo(function PrimerComponents({
+  r,
+  period,
+  frame,
+}: {
+  r: SolveResponse;
+  period: number;
+  frame: number;
+}) {
+  const x = xScale(r.primer_times);
+  const ct = cursorTime(r.primer_times, frame);
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      preserveAspectRatio="xMidYMid meet"
+      className="chart chart-primer-rtn"
+    >
+      <Body r={r} period={period} />
+      {ct !== null && <line x1={x(ct)} y1={padT} x2={x(ct)} y2={H - padB} className="time-cursor" />}
     </svg>
   );
 });

@@ -553,6 +553,16 @@ input::placeholder {
   stroke-dasharray: 4 3;
 }
 
+/* Scrub-time cursor on the time charts — the playback "now". Bright ink with
+   its own dash so it never reads as the sweep's amber t_f cursor; unlabeled,
+   the playback readout carries the number. */
+.time-cursor {
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: 0.85;
+}
+
 /* ── ROE phase planes — three square panes; cyan coast track, amber burn
    jumps, ink target star (all house tokens, as in the primer charts). ── */
 .chart-roeplanes {

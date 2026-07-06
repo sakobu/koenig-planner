@@ -74,7 +74,7 @@ function OkReadout({
         title="Primer magnitude vs time"
         caption="|p(t)| reaches the amber |p| = 1 bound exactly at optimal burn times; touching 1 between burns signals slack in the plan."
       >
-        <PrimerMagnitude r={r} period={period} />
+        <PrimerMagnitude r={r} period={period} frame={frame} />
       </Panel>
       <Panel
         title="Δv components (R/T/N)"
@@ -86,7 +86,7 @@ function OkReadout({
         title="Primer components (R/T/N)"
         caption="The primer vector p(t) = Γᵀλ in RTN — the dual certificate; each burn's direction is the support direction of p (parallel to p only under the norm2 cost)."
       >
-        <PrimerComponents r={r} period={period} />
+        <PrimerComponents r={r} period={period} frame={frame} />
       </Panel>
       <Panel title="Playback" caption="Scrub the maneuver grid; both 3D scenes track the selected time.">
         <Playback
