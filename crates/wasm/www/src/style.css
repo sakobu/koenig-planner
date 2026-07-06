@@ -591,6 +591,10 @@ input::placeholder {
 .roe-start {
   fill: var(--ink-dim);
 }
+/* Playback "now" marker on the ROE panes — bright ink over the cyan track. */
+.roe-now {
+  fill: var(--ink);
+}
 .roe-target {
   fill: var(--ink);
 }

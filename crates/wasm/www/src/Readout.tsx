@@ -59,10 +59,10 @@ function OkReadout({
         title="ROE phase planes (δe, δi, δa–δλ)"
         caption="The controlled mean-ROE pseudostate δα(t), accumulated from 0 at t_i: coasts follow the J2 STM, amber arrows are the exact B·Δv jump at each burn, ★ marks the target w. δe and δi panes are equal-aspect."
       >
-        <RoePlanes r={r} />
+        <RoePlanes r={r} frame={frame} />
       </Panel>
       <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
-        <Timeline r={r} period={period} />
+        <Timeline r={r} period={period} frame={frame} />
       </Panel>
       <Panel
         title="Cost vs horizon (trade study)"
@@ -88,7 +88,7 @@ function OkReadout({
       >
         <PrimerComponents r={r} period={period} frame={frame} />
       </Panel>
-      <Panel title="Playback" caption="Scrub the maneuver grid; both 3D scenes track the selected time.">
+      <Panel title="Playback" caption="Scrub the maneuver grid; the 3D scenes and the chart cursors track the selected time.">
         <Playback
           count={sampleCount}
           index={index}
