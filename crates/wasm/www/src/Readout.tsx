@@ -10,6 +10,7 @@ import { PrimerMagnitude } from "./charts/PrimerMagnitude";
 import { RtnComponents } from "./charts/RtnComponents";
 import { PrimerComponents } from "./charts/PrimerComponents";
 import { RoePlanes } from "./charts/RoePlanes";
+import { Sweep } from "./charts/Sweep";
 import { Panel } from "./Panel";
 import { PlanTable } from "./PlanTable";
 import { EciScene } from "./scene/EciScene";
@@ -62,6 +63,12 @@ function OkReadout({
       </Panel>
       <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
         <Timeline r={r} period={period} />
+      </Panel>
+      <Panel
+        title="Cost vs horizon (trade study)"
+        caption="Re-solves the plan across a range of final times t_f. Longer horizons are generally cheaper; the cursor marks the current t_f, and steps are where the optimal burn count changes."
+      >
+        <Sweep req={req} period={period} />
       </Panel>
       <Panel
         title="Primer magnitude vs time"
