@@ -271,6 +271,7 @@ input::placeholder {
   grid-template-areas:
     "kpis       kpis"
     "eci        rtn"
+    "roeplanes  roeplanes"
     "play       play"
     "timeline   primer"
     "rtncomp    rtncomp"
@@ -301,6 +302,9 @@ input::placeholder {
 }
 .panel:has(.chart-primer-rtn) {
   grid-area: primerrtn;
+}
+.panel:has(.chart-roeplanes) {
+  grid-area: roeplanes;
 }
 
 .panel:has(.plan-table) {
@@ -468,6 +472,38 @@ input::placeholder {
 }
 .chart-primer-rtn {
   max-width: 1180px;
+}
+
+/* ── ROE phase planes — three square panes; cyan coast track, amber burn
+   jumps, ink target star (all house tokens, as in the primer charts). ── */
+.chart-roeplanes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  max-width: 1180px;
+}
+.chart-roeplanes .roe-pane {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: auto;
+}
+.roe-track {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+.roe-jump line {
+  stroke: var(--amber);
+  stroke-width: 1.5;
+}
+.roe-jump polygon {
+  fill: var(--amber);
+}
+.roe-start {
+  fill: var(--ink-dim);
+}
+.roe-target {
+  fill: var(--ink);
 }
 
 /* ── Plot primitives (SVG) ───────────────────────────────────────── */
@@ -753,6 +789,7 @@ header.fault .status-lamp {
       "kpis"
       "eci"
       "rtn"
+      "roeplanes"
       "play"
       "timeline"
       "primer"
