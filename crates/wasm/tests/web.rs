@@ -113,9 +113,9 @@ fn solve_golden_is_ok_within_bands() {
             );
             let te = value.geometry.transfer_track_rtn.last().unwrap();
             let ge = value.geometry.target_track_rtn.last().unwrap();
-            let dist = ((te[0] - ge[0]).powi(2) + (te[1] - ge[1]).powi(2)
-                + (te[2] - ge[2]).powi(2))
-            .sqrt();
+            let dist =
+                ((te[0] - ge[0]).powi(2) + (te[1] - ge[1]).powi(2) + (te[2] - ge[2]).powi(2))
+                    .sqrt();
             let wnorm = value
                 .geometry
                 .target_roe

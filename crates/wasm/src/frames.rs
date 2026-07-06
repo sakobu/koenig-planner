@@ -4,9 +4,9 @@
 //! only math defined here is exact closed-form frame rotations and the exact
 //! ROE definition/inverse, each pinned by the tests below.
 
+use koenig_damico_planner_api::core::dynamics::kepler::wrap_to_pi;
 use koenig_damico_planner_api::core::dynamics::AbsoluteOrbit;
 use koenig_damico_planner_api::core::PlannerError;
-use koenig_damico_planner_api::core::dynamics::kepler::wrap_to_pi;
 
 fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
@@ -318,7 +318,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn inversion_roundtrips_with_perigee_offset() {
         // δω ≠ 0 activates the η weighting: at e = 0.7 an unweighted inverse
-        // misses δM by (1 − η)·δω ≈ 0.29·δω — 14 orders above this tolerance.
+        // misses δM by (1 − η)·δω ≈ 0.29·δω — ~10 orders above this tolerance.
         let c = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), 0.6, 2.1);
         let d = AbsoluteOrbit::new(
             A * (1.0 + 2e-4),
@@ -341,7 +341,14 @@ mod tests {
     fn inversion_roundtrips_across_the_argp_wrap() {
         // Chief perigee just below +π, deputy's just past −π (the same physical
         // direction): δω must be taken the short way around, not ±2π off.
-        let c = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), PI - 0.01, 1.0);
+        let c = AbsoluteOrbit::new(
+            A,
+            E,
+            40f64.to_radians(),
+            358f64.to_radians(),
+            PI - 0.01,
+            1.0,
+        );
         let d = AbsoluteOrbit::new(
             A * (1.0 + 1e-4),
             0.701,

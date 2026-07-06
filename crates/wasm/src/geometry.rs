@@ -221,19 +221,18 @@ pub fn chief_geometry(
     // (the solver extracts them from the grid); nearest-sample lookup absorbs
     // float drift. dv_rtn is m.dv echoed — already the chief RTN frame. Empty
     // whenever the transfer itself is unavailable.
-    let maneuver_rtn: Vec<dto::ManeuverRtnDto> = if !resp.primer_times.is_empty()
-        && transfer_track_rtn.len() == resp.primer_times.len()
-    {
-        resp.maneuvers
-            .iter()
-            .map(|m| dto::ManeuverRtnDto {
-                position_rtn: transfer_track_rtn[nearest_sample(&resp.primer_times, m.t)],
-                dv_rtn: m.dv,
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
+    let maneuver_rtn: Vec<dto::ManeuverRtnDto> =
+        if !resp.primer_times.is_empty() && transfer_track_rtn.len() == resp.primer_times.len() {
+            resp.maneuvers
+                .iter()
+                .map(|m| dto::ManeuverRtnDto {
+                    position_rtn: transfer_track_rtn[nearest_sample(&resp.primer_times, m.t)],
+                    dv_rtn: m.dv,
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
 
     Ok(dto::ChiefGeometry {
         a: req.chief.a,
@@ -524,7 +523,12 @@ mod tests {
         let want = rel_rtn(&chief_tf, &deputy_tf).unwrap();
         let got = g.target_track_rtn[2];
         for k in 0..3 {
-            assert!((got[k] - want[k]).abs() < 1e-6, "k={k}: got {} want {}", got[k], want[k]);
+            assert!(
+                (got[k] - want[k]).abs() < 1e-6,
+                "k={k}: got {} want {}",
+                got[k],
+                want[k]
+            );
         }
     }
 
@@ -557,13 +561,9 @@ mod tests {
         let resp = resp_with(&[1000.0]);
         let g = chief_geometry(&req, &resp).unwrap();
         let chief = chief_orbit(&req.chief);
-        let (track_m, _) = roe_track::controlled_roe_track(
-            &chief,
-            req.t_i,
-            &resp.maneuvers,
-            &resp.primer_times,
-        )
-        .unwrap();
+        let (track_m, _) =
+            roe_track::controlled_roe_track(&chief, req.t_i, &resp.maneuvers, &resp.primer_times)
+                .unwrap();
         let k = 2;
         let c_t = chief.propagate(resp.primer_times[k] - req.t_i);
         let d_t = frames::deputy_from_roe(&c_t, track_m[k].map(|v| v / chief.a));
@@ -588,7 +588,11 @@ mod tests {
     fn nu_track_zero_at_perigee_epoch() {
         // M₀ = 0 chief and the first sample at t = t_i ⇒ ν ≈ 0.
         let g = chief_geometry(&req_with(dto::CostSpec::Norm2, 0.0), &resp_with(&[])).unwrap();
-        assert!(g.chief_nu_track[0].abs() < 1e-9, "got {}", g.chief_nu_track[0]);
+        assert!(
+            g.chief_nu_track[0].abs() < 1e-9,
+            "got {}",
+            g.chief_nu_track[0]
+        );
     }
 
     #[wasm_bindgen_test]
@@ -604,12 +608,13 @@ mod tests {
                 dv: [0.5 * scale, 0.3 * scale, 0.2 * scale],
             }];
             let times = vec![0.0, 1000.0, 2000.0];
-            let (track, jumps) =
-                roe_track::controlled_roe_track(&chief, 0.0, &ms, &times).unwrap();
+            let (track, jumps) = roe_track::controlled_roe_track(&chief, 0.0, &ms, &times).unwrap();
             let c_t = chief.propagate(1000.0);
-            let post =
-                rel_rtn(&c_t, &frames::deputy_from_roe(&c_t, track[1].map(|v| v / chief.a)))
-                    .unwrap();
+            let post = rel_rtn(
+                &c_t,
+                &frames::deputy_from_roe(&c_t, track[1].map(|v| v / chief.a)),
+            )
+            .unwrap();
             let mut pre_roe = [0.0; 6];
             for i in 0..6 {
                 pre_roe[i] = (track[1][i] - jumps[0][i]) / chief.a;
@@ -621,6 +626,9 @@ mod tests {
         let g2 = gap(0.5);
         assert!(g1 > 1e-4, "gap should be measurable, got {g1} m");
         let ratio = g1 / g2;
-        assert!((3.0..5.0).contains(&ratio), "expected ~4× shrink, got {ratio}");
+        assert!(
+            (3.0..5.0).contains(&ratio),
+            "expected ~4× shrink, got {ratio}"
+        );
     }
 }
