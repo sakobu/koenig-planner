@@ -1,8 +1,9 @@
 import { memo } from "react";
 import type { SolveResponse } from "../wasm";
-import { maxAbs, niceStep, stackRows } from "./svgUtil";
+import { axisTicks, maxAbs, niceStep, stackRows } from "./svgUtil";
+import { periodGridTimes } from "../orbit";
 
-export const Timeline = memo(function Timeline({ r }: { r: SolveResponse }) {
+export const Timeline = memo(function Timeline({ r, period }: { r: SolveResponse; period: number }) {
   const W = 760,
     H = 300;
   const padL = 58,
@@ -40,6 +41,13 @@ export const Timeline = memo(function Timeline({ r }: { r: SolveResponse }) {
   const ticks: number[] = [];
   for (let v = 0; v <= domainMax + step / 2; v += step) ticks.push(v);
 
+  const tTicks = axisTicks(t_i, t_f, 4);
+  // Chief-orbit boundaries counted from the horizon epoch (shared with the
+  // primer charts, so a given "kP" is the same instant across every time chart),
+  // clipped to the burn-time window this chart actually spans.
+  const epoch = r.primer_times.length ? r.primer_times[0] : t_i;
+  const pGrid = periodGridTimes(epoch, t_f, period).filter((t) => t >= t_i);
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
       {ticks.map((v) => (
@@ -48,6 +56,18 @@ export const Timeline = memo(function Timeline({ r }: { r: SolveResponse }) {
           <text x={padL - 10} y={y(v) + 3.5} className="axis-label" textAnchor="end">
             {v.toFixed(4)}
           </text>
+        </g>
+      ))}
+      {tTicks.map((t) => (
+        <g key={`tt${t}`}>
+          <line x1={x(t)} y1={padT} x2={x(t)} y2={yBase} className="grid" />
+          <text x={x(t)} y={yBase + 18} className="axis-label" textAnchor="middle">{t.toFixed(0)}</text>
+        </g>
+      ))}
+      {pGrid.map((t) => (
+        <g key={`pg${t}`}>
+          <line x1={x(t)} y1={padT} x2={x(t)} y2={yBase} className="period-grid" />
+          <text x={x(t)} y={padT - 4} className="mnvr-tag" textAnchor="middle">{`${Math.round((t - epoch) / period)}P`}</text>
         </g>
       ))}
       <text x={6} y={15} className="axis-title" textAnchor="start">|Δv|  [m/s]</text>

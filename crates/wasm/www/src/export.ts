@@ -1,15 +1,22 @@
 import type { SolveRequest, SolveResponse } from "./wasm";
 
+/** Split a chief-RTN Δv into its in-plane magnitude |(R, T)| and out-of-plane
+ *  magnitude |N| — the in-plane-shaping vs plane-change decomposition. */
+export function splitInPlane(dv: [number, number, number]): { ip: number; oop: number } {
+  return { ip: Math.hypot(dv[0], dv[1]), oop: Math.abs(dv[2]) };
+}
+
 /** Full-precision CSV of the burn schedule: one row per maneuver — t_s, the
- *  chief-RTN Δv components (m/s), |Δv| (m/s), and the chief true anomaly at the
- *  burn (rad). Numbers are emitted raw for exact round-tripping; the charts
- *  round for display, the export must not. */
+ *  chief-RTN Δv components (m/s), |Δv|, the in-plane / out-of-plane split, and
+ *  the chief true anomaly at the burn (rad). Numbers are raw for exact
+ *  round-tripping; the charts round for display, the export must not. */
 export function toBurnCsv(r: SolveResponse): string {
-  const header = "t_s,dv_R,dv_T,dv_N,dv_mag,nu_rad";
+  const header = "t_s,dv_R,dv_T,dv_N,dv_mag,dv_ip,dv_oop,nu_rad";
   const nu = r.geometry.maneuver_nu;
   const rows = r.maneuvers.map((m, j) => {
     const [dr, dt, dn] = m.dv;
-    return `${m.t},${dr},${dt},${dn},${Math.hypot(dr, dt, dn)},${nu[j] ?? ""}`;
+    const { ip, oop } = splitInPlane(m.dv);
+    return `${m.t},${dr},${dt},${dn},${Math.hypot(dr, dt, dn)},${ip},${oop},${nu[j] ?? ""}`;
   });
   return [header, ...rows].join("\n");
 }

@@ -1,13 +1,16 @@
 import { useRef, useState } from "react";
 import type { ApiError, SolveOutcome, SolveRequest, SolveResponse } from "./wasm";
 import { pickDisplay } from "./outcomeDisplay";
+import { chiefPeriod } from "./orbit";
 import { ErrorBanner } from "./ErrorBanner";
 import { Kpis } from "./charts/Kpis";
+import { LambdaGlyph } from "./charts/LambdaGlyph";
 import { Timeline } from "./charts/Timeline";
 import { PrimerMagnitude } from "./charts/PrimerMagnitude";
 import { RtnComponents } from "./charts/RtnComponents";
 import { PrimerComponents } from "./charts/PrimerComponents";
 import { RoePlanes } from "./charts/RoePlanes";
+import { Sweep } from "./charts/Sweep";
 import { Panel } from "./Panel";
 import { PlanTable } from "./PlanTable";
 import { EciScene } from "./scene/EciScene";
@@ -29,10 +32,17 @@ function OkReadout({
   // playback-grid arrays (chief_track_eci, deputy_track_rtn, primer_*) equal
   // length, so one clamped frame drives both scenes consistently.
   const frame = Math.min(index, Math.max(0, sampleCount - 1));
+  const period = chiefPeriod(req.chief.a);
   return (
     <section id="output">
       {error && <ErrorBanner kind={error.kind} message={error.message} variant="overlay" />}
       <Kpis r={r} />
+      <Panel
+        title="λ dual certificate"
+        caption="The optimal dual λ (the KKT certificate). The primer p(t) = Γᵀ(t)·λ, so the magnitude and component panels below are this vector projected into control space over time."
+      >
+        <LambdaGlyph r={r} />
+      </Panel>
       <Panel
         title="Orbit (ECI)"
         caption="Chief orbit and burn geometry in the Earth-centered inertial frame. The amber arc (piecewise cost) is the perigee attitude-constraint window."
@@ -52,13 +62,19 @@ function OkReadout({
         <RoePlanes r={r} />
       </Panel>
       <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
-        <Timeline r={r} />
+        <Timeline r={r} period={period} />
+      </Panel>
+      <Panel
+        title="Cost vs horizon (trade study)"
+        caption="Re-solves the plan across a range of final times t_f. Longer horizons are generally cheaper; the cursor marks the current t_f, and steps are where the optimal burn count changes."
+      >
+        <Sweep req={req} period={period} />
       </Panel>
       <Panel
         title="Primer magnitude vs time"
         caption="|p(t)| reaches the amber |p| = 1 bound exactly at optimal burn times; touching 1 between burns signals slack in the plan."
       >
-        <PrimerMagnitude r={r} />
+        <PrimerMagnitude r={r} period={period} />
       </Panel>
       <Panel
         title="Δv components (R/T/N)"
@@ -70,7 +86,7 @@ function OkReadout({
         title="Primer components (R/T/N)"
         caption="The primer vector p(t) = Γᵀλ in RTN — the dual certificate; each burn's direction is the support direction of p (parallel to p only under the norm2 cost)."
       >
-        <PrimerComponents r={r} />
+        <PrimerComponents r={r} period={period} />
       </Panel>
       <Panel title="Playback" caption="Scrub the maneuver grid; both 3D scenes track the selected time.">
         <Playback count={sampleCount} index={index} setIndex={setIndex} />

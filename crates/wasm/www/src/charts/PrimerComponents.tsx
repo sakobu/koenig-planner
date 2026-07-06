@@ -5,11 +5,12 @@
 // magnitude panel shows which way the dual rewards thrust at each time.
 import { memo } from "react";
 import type { SolveResponse } from "../wasm";
-import { linePath, maxAbs } from "./svgUtil";
+import { axisTicks, linePath, maxAbs } from "./svgUtil";
+import { periodGridTimes } from "../orbit";
 import { RTN_COLORS } from "../rtn";
 import { RtnLegend } from "./RtnLegend";
 
-export const PrimerComponents = memo(function PrimerComponents({ r }: { r: SolveResponse }) {
+export const PrimerComponents = memo(function PrimerComponents({ r, period }: { r: SolveResponse; period: number }) {
   const W = 760,
     H = 280;
   const padL = 58,
@@ -30,6 +31,9 @@ export const PrimerComponents = memo(function PrimerComponents({ r }: { r: Solve
   const x = (t: number) => padL + ((t - t0) / span) * (W - padL - padR);
   const y = (v: number) => cy0 - (v / domainMax) * half;
 
+  const tTicks = axisTicks(t0, t1, 5);
+  const pGrid = periodGridTimes(t0, t1, period);
+
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -45,6 +49,12 @@ export const PrimerComponents = memo(function PrimerComponents({ r }: { r: Solve
       <text x={padL - 10} y={cy0 + 3.5} className="axis-label" textAnchor="end">
         0
       </text>
+      <text x={padL - 10} y={y(domainMax) + 3.5} className="axis-label" textAnchor="end">
+        {domainMax.toFixed(2)}
+      </text>
+      <text x={padL - 10} y={y(-domainMax) + 3.5} className="axis-label" textAnchor="end">
+        {(-domainMax).toFixed(2)}
+      </text>
 
       {/* Time axis labels */}
       <text x={x(t0)} y={H - padB + 18} className="axis-label" textAnchor="middle">
@@ -56,6 +66,19 @@ export const PrimerComponents = memo(function PrimerComponents({ r }: { r: Solve
       <text x={padL + (W - padL - padR) / 2} y={H - padB + 35} className="axis-title" textAnchor="middle">
         time  [s]
       </text>
+
+      {tTicks.map((t) => (
+        <g key={`tt${t}`}>
+          <line x1={x(t)} y1={padT} x2={x(t)} y2={H - padB} className="grid" />
+          <text x={x(t)} y={H - padB + 18} className="axis-label" textAnchor="middle">{t.toFixed(0)}</text>
+        </g>
+      ))}
+      {pGrid.map((t, k) => (
+        <g key={`pg${t}`}>
+          <line x1={x(t)} y1={padT} x2={x(t)} y2={H - padB} className="period-grid" />
+          <text x={x(t)} y={padT - 4} className="mnvr-tag" textAnchor="middle">{`${k + 1}P`}</text>
+        </g>
+      ))}
 
       {/* Maneuver vertical guides */}
       {r.maneuvers.map((m, j) => (

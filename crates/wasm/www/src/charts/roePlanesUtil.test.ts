@@ -1,12 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  PANES,
-  burnSampleIndex,
-  coastSegments,
-  jumpArrows,
-  paneExtent,
-  fmtTick,
-} from "./roePlanesUtil";
+import { PANES, coastSegments, jumpArrows, paneExtent, fmtTick } from "./roePlanesUtil";
 
 // A 4-sample track with one burn landing on sample 2 (δe pane components 2/3
 // jump by 30/40 there; samples 0-1 are pre-burn zeros).
@@ -26,15 +19,6 @@ describe("PANES", () => {
       [1, 0],
     ]);
     expect(PANES.map((p) => p.equalAspect)).toEqual([true, true, false]);
-  });
-});
-
-describe("burnSampleIndex", () => {
-  it("finds the exact grid sample", () => {
-    expect(burnSampleIndex([0, 30, 60, 90], 60)).toBe(2);
-  });
-  it("falls back to the nearest sample", () => {
-    expect(burnSampleIndex([0, 30, 60, 90], 44)).toBe(1);
   });
 });
 

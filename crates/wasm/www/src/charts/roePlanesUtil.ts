@@ -23,21 +23,10 @@ export const PANES: PaneSpec[] = [
   { key: "dadl", xi: 1, yi: 0, xLabel: "δλ", yLabel: "δa", equalAspect: false },
 ];
 
-/** Index of the grid sample nearest to burn time `t`. In practice burns land
- *  exactly on grid samples, so the nearest match is exact; the nearest-neighbor
- *  search only keeps it robust to an off-grid `t`. */
-export function burnSampleIndex(times: number[], t: number): number {
-  let best = 0;
-  let bestD = Infinity;
-  for (let k = 0; k < times.length; k++) {
-    const d = Math.abs(times[k] - t);
-    if (d < bestD) {
-      bestD = d;
-      best = k;
-    }
-  }
-  return best;
-}
+// Nearest-sample lookup lives in svgUtil now (shared with PrimerMagnitude);
+// re-exported here under its original name so this module's consumers (RoePlanes)
+// are unchanged.
+export { nearestIndex as burnSampleIndex } from "./svgUtil";
 
 function proj(v: number[], xi: number, yi: number): Pt {
   return [v[xi], v[yi]];

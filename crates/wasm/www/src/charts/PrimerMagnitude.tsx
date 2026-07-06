@@ -1,8 +1,9 @@
 import { memo } from "react";
 import type { SolveResponse } from "../wasm";
-import { linePath, stackRows } from "./svgUtil";
+import { axisTicks, linePath, nearestIndex, stackRows } from "./svgUtil";
+import { periodGridTimes } from "../orbit";
 
-export const PrimerMagnitude = memo(function PrimerMagnitude({ r }: { r: SolveResponse }) {
+export const PrimerMagnitude = memo(function PrimerMagnitude({ r, period }: { r: SolveResponse; period: number }) {
   const W = 760,
     H = 300;
   const padL = 58,
@@ -26,12 +27,27 @@ export const PrimerMagnitude = memo(function PrimerMagnitude({ r }: { r: SolveRe
 
   const path = linePath(times, mags, x, y);
 
+  const tTicks = axisTicks(t0, t1, 5);
+  const pGrid = periodGridTimes(t0, t1, period);
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-primer">
       {[0, 0.25, 0.5, 0.75].map((v) => (
         <g key={v}>
           <line x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} className={v === 0 ? "axis" : "grid"} />
           <text x={padL - 10} y={y(v) + 3.5} className="axis-label" textAnchor="end">{v.toFixed(2)}</text>
+        </g>
+      ))}
+      {tTicks.map((t) => (
+        <g key={`tt${t}`}>
+          <line x1={x(t)} y1={padT} x2={x(t)} y2={yBase} className="grid" />
+          <text x={x(t)} y={yBase + 18} className="axis-label" textAnchor="middle">{t.toFixed(0)}</text>
+        </g>
+      ))}
+      {pGrid.map((t, k) => (
+        <g key={`pg${t}`}>
+          <line x1={x(t)} y1={padT} x2={x(t)} y2={yBase} className="period-grid" />
+          <text x={x(t)} y={padT - 4} className="mnvr-tag" textAnchor="middle">{`${k + 1}P`}</text>
         </g>
       ))}
       <line x1={padL} y1={y(1)} x2={W - padR} y2={y(1)} className="primer-ref" />
@@ -49,8 +65,7 @@ export const PrimerMagnitude = memo(function PrimerMagnitude({ r }: { r: SolveRe
       {(() => {
         const rows = stackRows(r.maneuvers.map((m) => x(m.t)), 22);
         return r.maneuvers.map((m, j) => {
-          const idx = times.findIndex((t) => Math.abs(t - m.t) < 1e-6);
-          const g = idx >= 0 ? mags[idx] : 1.0;
+          const g = mags[nearestIndex(times, m.t)];
           const tagY = Math.max(12, y(g) - 9 - rows[j] * 13);
           return (
             <g key={`d${j}`}>

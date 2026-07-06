@@ -270,10 +270,12 @@ input::placeholder {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
     "kpis       kpis"
+    "lambda     lambda"
     "eci        rtn"
     "roeplanes  roeplanes"
     "play       play"
     "timeline   primer"
+    "sweep      sweep"
     "rtncomp    rtncomp"
     "primerrtn  primerrtn"
     "plan       plan";
@@ -281,6 +283,12 @@ input::placeholder {
 }
 .kpis {
   grid-area: kpis;
+}
+.panel:has(.chart-lambda) {
+  grid-area: lambda;
+}
+.panel:has(.sweep) {
+  grid-area: sweep;
 }
 .panel:has(.canvas-eci) {
   grid-area: eci;
@@ -371,7 +379,7 @@ input::placeholder {
 /* ── KPI telemetry strip — the numbers are the hero ──────────────── */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   background: var(--bg-panel);
   border: 1px solid var(--edge);
   border-radius: 4px;
@@ -473,6 +481,77 @@ input::placeholder {
 .chart-primer-rtn {
   max-width: 1180px;
 }
+.chart-lambda {
+  max-width: 1180px;
+}
+.lambda-bar {
+  fill: var(--cyan);
+}
+.chart-sweep {
+  max-width: 1180px;
+}
+.sweep {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.sweep.stale {
+  opacity: 0.5;
+}
+.sweep-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.sweep-bar button {
+  background: var(--bg-input);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  padding: 0.32rem 0.8rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.sweep-bar button:hover:not(:disabled),
+.sweep-bar button:focus-visible {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+.sweep-bar button:disabled {
+  cursor: default;
+  color: var(--ink-faint);
+}
+.sweep-stale {
+  font-family: var(--font-ui);
+  font-size: var(--eyebrow);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.sweep-hint {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+.sweep-curve {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+.sweep-dot {
+  fill: var(--cyan);
+}
+.sweep-cursor {
+  stroke: var(--amber);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
 
 /* ── ROE phase planes — three square panes; cyan coast track, amber burn
    jumps, ink target star (all house tokens, as in the primer charts). ── */
@@ -516,6 +595,14 @@ input::placeholder {
   stroke-width: 1;
   stroke-dasharray: 2 4;
   opacity: 0.35;
+}
+/* Chief-period gridlines: orbit boundaries, distinct from the faint dashed
+   .grid ticks — a tighter dash at slightly higher contrast. */
+.period-grid {
+  stroke: var(--edge-bright);
+  stroke-width: 1;
+  stroke-dasharray: 1 4;
+  opacity: 0.5;
 }
 .axis-label,
 .axis-title,
@@ -564,6 +651,11 @@ input::placeholder {
   font: 10px var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+/* The sweep's t_f cursor tag reads in the cursor's amber, on its own lane below
+   the faint period tags, so the two never blur together when t_f nears a kP line. */
+.sweep-cursor-tag {
+  fill: var(--amber);
 }
 .stem {
   stroke: var(--cyan);
@@ -787,12 +879,14 @@ header.fault .status-lamp {
     grid-template-columns: 1fr;
     grid-template-areas:
       "kpis"
+      "lambda"
       "eci"
       "rtn"
       "roeplanes"
       "play"
       "timeline"
       "primer"
+      "sweep"
       "rtncomp"
       "primerrtn"
       "plan";
@@ -800,7 +894,7 @@ header.fault .status-lamp {
   .kpis {
     grid-template-columns: repeat(2, 1fr);
   }
-  .kpi:nth-child(3) {
+  .kpi:nth-child(odd) {
     border-left: none;
   }
 }
