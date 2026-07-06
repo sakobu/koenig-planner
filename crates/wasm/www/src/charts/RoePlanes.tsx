@@ -63,9 +63,12 @@ function Pane({ r, spec }: { r: SolveResponse; spec: PaneSpec }) {
   const sy = 1.15 * ext.y;
   const x = (v: number) => padL + ((v + sx) / (2 * sx)) * plotW;
   const y = (v: number) => padT + plotH - ((v + sy) / (2 * sy)) * plotH;
-  // One "nice" tick per half-axis; niceStep(s/2) < s always, so it stays inside.
-  const tx = niceStep(sx / 2);
-  const ty = niceStep(sy / 2);
+  // One "nice" tick per half-axis. niceStep rounds up by strictly less than
+  // 2.5×, so niceStep(s/3) < 0.834·s — the tick, its grid line, and its label
+  // stay inside the frame with margin for any extent (niceStep(s/2) could round
+  // up past s and clip against the viewBox).
+  const tx = niceStep(sx / 3);
+  const ty = niceStep(sy / 3);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="roe-pane" preserveAspectRatio="xMidYMid meet">
       <text x={12} y={16} className="axis-title" textAnchor="start">
