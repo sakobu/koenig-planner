@@ -56,8 +56,8 @@ export function maxAbs(values: number[], floor: number): number {
 }
 
 /** Index of the sample in `times` nearest to `t` (linear scan; `times` is a
- *  monotonic grid in practice). Locates a burn's grid sample without the
- *  brittle exact-match-or-fabricate-1.0 fallback the primer chart used to use. */
+ *  monotonic grid in practice). Robust to a burn time that falls between grid
+ *  samples: always returns a real sample index, never an out-of-range sentinel. */
 export function nearestIndex(times: number[], t: number): number {
   let best = 0;
   let bestD = Infinity;
