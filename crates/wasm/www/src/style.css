@@ -749,8 +749,40 @@ header.fault .status-lamp {
 /* ── Playback ────────────────────────────────────────────────────── */
 .playback {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.playback-controls {
+  display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+/* The range sits in a positioned wrapper so burn ticks can overlay it. */
+.playback-track {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.playback-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.playback-tick {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 14px;
+  background: var(--cyan);
+  opacity: 0.55;
+}
+.playback-readout {
+  font: 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: var(--ink-dim);
 }
 .playback button {
   background: var(--bg-input);

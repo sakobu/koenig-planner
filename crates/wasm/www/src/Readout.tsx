@@ -89,7 +89,15 @@ function OkReadout({
         <PrimerComponents r={r} period={period} />
       </Panel>
       <Panel title="Playback" caption="Scrub the maneuver grid; both 3D scenes track the selected time.">
-        <Playback count={sampleCount} index={index} setIndex={setIndex} />
+        <Playback
+          count={sampleCount}
+          index={index}
+          setIndex={setIndex}
+          times={r.primer_times}
+          nu={r.geometry.chief_nu_track}
+          burnTimes={r.maneuvers.map((m) => m.t)}
+          period={period}
+        />
       </Panel>
       <Panel
         title="Plan (full precision)"
