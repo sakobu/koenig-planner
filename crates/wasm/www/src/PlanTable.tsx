@@ -1,5 +1,5 @@
 import type { SolveRequest, SolveResponse } from "./wasm";
-import { downloadBlob, toBurnCsv, toPlanJson } from "./export";
+import { downloadBlob, splitInPlane, toBurnCsv, toPlanJson } from "./export";
 
 /** Full-precision companion to the rounded charts: an export bar (JSON / CSV)
  *  over a monospace burn table that reads raw response numbers — no toFixed. The
@@ -31,13 +31,15 @@ export function PlanTable({ req, r }: { req: SolveRequest; r: SolveResponse }) {
             <th scope="col">Δv_T</th>
             <th scope="col">Δv_N</th>
             <th scope="col">|Δv| [m/s]</th>
+            <th scope="col">|Δv_ip|</th>
+            <th scope="col">|Δv_oop|</th>
             <th scope="col">ν [rad]</th>
           </tr>
         </thead>
         <tbody>
           {r.maneuvers.length === 0 ? (
             <tr>
-              <td className="empty" colSpan={7}>
+              <td className="empty" colSpan={9}>
                 no maneuvers
               </td>
             </tr>
@@ -50,6 +52,8 @@ export function PlanTable({ req, r }: { req: SolveRequest; r: SolveResponse }) {
                 <td>{m.dv[1]}</td>
                 <td>{m.dv[2]}</td>
                 <td>{Math.hypot(m.dv[0], m.dv[1], m.dv[2])}</td>
+                <td>{splitInPlane(m.dv).ip}</td>
+                <td>{splitInPlane(m.dv).oop}</td>
                 <td>{nu[j]}</td>
               </tr>
             ))

@@ -371,7 +371,7 @@ input::placeholder {
 /* ── KPI telemetry strip — the numbers are the hero ──────────────── */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   background: var(--bg-panel);
   border: 1px solid var(--edge);
   border-radius: 4px;
@@ -800,7 +800,7 @@ header.fault .status-lamp {
   .kpis {
     grid-template-columns: repeat(2, 1fr);
   }
-  .kpi:nth-child(3) {
+  .kpi:nth-child(odd) {
     border-left: none;
   }
 }
