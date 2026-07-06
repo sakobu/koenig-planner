@@ -29,7 +29,7 @@ function OkReadout({
   const sampleCount = r.geometry.chief_track_eci.length;
   const [index, setIndex] = useState(0);
   // The single clamp for the playback grid. The ChiefGeometry contract keeps all
-  // playback-grid arrays (chief_track_eci, deputy_track_rtn, primer_*) equal
+  // playback-grid arrays (chief_track_eci, target/transfer tracks, primer_*) equal
   // length, so one clamped frame drives both scenes consistently.
   const frame = Math.min(index, Math.max(0, sampleCount - 1));
   const period = chiefPeriod(req.chief.a);
@@ -50,8 +50,8 @@ function OkReadout({
         <EciScene g={r.geometry} sampleIndex={frame} />
       </Panel>
       <Panel
-        title="Target relative orbit (RTN, chief at origin)"
-        caption="The deputy's target relative orbit. Burn markers are schematic anchors on that orbit — only the Δv direction is exact; the true transfer trajectory is a later phase."
+        title="Relative transfer (RTN, chief at origin)"
+        caption="The deputy's true controlled transfer — from a chief-coincident start (δα = 0) under the solver's mean-element STM dynamics — with the t_f-anchored target orbit as the gray ghost. Burn markers sit on the trajectory; arrows show the Δv direction only."
       >
         <RtnScene g={r.geometry} sampleIndex={frame} />
       </Panel>
