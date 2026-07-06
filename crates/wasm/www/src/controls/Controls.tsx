@@ -8,6 +8,7 @@ import {
   type ChiefKey,
 } from "./request";
 import { NumberField, OptionalNumberField } from "./NumberField";
+import { PRESETS, presetIdFor } from "../defaults";
 
 // One descriptor per field: label + [min, max, step], so the label, range, and
 // value can't drift out of position. Ranges chosen for physical sensibility:
@@ -46,6 +47,30 @@ export function Controls({
 
   return (
     <form className="controls" onSubmit={(e) => e.preventDefault()}>
+      <div className="section preset-section">
+        <label>
+          scenario
+          <select
+            value={presetIdFor(req) ?? "custom"}
+            onChange={(e) => {
+              const p = PRESETS.find((x) => x.id === e.target.value);
+              if (p) setReq(p.req);
+            }}
+          >
+            {presetIdFor(req) === null && (
+              <option value="custom" disabled>
+                Custom…
+              </option>
+            )}
+            {PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <details className="section" open>
         <summary>Chief orbit</summary>
         {CHIEF_FIELDS.map((f) => (

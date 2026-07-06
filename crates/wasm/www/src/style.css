@@ -80,6 +80,27 @@ header h1 {
   color: var(--ink-faint);
 }
 
+/* Slim "what is this" bar under the title bar: one sentence + repo/paper links. */
+.about {
+  margin: 0;
+  padding: 0.7rem 2rem;
+  background: var(--bg-rail);
+  border-bottom: 1px solid var(--edge);
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+.about a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+.about a:hover,
+.about a:focus-visible {
+  outline: none;
+  text-decoration: underline;
+}
+
 /* ── Deck ────────────────────────────────────────────────────────── */
 main {
   display: grid;
@@ -119,6 +140,15 @@ form,
 /* Collapsed: only the summary shows — drop the content gap. */
 .section:not([open]) {
   gap: 0;
+}
+/* Scenario preset picker: the select fills the rail's remaining width (wider
+   than the 7.5rem numeric-input default) but must never force the fixed-width
+   command rail open. min-width:0 lets it shrink to fit and truncate a long
+   scenario name in the closed control — the dropdown still lists names in full —
+   rather than size to its widest option and overflow the deck. */
+.preset-section select {
+  flex: 1;
+  min-width: 0;
 }
 .section > summary {
   position: relative;
@@ -244,7 +274,8 @@ input::placeholder {
     "play       play"
     "timeline   primer"
     "rtncomp    rtncomp"
-    "primerrtn  primerrtn";
+    "primerrtn  primerrtn"
+    "plan       plan";
   align-content: start;
 }
 .kpis {
@@ -270,6 +301,67 @@ input::placeholder {
 }
 .panel:has(.chart-primer-rtn) {
   grid-area: primerrtn;
+}
+
+.panel:has(.plan-table) {
+  grid-area: plan;
+}
+
+/* ── Plan export + full-precision burn table ─────────────────────── */
+.plan-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  /* The raw-precision table can outrun its panel on a narrow deck — scroll it
+     rather than stretch the grid. */
+  overflow-x: auto;
+}
+.export-bar {
+  display: flex;
+  gap: 0.6rem;
+}
+.export-bar button {
+  background: var(--bg-input);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  padding: 0.32rem 0.8rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.export-bar button:hover,
+.export-bar button:focus-visible {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+.burns {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.burns th,
+.burns td {
+  padding: 0.3rem 0.65rem;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--edge);
+}
+.burns th {
+  color: var(--ink-dim);
+  font-family: var(--font-ui);
+  font-size: var(--eyebrow);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.burns td.empty {
+  text-align: center;
+  color: var(--ink-faint);
 }
 
 /* ── KPI telemetry strip — the numbers are the hero ──────────────── */
@@ -342,6 +434,18 @@ input::placeholder {
   width: 10px;
   height: 1px;
   background: var(--cyan);
+}
+
+/* One-line panel caption: what the instrument means, in the AA-safe faint ink,
+   pulled up snug under the title rule. */
+.panel-caption {
+  flex: none;
+  margin: -0.5rem 0 0.9rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
 }
 
 /* ── Charts ──────────────────────────────────────────────────────── */
@@ -653,7 +757,8 @@ header.fault .status-lamp {
       "timeline"
       "primer"
       "rtncomp"
-      "primerrtn";
+      "primerrtn"
+      "plan";
   }
   .kpis {
     grid-template-columns: repeat(2, 1fr);
