@@ -13,7 +13,7 @@ const W = 760,
   H = 300;
 const padL = 64,
   padR = 30,
-  padT = 30,
+  padT = 40, // two top label lanes: faint period tags above, amber t_f cursor tag below
   padB = 46;
 
 type Feasible = { t_f: number; total_dv: number; nManeuvers: number };
@@ -107,7 +107,7 @@ function SweepChart({
       {periodGridTimes(t0, t1, period).map((t, k) => (
         <g key={`pg${t}`}>
           <line x1={x(t)} y1={padT} x2={x(t)} y2={yBase} className="period-grid" />
-          <text x={x(t)} y={padT - 4} className="mnvr-tag" textAnchor="middle">{`${k + 1}P`}</text>
+          <text x={x(t)} y={padT - 16} className="mnvr-tag" textAnchor="middle">{`${k + 1}P`}</text>
         </g>
       ))}
       <text x={6} y={15} className="axis-title" textAnchor="start">Δv cost  [m/s]</text>
@@ -125,7 +125,7 @@ function SweepChart({
         <circle key={`d${i}`} cx={x(p.t_f)} cy={y(p.total_dv)} r={2.5} className="sweep-dot" />
       ))}
       <line x1={x(cursorT)} y1={padT} x2={x(cursorT)} y2={yBase} className="sweep-cursor" />
-      <text x={x(cursorT)} y={padT - 4} className="mnvr-tag" textAnchor="middle">t_f</text>
+      <text x={x(cursorT)} y={padT - 4} className="mnvr-tag sweep-cursor-tag" textAnchor="middle">t_f</text>
     </svg>
   );
 }

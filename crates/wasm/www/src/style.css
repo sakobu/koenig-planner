@@ -652,6 +652,11 @@ input::placeholder {
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+/* The sweep's t_f cursor tag reads in the cursor's amber, on its own lane below
+   the faint period tags, so the two never blur together when t_f nears a kP line. */
+.sweep-cursor-tag {
+  fill: var(--amber);
+}
 .stem {
   stroke: var(--cyan);
   stroke-width: 2;
