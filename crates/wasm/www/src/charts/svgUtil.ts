@@ -54,3 +54,32 @@ export function maxAbs(values: number[], floor: number): number {
   }
   return m;
 }
+
+/** Index of the sample in `times` nearest to `t` (linear scan; `times` is a
+ *  monotonic grid in practice). Locates a burn's grid sample without the
+ *  brittle exact-match-or-fabricate-1.0 fallback the primer chart used to use. */
+export function nearestIndex(times: number[], t: number): number {
+  let best = 0;
+  let bestD = Infinity;
+  for (let k = 0; k < times.length; k++) {
+    const d = Math.abs(times[k] - t);
+    if (d < bestD) {
+      bestD = d;
+      best = k;
+    }
+  }
+  return best;
+}
+
+/** "Nice" interior tick values strictly between `t0` and `t1` — about `count`
+ *  of them, on a 1/2/5×10ⁿ step. Endpoints are excluded (drawn separately).
+ *  Empty when the span is non-positive. */
+export function axisTicks(t0: number, t1: number, count: number): number[] {
+  if (!(t1 - t0 > 0)) return [];
+  const step = niceStep((t1 - t0) / count);
+  const out: number[] = [];
+  for (let t = Math.ceil(t0 / step) * step; t < t1 - 1e-9; t += step) {
+    if (t > t0 + 1e-9) out.push(t);
+  }
+  return out;
+}
