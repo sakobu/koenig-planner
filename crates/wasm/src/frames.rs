@@ -6,6 +6,7 @@
 
 use koenig_damico_planner_api::core::dynamics::AbsoluteOrbit;
 use koenig_damico_planner_api::core::PlannerError;
+use koenig_damico_planner_api::core::dynamics::kepler::wrap_to_pi;
 
 fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
@@ -115,9 +116,11 @@ pub fn eci_to_rtn(orbit: &AbsoluteOrbit, v_eci: [f64; 3]) -> Result<[f64; 3], Pl
 
 /// Reconstruct the deputy's mean absolute orbit from the chief and a
 /// dimensionless quasi-nonsingular ROE offset `[δa, δλ, δeₓ, δe_y, δiₓ, δi_y]`
-/// (`[KD20]` eq. 51; `u = M + ω`). This is the exact algebraic inverse of the
-/// ROE definition — not a linearization — so the resulting deputy `propagate`s
-/// with the same core dynamics as the chief.
+/// (`[KD20]` eq. 51, with the modified relative mean longitude
+/// `δλ = δM + η·(δω + δΩ·cos i)`, `η = √(1−e²)` — the same convention as the
+/// core's Φ/B matrices and FD oracles). This is the exact algebraic inverse of
+/// the ROE definition — not a linearization — so the resulting deputy
+/// `propagate`s with the same core dynamics as the chief.
 pub fn deputy_from_roe(chief: &AbsoluteOrbit, roe: [f64; 6]) -> AbsoluteOrbit {
     let [da, dl, dex, dey, dix, diy] = roe;
     let a_d = chief.a * (1.0 + da);
@@ -127,9 +130,12 @@ pub fn deputy_from_roe(chief: &AbsoluteOrbit, roe: [f64; 6]) -> AbsoluteOrbit {
     let ey_d = chief.e * chief.argp.sin() + dey;
     let e_d = (ex_d * ex_d + ey_d * ey_d).sqrt();
     let argp_d = ey_d.atan2(ex_d);
-    let u_c = chief.argp + chief.mean_anom;
-    let u_d = u_c + dl - (raan_d - chief.raan) * chief.i.cos();
-    let mean_anom_d = u_d - argp_d;
+    // δω is wrapped because atan2 re-branches argp_d while the chief's argp is
+    // unbounded after propagation; δΩ = δi_y/sin i is small by construction.
+    let eta = (1.0 - chief.e * chief.e).sqrt();
+    let d_argp = wrap_to_pi(argp_d - chief.argp);
+    let d_raan = raan_d - chief.raan;
+    let mean_anom_d = chief.mean_anom + dl - eta * (d_argp + d_raan * chief.i.cos());
     AbsoluteOrbit::new(a_d, e_d, i_d, raan_d, argp_d, mean_anom_d)
 }
 
@@ -248,17 +254,23 @@ mod tests {
         )
     }
 
-    // Forward quasi-nonsingular ROE (deputy − chief), [KD20] eq. 51, u = M + ω.
+    // Forward quasi-nonsingular ROE (deputy − chief), [KD20] eq. 51 with the
+    // modified relative mean longitude δλ = δM + η_c·(δω + δΩ·cos i_c) — the
+    // same ground-truth map the core's FD oracles pin (tests/fd_stm.rs,
+    // tests/fd_b_matrix.rs at the repo root).
     fn roe_of(chief: &AbsoluteOrbit, deputy: &AbsoluteOrbit) -> [f64; 6] {
-        let da = (deputy.a - chief.a) / chief.a;
-        let dix = deputy.i - chief.i;
-        let diy = (deputy.raan - chief.raan) * chief.i.sin();
-        let dex = deputy.e * deputy.argp.cos() - chief.e * chief.argp.cos();
-        let dey = deputy.e * deputy.argp.sin() - chief.e * chief.argp.sin();
-        let uc = chief.argp + chief.mean_anom;
-        let ud = deputy.argp + deputy.mean_anom;
-        let dl = (ud - uc) + (deputy.raan - chief.raan) * chief.i.cos();
-        [da, dl, dex, dey, dix, diy]
+        let eta = (1.0 - chief.e * chief.e).sqrt();
+        let dm = wrap_to_pi(deputy.mean_anom - chief.mean_anom);
+        let dw = wrap_to_pi(deputy.argp - chief.argp);
+        let dom = wrap_to_pi(deputy.raan - chief.raan);
+        [
+            (deputy.a - chief.a) / chief.a,
+            dm + eta * (dw + dom * chief.i.cos()),
+            deputy.e * deputy.argp.cos() - chief.e * chief.argp.cos(),
+            deputy.e * deputy.argp.sin() - chief.e * chief.argp.sin(),
+            deputy.i - chief.i,
+            dom * chief.i.sin(),
+        ]
     }
 
     #[wasm_bindgen_test]
@@ -301,5 +313,46 @@ mod tests {
         assert!((back.raan - deputy.raan).abs() < 1e-12, "raan");
         assert!((back.argp - deputy.argp).abs() < 1e-12, "argp");
         assert!((back.mean_anom - deputy.mean_anom).abs() < 1e-12, "M");
+    }
+
+    #[wasm_bindgen_test]
+    fn inversion_roundtrips_with_perigee_offset() {
+        // δω ≠ 0 activates the η weighting: at e = 0.7 an unweighted inverse
+        // misses δM by (1 − η)·δω ≈ 0.29·δω — 14 orders above this tolerance.
+        let c = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), 0.6, 2.1);
+        let d = AbsoluteOrbit::new(
+            A * (1.0 + 2e-4),
+            0.703,
+            40.01f64.to_radians(),
+            358.02f64.to_radians(),
+            0.65,
+            2.15,
+        );
+        let back = deputy_from_roe(&c, roe_of(&c, &d));
+        assert!((back.a - d.a).abs() < 1e-3, "a");
+        assert!((back.e - d.e).abs() < 1e-12, "e");
+        assert!((back.i - d.i).abs() < 1e-12, "i");
+        assert!((back.raan - d.raan).abs() < 1e-12, "raan");
+        assert!((back.argp - d.argp).abs() < 1e-12, "argp");
+        assert!((back.mean_anom - d.mean_anom).abs() < 1e-12, "M");
+    }
+
+    #[wasm_bindgen_test]
+    fn inversion_roundtrips_across_the_argp_wrap() {
+        // Chief perigee just below +π, deputy's just past −π (the same physical
+        // direction): δω must be taken the short way around, not ±2π off.
+        let c = AbsoluteOrbit::new(A, E, 40f64.to_radians(), 358f64.to_radians(), PI - 0.01, 1.0);
+        let d = AbsoluteOrbit::new(
+            A * (1.0 + 1e-4),
+            0.701,
+            40.005f64.to_radians(),
+            358.01f64.to_radians(),
+            -PI + 0.01,
+            1.02,
+        );
+        let back = deputy_from_roe(&c, roe_of(&c, &d));
+        assert!((back.argp - d.argp).abs() < 1e-12, "argp");
+        assert!((back.mean_anom - d.mean_anom).abs() < 1e-12, "M");
+        assert!((back.e - d.e).abs() < 1e-12, "e");
     }
 }
