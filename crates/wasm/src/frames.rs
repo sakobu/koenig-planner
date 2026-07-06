@@ -131,7 +131,8 @@ pub fn deputy_from_roe(chief: &AbsoluteOrbit, roe: [f64; 6]) -> AbsoluteOrbit {
     let e_d = (ex_d * ex_d + ey_d * ey_d).sqrt();
     let argp_d = ey_d.atan2(ex_d);
     // δω is wrapped because atan2 re-branches argp_d while the chief's argp is
-    // unbounded after propagation; δΩ = δi_y/sin i is small by construction.
+    // unbounded after propagation; d_raan needs no wrap — δi_y already carries
+    // wrap(δΩ)·sin i, so δi_y/sin i is the short-way angle by construction.
     let eta = (1.0 - chief.e * chief.e).sqrt();
     let d_argp = wrap_to_pi(argp_d - chief.argp);
     let d_raan = raan_d - chief.raan;
