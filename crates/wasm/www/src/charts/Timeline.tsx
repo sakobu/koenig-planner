@@ -42,7 +42,11 @@ export const Timeline = memo(function Timeline({ r, period }: { r: SolveResponse
   for (let v = 0; v <= domainMax + step / 2; v += step) ticks.push(v);
 
   const tTicks = axisTicks(t_i, t_f, 4);
-  const pGrid = periodGridTimes(t_i, t_f, period);
+  // Chief-orbit boundaries counted from the horizon epoch (shared with the
+  // primer charts, so a given "kP" is the same instant across every time chart),
+  // clipped to the burn-time window this chart actually spans.
+  const epoch = r.primer_times.length ? r.primer_times[0] : t_i;
+  const pGrid = periodGridTimes(epoch, t_f, period).filter((t) => t >= t_i);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
@@ -60,10 +64,10 @@ export const Timeline = memo(function Timeline({ r, period }: { r: SolveResponse
           <text x={x(t)} y={yBase + 18} className="axis-label" textAnchor="middle">{t.toFixed(0)}</text>
         </g>
       ))}
-      {pGrid.map((t, k) => (
+      {pGrid.map((t) => (
         <g key={`pg${t}`}>
           <line x1={x(t)} y1={padT} x2={x(t)} y2={yBase} className="period-grid" />
-          <text x={x(t)} y={padT - 4} className="mnvr-tag" textAnchor="middle">{`${k + 1}P`}</text>
+          <text x={x(t)} y={padT - 4} className="mnvr-tag" textAnchor="middle">{`${Math.round((t - epoch) / period)}P`}</text>
         </g>
       ))}
       <text x={6} y={15} className="axis-title" textAnchor="start">|Δv|  [m/s]</text>
