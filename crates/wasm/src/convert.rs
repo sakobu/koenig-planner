@@ -239,6 +239,8 @@ mod tests {
             primer_rtn: vec![[0.7, 0.8, 0.9]],
             perigee_arc_eci: Some(vec![[1.1, 1.2, 1.3]]),
             deputy_track_rtn: vec![[1.0, 2.0, 3.0]],
+            roe_track: vec![[1.5, 2.5, 3.5, 4.5, 5.5, 6.5]],
+            roe_jumps: vec![[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]],
             target_roe: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
         };
         let got: dto::SolveResponse = (resp, geom).into();
@@ -260,5 +262,7 @@ mod tests {
         assert_eq!(got.geometry.maneuver_rtn[0].position_rtn, [0.7, 0.8, 0.9]);
         assert_eq!(got.geometry.maneuver_rtn[0].dv_rtn, [0.01, 0.02, 0.03]);
         assert_eq!(got.geometry.primer_rtn, vec![[0.7, 0.8, 0.9]]);
+        assert_eq!(got.geometry.roe_track, vec![[1.5, 2.5, 3.5, 4.5, 5.5, 6.5]]);
+        assert_eq!(got.geometry.roe_jumps, vec![[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]]);
     }
 }

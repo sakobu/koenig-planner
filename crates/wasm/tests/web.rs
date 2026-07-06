@@ -86,6 +86,16 @@ fn solve_golden_is_ok_within_bands() {
                 .copied()
                 .fold(f64::NEG_INFINITY, f64::max);
             assert!((0.999..=1.010_001).contains(&max_g), "primer max = {max_g}");
+            // Controlled-ROE track: grid-aligned, one jump per burn, endpoint
+            // at the target pseudostate (within residual + pruning).
+            assert_eq!(value.geometry.roe_track.len(), value.primer_times.len());
+            assert_eq!(value.geometry.roe_jumps.len(), value.maneuvers.len());
+            let last = value.geometry.roe_track.last().unwrap();
+            let target = value.geometry.target_roe;
+            let err2: f64 = (0..6).map(|i| (last[i] - target[i]).powi(2)).sum();
+            let nrm2: f64 = (0..6).map(|i| target[i].powi(2)).sum();
+            let rel = (err2 / nrm2).sqrt();
+            assert!(rel < 1e-2, "roe_track endpoint rel err = {rel}");
         }
         SolveOutcome::Err { error } => {
             panic!("expected Ok, got err: {:?} {}", error.kind, error.message)
@@ -123,6 +133,10 @@ fn solve_keeps_plan_when_deputy_reconstruction_is_non_elliptic() {
                 "deputy track should degrade to empty for a non-elliptic deputy"
             );
             assert!(value.geometry.maneuver_rtn.is_empty());
+            // The controlled-ROE track is chief-derived — it must survive the
+            // deputy degradation so the ROE phase panes stay drawable.
+            assert_eq!(value.geometry.roe_track.len(), value.primer_times.len());
+            assert_eq!(value.geometry.roe_jumps.len(), value.maneuvers.len());
         }
         SolveOutcome::Err { error } => panic!(
             "expected Ok (valid solve), got err: {:?} {}",
@@ -156,6 +170,8 @@ fn solve_outcome_status_tags_are_stable() {
                 primer_rtn: vec![],
                 perigee_arc_eci: None,
                 deputy_track_rtn: vec![],
+                roe_track: vec![],
+                roe_jumps: vec![],
                 target_roe: [0.0; 6],
             },
         },

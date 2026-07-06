@@ -9,6 +9,7 @@ mod convert;
 mod dto;
 mod frames;
 mod geometry;
+mod roe_track;
 
 pub use dto::*;
 

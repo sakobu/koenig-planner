@@ -7,6 +7,7 @@ import { Timeline } from "./charts/Timeline";
 import { PrimerMagnitude } from "./charts/PrimerMagnitude";
 import { RtnComponents } from "./charts/RtnComponents";
 import { PrimerComponents } from "./charts/PrimerComponents";
+import { RoePlanes } from "./charts/RoePlanes";
 import { Panel } from "./Panel";
 import { PlanTable } from "./PlanTable";
 import { EciScene } from "./scene/EciScene";
@@ -43,6 +44,12 @@ function OkReadout({
         caption="The deputy's target relative orbit. Burn markers are schematic anchors on that orbit — only the Δv direction is exact; the true transfer trajectory is a later phase."
       >
         <RtnScene g={r.geometry} sampleIndex={frame} />
+      </Panel>
+      <Panel
+        title="ROE phase planes (δe, δi, δa–δλ)"
+        caption="The controlled mean-ROE pseudostate δα(t), accumulated from 0 at t_i: coasts follow the J2 STM, amber arrows are the exact B·Δv jump at each burn, ★ marks the target w. δe and δi panes are equal-aspect."
+      >
+        <RoePlanes r={r} />
       </Panel>
       <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
         <Timeline r={r} />
