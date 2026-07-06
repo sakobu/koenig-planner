@@ -27,25 +27,20 @@ fn chief_orbit(c: &dto::OrbitDto) -> AbsoluteOrbit {
     )
 }
 
-/// Deputy position relative to the chief, in the chief RTN frame, at a duration
-/// `dur` from the shared `t_i` epoch.
+/// Deputy position relative to the chief in the chief RTN frame, both orbits
+/// already evaluated at the same instant (callers propagate each from its own
+/// epoch).
 ///
 /// # Errors
-/// Fails when the deputy reconstructed from an extreme target ROE is
-/// non-elliptic (`e ≥ 1`), which has no Kepler solution. Callers treat this as
-/// "relative track not drawable" (best-effort) — it is a presentation artifact,
-/// not a solver failure, so it must not sink an otherwise-valid solve.
-fn deputy_rel_rtn(
-    chief: &AbsoluteOrbit,
-    deputy: &AbsoluteOrbit,
-    dur: f64,
-) -> Result<[f64; 3], PlannerError> {
-    let c_t = chief.propagate(dur);
-    let d_t = deputy.propagate(dur);
-    let r_c = frames::position_eci(&c_t)?;
-    let r_d = frames::position_eci(&d_t)?;
+/// Fails when either orbit is non-elliptic (`e ≥ 1`), which has no Kepler
+/// solution. Callers treat this as "relative track not drawable" (best-effort) —
+/// it is a presentation artifact, not a solver failure, so it must not sink an
+/// otherwise-valid solve.
+fn rel_rtn(c_t: &AbsoluteOrbit, d_t: &AbsoluteOrbit) -> Result<[f64; 3], PlannerError> {
+    let r_c = frames::position_eci(c_t)?;
+    let r_d = frames::position_eci(d_t)?;
     let rel_eci = [r_d[0] - r_c[0], r_d[1] - r_c[1], r_d[2] - r_c[2]];
-    frames::eci_to_rtn(&c_t, rel_eci)
+    frames::eci_to_rtn(c_t, rel_eci)
 }
 
 /// Presentation geometry for the 3D scene + orbit panel, computed by REUSING
@@ -59,7 +54,7 @@ fn deputy_rel_rtn(
 /// (e.g. a non-elliptic chief) — unreachable once the solver has accepted the
 /// request. The **deputy**-derived fields (`deputy_track_rtn`, `maneuver_rtn`)
 /// are best-effort: they degrade to empty for a non-elliptic reconstructed
-/// deputy rather than failing the whole geometry (see [`deputy_rel_rtn`]).
+/// deputy rather than failing the whole geometry (see [`rel_rtn`]).
 pub fn chief_geometry(
     req: &dto::SolveRequest,
     resp: &api::SolveResponse,
@@ -140,12 +135,10 @@ pub fn chief_geometry(
             .collect()
     });
 
-    // Deputy relative orbit: reconstruct the deputy's absolute orbit from the
-    // (dimensionless) target ROE via the exact ROE inverse. It is propagated
-    // with the core below — at each playback sample (deputy_track_rtn) and at
-    // each maneuver time — then differenced in ECI and expressed in the chief
-    // RTN frame. Faithful by reuse — only the ROE inverse and frame rotations
-    // are new.
+    // Target deputy: the orbit whose ROE relative to the chief AT t_f is the
+    // request target — the epoch where the solver enforces δα(t_f) = w/a —
+    // reconstructed via the exact ROE inverse. Samples before t_f propagate it
+    // backward (negative durations are exact: linear secular rates + Kepler).
     let roe = [
         req.w_meters[0] / chief.a,
         req.w_meters[1] / chief.a,
@@ -154,16 +147,16 @@ pub fn chief_geometry(
         req.w_meters[4] / chief.a,
         req.w_meters[5] / chief.a,
     ];
-    let deputy = frames::deputy_from_roe(&chief, roe);
+    let deputy_tgt = frames::deputy_from_roe(&chief.propagate(req.t_f - req.t_i), roe);
 
-    // Deputy position in chief RTN at each playback (primer_times) sample, so the
-    // RTN view's glyph tracks the same scrubber as the ECI spacecraft. Best-effort:
-    // empty when the target ROE implies a non-elliptic deputy (see deputy_rel_rtn),
-    // so an extreme target degrades the relative track, not the whole solve.
+    // Target relative orbit at each playback sample — the ghost curve the
+    // transfer lands on. Best-effort: empty when the target ROE implies a
+    // non-elliptic deputy, so an extreme target degrades the relative track,
+    // not the whole solve.
     let deputy_track_rtn: Vec<[f64; 3]> = resp
         .primer_times
         .iter()
-        .map(|&t| deputy_rel_rtn(&chief, &deputy, dur(t)))
+        .map(|&t| rel_rtn(&chief.propagate(dur(t)), &deputy_tgt.propagate(t - req.t_f)))
         .collect::<Result<_, _>>()
         .unwrap_or_default();
 
@@ -182,7 +175,7 @@ pub fn chief_geometry(
         .iter()
         .map(|m| {
             Ok(dto::ManeuverRtnDto {
-                position_rtn: deputy_rel_rtn(&chief, &deputy, dur(m.t))?,
+                position_rtn: rel_rtn(&chief.propagate(dur(m.t)), &deputy_tgt.propagate(m.t - req.t_f))?,
                 dv_rtn: m.dv,
             })
         })
@@ -472,5 +465,38 @@ mod tests {
     // Local norm helper (frames::norm is private to its module).
     fn frames_norm(v: [f64; 3]) -> f64 {
         (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
+    }
+
+    #[wasm_bindgen_test]
+    fn negative_duration_propagate_inverts_forward() {
+        // Sampling the t_f-anchored target before t_f propagates backward:
+        // a, e, i are constant and Ω/ω/M are linear at fixed secular rates, so
+        // propagate(dt) then propagate(−dt) must return to the epoch elements.
+        let c = chief_orbit(&req_with(dto::CostSpec::Norm2, 0.0).chief);
+        let back = c.propagate(5000.0).propagate(-5000.0);
+        assert!((back.a - c.a).abs() < 1e-6);
+        assert!((back.raan - c.raan).abs() < 1e-12);
+        assert!((back.argp - c.argp).abs() < 1e-12);
+        assert!((back.mean_anom - c.mean_anom).abs() < 1e-12);
+    }
+
+    #[wasm_bindgen_test]
+    fn target_track_is_anchored_at_t_f() {
+        // δa ≠ 0 makes the anchor epoch observable (≈1.4 km of along-track drift
+        // over this window): the last grid sample must sit exactly at the
+        // t_f-anchored reconstruction, not the t_i-anchored one.
+        let req = req_with(dto::CostSpec::Norm2, 0.0);
+        let mut resp = resp_with(&[]);
+        resp.primer_times = vec![0.0, 58_995.0, 117_990.0]; // ends exactly at t_f
+        resp.primer_rtn = vec![[0.0, 1.0, 0.0]; 3];
+        let g = chief_geometry(&req, &resp).unwrap();
+        let chief_tf = chief_orbit(&req.chief).propagate(req.t_f - req.t_i);
+        let roe = req.w_meters.map(|w| w / req.chief.a);
+        let deputy_tf = frames::deputy_from_roe(&chief_tf, roe);
+        let want = rel_rtn(&chief_tf, &deputy_tf).unwrap();
+        let got = g.deputy_track_rtn[2];
+        for k in 0..3 {
+            assert!((got[k] - want[k]).abs() < 1e-6, "k={k}: got {} want {}", got[k], want[k]);
+        }
     }
 }
