@@ -117,7 +117,7 @@ export const PrimerComponents = memo(function PrimerComponents({
   frame: number;
 }) {
   const x = xScale(r.primer_times);
-  const ct = cursorTime(r.primer_times, frame);
+  const ct = cursorTime(r.primer_times, frame, r.maneuvers.map((m) => m.t));
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}

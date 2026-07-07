@@ -115,7 +115,7 @@ export const Timeline = memo(function Timeline({
   const x = xScale(t_i, t_f);
   // This chart spans only the burn window — hide the cursor when the scrubbed
   // time is outside it rather than pinning it misleadingly to an edge.
-  const ct = clampToWindow(cursorTime(r.primer_times, frame), t_i, t_f);
+  const ct = clampToWindow(cursorTime(r.primer_times, frame, tVals), t_i, t_f);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-timeline">
       <Body r={r} period={period} />

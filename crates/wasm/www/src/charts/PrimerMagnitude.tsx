@@ -100,7 +100,7 @@ export const PrimerMagnitude = memo(function PrimerMagnitude({
   frame: number;
 }) {
   const x = xScale(r.primer_times);
-  const ct = cursorTime(r.primer_times, frame);
+  const ct = cursorTime(r.primer_times, frame, r.maneuvers.map((m) => m.t));
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" className="chart chart-primer">
       <Body r={r} period={period} />
