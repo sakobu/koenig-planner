@@ -1,4 +1,4 @@
-import { RTN_COLORS, RTN_NAME } from "../rtn";
+import { RTN_COLORS, RTN_NAME } from "../lib/rtn";
 
 /** The R/T/N color-legend row shared by the component charts: three swatches
  *  starting at `x`, evenly spread so the last sits 120 units inside the right

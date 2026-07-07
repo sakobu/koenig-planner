@@ -1,6 +1,6 @@
 /** Pure geometry for the λ dual-certificate glyph: one zero-centered signed bar
  *  per ROE component, length ∝ |λ_i| normalized by the largest |λ|. */
-import { maxAbs } from "./svgUtil";
+import { maxAbs } from "../lib/svgUtil";
 
 /** ROE component labels, in the `w_meters` / `target_roe` / `lambda` order. */
 export const ROE_LABELS = ["δa", "δλ", "δe_x", "δe_y", "δi_x", "δi_y"] as const;

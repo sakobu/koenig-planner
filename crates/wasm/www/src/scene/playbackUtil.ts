@@ -2,7 +2,7 @@
  *  scrub track, step-to-burn). Times are absolute grid seconds; tick fractions
  *  are 0..1 in SAMPLE-INDEX space, which is the range input's axis (and equals
  *  time-fraction on the uniform grid). */
-import { nearestIndex } from "../charts/svgUtil";
+import { nearestIndex } from "../lib/svgUtil";
 
 /** "t +32.79 h" — elapsed hours since the horizon epoch `t0`. */
 export function fmtHours(t: number, t0: number): string {

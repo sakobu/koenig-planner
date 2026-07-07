@@ -1,6 +1,6 @@
 import { memo } from "react";
-import type { SolveResponse } from "../wasm";
-import { splitInPlane } from "../export";
+import type { SolveResponse } from "../lib/wasm";
+import { splitInPlane } from "../lib/export";
 
 export const Kpis = memo(function Kpis({ r }: { r: SolveResponse }) {
   let ipTotal = 0;

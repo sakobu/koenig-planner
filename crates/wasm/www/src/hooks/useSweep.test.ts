@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { sweepTfValues, stampWithoutTf } from "./useSweep";
-import type { SolveRequest } from "./wasm";
+import type { SolveRequest } from "../lib/wasm";
 
 const base = { t_i: 0, t_f: 1000, dt: 100 } as unknown as SolveRequest;
 

@@ -1,4 +1,4 @@
-import type { SolveRequest } from "../wasm";
+import type { SolveRequest } from "../lib/wasm";
 import {
   setChief,
   setWindow,
@@ -8,7 +8,7 @@ import {
   type ChiefKey,
 } from "./request";
 import { NumberField, OptionalNumberField } from "./NumberField";
-import { PRESETS, presetIdFor } from "../defaults";
+import { PRESETS, presetIdFor } from "../lib/defaults";
 
 // One descriptor per field: label + [min, max, step], so the label, range, and
 // value can't drift out of position. Ranges chosen for physical sensibility:

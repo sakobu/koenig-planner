@@ -1,21 +1,21 @@
 import { useRef, useState } from "react";
-import type { ApiError, SolveOutcome, SolveRequest, SolveResponse } from "./wasm";
-import { pickDisplay } from "./outcomeDisplay";
-import { chiefPeriod } from "./orbit";
-import { ErrorBanner } from "./ErrorBanner";
-import { Kpis } from "./charts/Kpis";
-import { LambdaGlyph } from "./charts/LambdaGlyph";
-import { Timeline } from "./charts/Timeline";
-import { PrimerMagnitude } from "./charts/PrimerMagnitude";
-import { RtnComponents } from "./charts/RtnComponents";
-import { PrimerComponents } from "./charts/PrimerComponents";
-import { RoePlanes } from "./charts/RoePlanes";
-import { Sweep } from "./charts/Sweep";
-import { Panel } from "./Panel";
-import { PlanTable } from "./PlanTable";
-import { EciScene } from "./scene/EciScene";
-import { RtnScene } from "./scene/RtnScene";
-import { Playback } from "./scene/Playback";
+import type { ApiError, SolveOutcome, SolveRequest, SolveResponse } from "../lib/wasm";
+import { pickDisplay } from "../lib/outcomeDisplay";
+import { chiefPeriod } from "../lib/orbit";
+import { ErrorBanner } from "../ui/ErrorBanner";
+import { Kpis } from "../charts/Kpis";
+import { LambdaGlyph } from "../charts/LambdaGlyph";
+import { Timeline } from "../charts/Timeline";
+import { PrimerMagnitude } from "../charts/PrimerMagnitude";
+import { RtnComponents } from "../charts/RtnComponents";
+import { PrimerComponents } from "../charts/PrimerComponents";
+import { RoePlanes } from "../charts/RoePlanes";
+import { Sweep } from "../charts/Sweep";
+import { Panel } from "../ui/Panel";
+import { PlanTable } from "../ui/PlanTable";
+import { EciScene } from "../scene/EciScene";
+import { RtnScene } from "../scene/RtnScene";
+import { Playback } from "../scene/Playback";
 
 function OkReadout({
   r,

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { initWasm, version, type SolveRequest } from "./wasm";
-import { GOLDEN } from "./defaults";
-import { useSolveOutcome } from "./useSolve";
+import { initWasm, version, type SolveRequest } from "./lib/wasm";
+import { GOLDEN } from "./lib/defaults";
+import { useSolveOutcome } from "./hooks/useSolve";
 import { Controls } from "./controls/Controls";
-import { Readout } from "./Readout";
-import { ErrorBanner } from "./ErrorBanner";
+import { Readout } from "./app/Readout";
+import { ErrorBanner } from "./ui/ErrorBanner";
 
 export default function App() {
   const [ready, setReady] = useState(false);

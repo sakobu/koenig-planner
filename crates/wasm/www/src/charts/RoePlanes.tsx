@@ -4,8 +4,8 @@
 // Single-series panes: identity is carried by shape (dot = start, ★ = target,
 // arrow = burn) plus the panel caption — no legend needed.
 import { memo, useMemo } from "react";
-import type { SolveResponse } from "../wasm";
-import { linePath, niceStep } from "./svgUtil";
+import type { SolveResponse } from "../lib/wasm";
+import { linePath, niceStep } from "../lib/svgUtil";
 import {
   PANES,
   type PaneSpec,

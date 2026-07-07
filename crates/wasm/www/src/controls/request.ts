@@ -1,4 +1,4 @@
-import type { SolveRequest, CostSpec } from "../wasm";
+import type { SolveRequest, CostSpec } from "../lib/wasm";
 
 export type ChiefKey = "a" | "e" | "i" | "raan" | "argp" | "mean_anom";
 
