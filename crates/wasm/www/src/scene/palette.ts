@@ -19,4 +19,4 @@ export const SCENE = {
  *  view). Kept small so the glyphs read as direction indicators without
  *  dominating the viewport, and shared so the Δv and primer arrows are identical
  *  in size across the ECI and RTN scenes. */
-export const ARROW = { burn: 0.22, primer: 0.28 } as const;
+export const ARROW = { burn: 0.132, primer: 0.28 } as const;
