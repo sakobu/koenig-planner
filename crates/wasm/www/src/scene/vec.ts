@@ -20,3 +20,14 @@ export function maxRadius(pts: V3[]): number {
 export function rtnToView(v: V3): V3 {
   return [v[1], v[0], -v[2]];
 }
+
+/** Map an ECI vector `[x, y, z]` (Earth-centred inertial, Z = north pole, i.e.
+ *  Z-up) into the scene's three.js view frame (Y-up): ECI Z → view Y (up). A
+ *  proper rotation (det +1, a −90° turn about X), so orbit sense/handedness is
+ *  preserved. With the pole vertical, an equatorial orbit reads as a horizontal
+ *  ring and a polar one as a vertical loop — matching how these orbits are
+ *  conventionally pictured. (three.js is Y-up; feeding ECI in raw would lay the
+ *  pole sideways and stand the equatorial plane upright.) */
+export function eciToView(v: V3): V3 {
+  return [v[0], v[2], -v[1]];
+}

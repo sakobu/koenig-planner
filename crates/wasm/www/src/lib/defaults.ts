@@ -27,8 +27,9 @@ export const PRESETS: Preset[] = [
     id: "leo-sso-formation",
     name: "LEO sun-sync formation",
     req: {
-      // ~520 km sun-synchronous, near-circular; norm2 (no perigee window to gauge).
-      chief: { a: 6_900e3, e: 0.001, i: 97.4, raan: 90, argp: 0, mean_anom: 0 },
+      // ~522 km sun-synchronous (i≈97.485° is the exact SSO inclination for this a),
+      // near-circular; small bounded relative formation; norm2 (no perigee window).
+      chief: { a: 6_900e3, e: 0.001, i: 97.485, raan: 90, argp: 0, mean_anom: 0 },
       t_i: 0,
       t_f: 11_400, // ~2 orbits
       dt: 30,
@@ -37,12 +38,12 @@ export const PRESETS: Preset[] = [
     },
   },
   {
-    id: "leo-rendezvous",
-    name: "LEO rendezvous (co-elliptic)",
+    id: "leo-coelliptic-hold",
+    name: "LEO co-elliptic hold",
     req: {
-      // ~500 km, ISS-like inclination. Co-elliptic: the relative eccentricity
-      // (δe_x) traces a coplanar 2:1 R/T ellipse centred ~400 m ahead of the
-      // chief — the classic co-elliptic relative orbit, not just a fixed offset.
+      // ~500 km, ISS-like inclination. Co-elliptic hold (bounded, δa=0): δe_x
+      // traces a coplanar 2:1 R/T ellipse centred ~400 m ahead of the chief —
+      // a station-keeping geometry, not a drive-to-docking rendezvous.
       chief: { a: 6_878e3, e: 0.0005, i: 51.6, raan: 0, argp: 0, mean_anom: 0 },
       t_i: 0,
       t_f: 11_400,
@@ -52,13 +53,15 @@ export const PRESETS: Preset[] = [
     },
   },
   {
-    id: "geo-relocation",
-    name: "GEO relocation",
+    id: "geo-relative-slot",
+    name: "GEO relative slot offset",
     req: {
-      // Geostationary, near-equatorial; a slot change over half a sidereal day.
+      // Geostationary, near-equatorial; small relative longitude/inclination offset
+      // (δλ=5 km ≈ 0.007°, ~7% of a 0.1° slot) over half a sidereal day — a
+      // station-keeping / formation geometry, not a full slot relocation.
       chief: { a: 42_164e3, e: 0.0002, i: 0.05, raan: 0, argp: 0, mean_anom: 0 },
       t_i: 0,
-      t_f: 43_200,
+      t_f: 43_082,
       dt: 120,
       w_meters: [0, 5000, 500, 0, 0, 500],
       cost: { type: "norm2" },

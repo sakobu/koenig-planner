@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls, Stars } from "@react-three/drei";
 import { BackSide } from "three";
 import type { ChiefGeometry } from "../lib/wasm";
-import { scaleAll, type V3 } from "./vec";
+import { eciToView, scaleAll, type V3 } from "./vec";
 import { ARROW, SCENE } from "./palette";
 import { Arrow } from "./Arrow";
 
@@ -11,9 +11,10 @@ const EARTH_RADIUS_M = 6.378e6;
 
 export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: number }) {
   const k = 1 / g.a; // meters → scene units (a ≈ 1)
-  const orbit = useMemo(() => scaleAll(g.orbit_eci, k), [g, k]);
+  // Lift every ECI-space quantity into the view frame (pole up) via eciToView.
+  const orbit = useMemo(() => scaleAll(g.orbit_eci, k).map(eciToView), [g, k]);
   const arc = useMemo(
-    () => (g.perigee_arc_eci ? scaleAll(g.perigee_arc_eci, k) : null),
+    () => (g.perigee_arc_eci ? scaleAll(g.perigee_arc_eci, k).map(eciToView) : null),
     [g, k],
   );
   const earthR = EARTH_RADIUS_M * k;
@@ -43,7 +44,7 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
             <meshBasicMaterial color={SCENE.earthAtmo} transparent opacity={0.05} side={BackSide} />
           </mesh>
         </group>
-        {/* ECI reference axes */}
+        {/* Reference triad — after the eciToView lift, green (up) is ECI +Z (north pole). */}
         <axesHelper args={[1.6]} />
         {/* Chief orbit */}
         <Line points={orbit} color={SCENE.chiefOrbit} lineWidth={1.5} />
@@ -54,14 +55,14 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
             (fixed length); per-burn magnitude is read from the Δv-component
             bars (RtnComponents). Same for the amber primer arrow below. */}
         {g.maneuver_eci.map((m, j) => {
-          const pos: V3 = [m.position_eci[0] * k, m.position_eci[1] * k, m.position_eci[2] * k];
+          const pos: V3 = eciToView([m.position_eci[0] * k, m.position_eci[1] * k, m.position_eci[2] * k]);
           return (
             <group key={j}>
               <mesh position={pos}>
                 <sphereGeometry args={[0.02, 12, 12]} />
                 <meshStandardMaterial color={SCENE.burn} />
               </mesh>
-              <Arrow origin={pos} dir={m.dv_eci} length={ARROW.burn} color={SCENE.burn} />
+              <Arrow origin={pos} dir={eciToView(m.dv_eci)} length={ARROW.burn} color={SCENE.burn} />
             </group>
           );
         })}
@@ -69,7 +70,7 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
         {g.chief_track_eci.length > 0 &&
           (() => {
             const c = g.chief_track_eci[sampleIndex];
-            const pos: V3 = [c[0] * k, c[1] * k, c[2] * k];
+            const pos: V3 = eciToView([c[0] * k, c[1] * k, c[2] * k]);
             const primer = g.primer_eci[sampleIndex] ?? g.primer_eci[0];
             return (
               <group>
@@ -77,7 +78,7 @@ export function EciScene({ g, sampleIndex }: { g: ChiefGeometry; sampleIndex: nu
                   <sphereGeometry args={[0.03, 16, 16]} />
                   <meshStandardMaterial color={SCENE.spacecraft} />
                 </mesh>
-                {primer && <Arrow origin={pos} dir={primer} length={ARROW.primer} color={SCENE.primer} />}
+                {primer && <Arrow origin={pos} dir={eciToView(primer)} length={ARROW.primer} color={SCENE.primer} />}
               </group>
             );
           })()}
