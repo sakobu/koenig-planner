@@ -263,60 +263,80 @@ input::placeholder {
   margin: 0;
 }
 
-/* ── Readout — Layout B dual-stage console grid ──────────────────── */
+/* ── Readout column — the answer, a pinned transport, then the deck ── */
+.readout-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0; /* let charts/tables shrink inside the fluid deck track */
+}
+
+/* The scrub transport is lifted out of the #output grid so it can pin to the
+   viewport top across the whole readout scroll: a full-width grid item can only
+   stick within its own (short) cell, so sticky there would be inert. The panel
+   surface is opaque, so the instruments scroll cleanly beneath it. */
+.transport {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  /* Soft drop so the bar reads as floating above the instruments — most visible
+     once pinned and the 3D viewports scroll beneath it. */
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Instrument deck ─────────────────────────────────────────────── */
 #output {
   display: grid;
   gap: 1.1rem;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas:
-    "kpis       kpis"
-    "lambda     lambda"
-    "eci        rtn"
-    "roeplanes  roeplanes"
-    "play       play"
-    "timeline   primer"
-    "sweep      sweep"
-    "rtncomp    rtncomp"
-    "primerrtn  primerrtn"
-    "plan       plan";
   align-content: start;
 }
-.kpis {
-  grid-area: kpis;
+/* Source order IS visual order: panels and section bands span the full deck by
+   default; the two 3D scenes are the only two-up row (they auto-place side by
+   side because they are consecutive and each takes a single column). */
+#output > .panel,
+#output > .section-band {
+  grid-column: 1 / -1;
 }
-.panel:has(.chart-lambda) {
-  grid-area: lambda;
-}
-.panel:has(.sweep) {
-  grid-area: sweep;
-}
-.panel:has(.canvas-eci) {
-  grid-area: eci;
-}
-.panel:has(.canvas-rtn) {
-  grid-area: rtn;
-}
-.panel:has(.playback) {
-  grid-area: play;
-}
-.panel:has(.chart-timeline) {
-  grid-area: timeline;
-}
-.panel:has(.chart-primer) {
-  grid-area: primer;
-}
-.panel:has(.chart-rtncomp) {
-  grid-area: rtncomp;
-}
-.panel:has(.chart-primer-rtn) {
-  grid-area: primerrtn;
-}
-.panel:has(.chart-roeplanes) {
-  grid-area: roeplanes;
+#output > .panel:has(.canvas-eci),
+#output > .panel:has(.canvas-rtn) {
+  grid-column: span 1;
 }
 
-.panel:has(.plan-table) {
-  grid-area: plan;
+/* ── Section bands — family dividers across the deck ─────────────── */
+.section-band {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  margin: 0.5rem 0 -0.15rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--edge);
+}
+.section-band .band-label {
+  position: relative;
+  padding-left: 0.95rem;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+/* Instrument cue: the same leading cyan tick the panel titles carry. */
+.section-band .band-label::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 10px;
+  height: 1px;
+  background: var(--cyan);
+}
+.section-band .band-hint {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--ink-faint);
 }
 
 /* ── Plan export + full-precision burn table ─────────────────────── */
@@ -376,10 +396,10 @@ input::placeholder {
   color: var(--ink-faint);
 }
 
-/* ── KPI telemetry strip — the numbers are the hero ──────────────── */
+/* ── KPI telemetry strip — Δv cost is the hero; solver stats demoted ─ */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: 1.5fr 1fr 1fr 0.8fr 0.75fr 0.75fr;
   background: var(--bg-panel);
   border: 1px solid var(--edge);
   border-radius: 4px;
@@ -410,9 +430,19 @@ input::placeholder {
   line-height: 1;
   color: var(--ink);
 }
-/* Primary readout (Δv cost) gets the cyan accent. */
-.kpi:first-child .k-value {
+/* Hero: the Δv cost — the answer — reads largest and in the primary cyan. */
+.kpi-hero .k-value {
+  font-size: 30px;
   color: var(--cyan);
+}
+/* Solver-health telemetry: smaller, dimmer, and set apart from the physical
+   readouts by a brighter divider on the first cell of the group. */
+.kpi-diag .k-value {
+  font-size: 15px;
+  color: var(--ink-dim);
+}
+.kpi:not(.kpi-diag) + .kpi-diag {
+  border-left: 1px solid var(--edge-bright);
 }
 
 /* ── Instrument panels ───────────────────────────────────────────── */
@@ -923,24 +953,16 @@ header.fault .status-lamp {
   }
   #output {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "kpis"
-      "lambda"
-      "eci"
-      "rtn"
-      "roeplanes"
-      "play"
-      "timeline"
-      "primer"
-      "sweep"
-      "rtncomp"
-      "primerrtn"
-      "plan";
   }
   .kpis {
     grid-template-columns: repeat(2, 1fr);
   }
   .kpi:nth-child(odd) {
+    border-left: none;
+  }
+  /* In the 2-col stack the group divider falls at a row start; the smaller dim
+     values already mark the diagnostics as secondary, so drop the divider. */
+  .kpi:not(.kpi-diag) + .kpi-diag {
     border-left: none;
   }
 }
