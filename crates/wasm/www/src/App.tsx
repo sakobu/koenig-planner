@@ -20,6 +20,7 @@ export default function App() {
       (e: unknown) => setInitError(e instanceof Error ? e.message : String(e)),
     );
   }, []);
+
   useEffect(() => {
     runInit();
   }, [runInit]);
@@ -32,7 +33,11 @@ export default function App() {
       <header className={fault ? "fault" : undefined}>
         <h1>Koenig-D'Amico Impulsive Control Solver</h1>
         <span className="version">
-          {initError ? `init failed: ${initError}` : ready ? `core v${version()}` : "loading…"}
+          {initError
+            ? `init failed: ${initError}`
+            : ready
+              ? `core v${version()}`
+              : "loading…"}
         </span>
         <span className="status-lamp">{fault ? "● fault" : "● nominal"}</span>
       </header>
@@ -40,7 +45,11 @@ export default function App() {
         Interactive demo of a finite-difference-verified Rust port of the
         Koenig–D'Amico fuel-optimal impulsive control algorithm — minimum-Δv
         maneuver planning for spacecraft relative orbits (ROEs) under J2.{" "}
-        <a href="https://github.com/sakobu/koenig-planner" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://github.com/sakobu/koenig-planner"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           GitHub
         </a>
         {" · "}
@@ -56,7 +65,10 @@ export default function App() {
         <Controls req={req} setReq={setReq} />
         {initError ? (
           <section id="output">
-            <ErrorBanner variant="internal" message={`wasm init failed: ${initError}`} />
+            <ErrorBanner
+              variant="internal"
+              message={`wasm init failed: ${initError}`}
+            />
             <button type="button" className="retry" onClick={runInit}>
               retry
             </button>
