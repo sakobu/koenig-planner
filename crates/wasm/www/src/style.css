@@ -478,6 +478,14 @@ input::placeholder {
   background: var(--cyan);
 }
 
+/* Interactive panels (scrub transport, trade-study re-solve, plan export) carry a
+   left cyan rail so an operable surface reads apart from the passive telemetry. */
+.panel:has(.playback),
+.panel:has(.sweep),
+.panel:has(.plan-table) {
+  box-shadow: inset 3px 0 0 rgba(92, 200, 255, 0.5);
+}
+
 /* One-line panel caption: what the instrument means, in the AA-safe faint ink,
    pulled up snug under the title rule. */
 .panel-caption {
@@ -500,7 +508,7 @@ input::placeholder {
 /* Caps so the panels don't balloon on ultra-wide displays; the charts center
    in any spare width. */
 .chart-timeline {
-  max-width: 900px;
+  max-width: 1180px;
 }
 .chart-primer {
   max-width: 1180px;
