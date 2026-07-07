@@ -86,9 +86,12 @@ const Body = memo(function PrimerComponentsBody({ r, period }: { r: SolveRespons
         </g>
       ))}
 
-      {/* Maneuver vertical guides */}
+      {/* Maneuver vertical guides, tagged with the shared M1..Mn burn index. */}
       {r.maneuvers.map((m, j) => (
-        <line key={j} x1={x(m.t)} y1={padT} x2={x(m.t)} y2={H - padB} className="primer-mnvr" />
+        <g key={j}>
+          <line x1={x(m.t)} y1={padT} x2={x(m.t)} y2={H - padB} className="primer-mnvr" />
+          <text x={x(m.t)} y={padT + 9} className="mnvr-tag" textAnchor="middle">{`M${j + 1}`}</text>
+        </g>
       ))}
 
       {/* Three component traces (R/T/N) */}
@@ -117,7 +120,7 @@ export const PrimerComponents = memo(function PrimerComponents({
   frame: number;
 }) {
   const x = xScale(r.primer_times);
-  const ct = cursorTime(r.primer_times, frame);
+  const ct = cursorTime(r.primer_times, frame, r.maneuvers.map((m) => m.t));
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}

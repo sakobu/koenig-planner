@@ -13,6 +13,14 @@ describe("cursorTime", () => {
   it("is null without samples", () => {
     expect(cursorTime([], 0)).toBeNull();
   });
+  it("snaps to the exact burn time when parked on a burn's nearest sample", () => {
+    // grid step 30; burn at 63 rounds to sample index 2 (time 60) — the cursor
+    // must report 63 so it lands on the marker drawn at the exact burn time.
+    expect(cursorTime([0, 30, 60, 90], 2, [63])).toBe(63);
+  });
+  it("keeps the grid-sample time away from a burn's sample", () => {
+    expect(cursorTime([0, 30, 60, 90], 1, [63])).toBe(30);
+  });
 });
 
 describe("clampToWindow", () => {

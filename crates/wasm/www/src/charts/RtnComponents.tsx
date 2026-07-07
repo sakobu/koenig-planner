@@ -84,9 +84,9 @@ export const RtnComponents = memo(function RtnComponents({ r }: { r: SolveRespon
         const top = yc - blockH / 2;
         return (
           <g key={j}>
-            {/* Row label */}
+            {/* Row label — the shared M1..Mn burn index used by the time charts. */}
             <text x={padL - 16} y={yc + 4} className="row-label" textAnchor="end">
-              {`mnvr ${j + 1}`}
+              {`M${j + 1}`}
             </text>
             {/* Three RTN bars */}
             {(["R", "T", "N"] as const).map((comp, k) => {
