@@ -13,6 +13,7 @@ import { RoePlanes } from "../charts/RoePlanes";
 import { Sweep } from "../charts/Sweep";
 import { Panel } from "../ui/Panel";
 import { PlanTable } from "../ui/PlanTable";
+import { SectionBand } from "../ui/SectionBand";
 import { EciScene } from "../scene/EciScene";
 import { RtnScene } from "../scene/RtnScene";
 import { Playback } from "../scene/Playback";
@@ -34,78 +35,110 @@ function OkReadout({
   const frame = Math.min(index, Math.max(0, sampleCount - 1));
   const period = chiefPeriod(req.chief.a);
   return (
-    <section id="output">
+    <div className="readout-col">
       {error && <ErrorBanner kind={error.kind} message={error.message} variant="overlay" />}
+      {/* The answer up top; the transport just below it, pinned so the scrubber and
+          its now-readout stay reachable while scrolling through the panels it drives. */}
       <Kpis r={r} />
-      <Panel
-        title="λ dual certificate"
-        caption="The optimal dual λ (the KKT certificate). The primer p(t) = Γᵀ(t)·λ, so the magnitude and component panels below are this vector projected into control space over time."
-      >
-        <LambdaGlyph r={r} />
-      </Panel>
-      <Panel
-        title="Orbit (ECI)"
-        caption="Chief orbit and burn geometry in the Earth-centered inertial frame. The amber arc (piecewise cost) is the perigee attitude-constraint window."
-      >
-        <EciScene g={r.geometry} sampleIndex={frame} />
-      </Panel>
-      <Panel
-        title="Relative transfer (RTN, chief at origin)"
-        caption="The deputy's true controlled transfer — from a chief-coincident start (δα = 0) under the solver's mean-element STM dynamics — with the t_f-anchored target orbit as the gray ghost. Burn markers sit on the trajectory; arrows show the Δv direction only."
-      >
-        <RtnScene g={r.geometry} sampleIndex={frame} />
-      </Panel>
-      <Panel
-        title="ROE phase planes (δe, δi, δa–δλ)"
-        caption="The controlled mean-ROE pseudostate δα(t), accumulated from 0 at t_i: coasts follow the J2 STM, amber arrows are the exact B·Δv jump at each burn, ★ marks the target w. δe and δi panes are equal-aspect."
-      >
-        <RoePlanes r={r} frame={frame} />
-      </Panel>
-      <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
-        <Timeline r={r} period={period} frame={frame} />
-      </Panel>
-      <Panel
-        title="Cost vs horizon (trade study)"
-        caption="Re-solves the plan across a range of final times t_f. Longer horizons are generally cheaper; the cursor marks the current t_f, and steps are where the optimal burn count changes."
-      >
-        <Sweep req={req} period={period} />
-      </Panel>
-      <Panel
-        title="Primer magnitude vs time"
-        caption="|p(t)| reaches the amber |p| = 1 bound exactly at optimal burn times; touching 1 between burns signals slack in the plan."
-      >
-        <PrimerMagnitude r={r} period={period} frame={frame} />
-      </Panel>
-      <Panel
-        title="Δv components (R/T/N)"
-        caption="Executed Δv per burn in the chief RTN frame — radial (R), along-track (T), cross-track (N)."
-      >
-        <RtnComponents r={r} />
-      </Panel>
-      <Panel
-        title="Primer components (R/T/N)"
-        caption="The primer vector p(t) = Γᵀλ in RTN — the dual certificate; each burn's direction is the support direction of p (parallel to p only under the norm2 cost)."
-      >
-        <PrimerComponents r={r} period={period} frame={frame} />
-      </Panel>
-      <Panel title="Playback" caption="Scrub the maneuver grid; the 3D scenes and the chart cursors track the selected time.">
-        <Playback
-          count={sampleCount}
-          index={index}
-          setIndex={setIndex}
-          times={r.primer_times}
-          nu={r.geometry.chief_nu_track}
-          burnTimes={r.maneuvers.map((m) => m.t)}
-          period={period}
+      <div className="transport">
+        <Panel
+          title="Playback"
+          caption="Scrub the maneuver grid; the 3D scenes and the chart cursors track the selected time. Stays pinned as you scroll."
+        >
+          <Playback
+            count={sampleCount}
+            index={index}
+            setIndex={setIndex}
+            times={r.primer_times}
+            nu={r.geometry.chief_nu_track}
+            burnTimes={r.maneuvers.map((m) => m.t)}
+            period={period}
+          />
+        </Panel>
+      </div>
+      <section id="output">
+        {/* ── Geometry: where the transfer flies ───────────────────────── */}
+        <SectionBand
+          label="Geometry"
+          hint="Where the transfer flies — inertial orbit, relative RTN, and ROE state space."
         />
-      </Panel>
-      <Panel
-        title="Plan (full precision)"
-        caption="Full-precision burns (m/s) and downloads. The charts round for display; these values and the exports do not."
-      >
-        <PlanTable req={req} r={r} />
-      </Panel>
-    </section>
+        <Panel
+          title="Orbit (ECI)"
+          caption="Chief orbit and burn geometry in the Earth-centered inertial frame. The amber arc (piecewise cost) is the perigee attitude-constraint window."
+        >
+          <EciScene g={r.geometry} sampleIndex={frame} />
+        </Panel>
+        <Panel
+          title="Relative transfer (RTN, chief at origin)"
+          caption="The deputy's true controlled transfer — from a chief-coincident start (δα = 0) under the solver's mean-element STM dynamics — with the t_f-anchored target orbit as the gray ghost. Burn markers sit on the trajectory; arrows show the Δv direction only."
+        >
+          <RtnScene g={r.geometry} sampleIndex={frame} />
+        </Panel>
+        <Panel
+          title="ROE phase planes (δe, δi, δa–δλ)"
+          caption="The controlled mean-ROE pseudostate δα(t), accumulated from 0 at t_i: coasts follow the J2 STM, amber arrows are the exact B·Δv jump at each burn, ★ marks the target w. δe and δi panes are equal-aspect."
+        >
+          <RoePlanes r={r} frame={frame} />
+        </Panel>
+
+        {/* ── The plan: the commanded burns, summary → full precision ───── */}
+        <SectionBand
+          label="The plan"
+          hint="The commanded burns, from summary magnitude to full precision."
+        />
+        <Panel title="Δv timeline" caption="Executed Δv magnitude at each maneuver across the horizon.">
+          <Timeline r={r} period={period} frame={frame} />
+        </Panel>
+        <Panel
+          title="Δv components (R/T/N)"
+          caption="Executed Δv per burn in the chief RTN frame — radial (R), along-track (T), cross-track (N)."
+        >
+          <RtnComponents r={r} />
+        </Panel>
+        <Panel
+          title="Plan (full precision)"
+          caption="Full-precision burns (m/s) and downloads. The charts round for display; these values and the exports do not."
+        >
+          <PlanTable req={req} r={r} />
+        </Panel>
+
+        {/* ── Optimality certificate: λ and its primer projection ──────── */}
+        <SectionBand
+          label="Optimality certificate"
+          hint="Why the plan is Δv-optimal: the dual λ and its primer projection over time."
+        />
+        <Panel
+          title="λ dual certificate"
+          caption="The optimal dual λ (the KKT certificate). The primer p(t) = Γᵀ(t)·λ, so the magnitude and component panels immediately below are this vector projected into control space over time."
+        >
+          <LambdaGlyph r={r} />
+        </Panel>
+        <Panel
+          title="Primer magnitude vs time"
+          caption="|p(t)| reaches the amber |p| = 1 bound exactly at optimal burn times; touching 1 between burns signals slack in the plan."
+        >
+          <PrimerMagnitude r={r} period={period} frame={frame} />
+        </Panel>
+        <Panel
+          title="Primer components (R/T/N)"
+          caption="The primer vector p(t) = Γᵀλ in RTN — the dual certificate; each burn's direction is the support direction of p (parallel to p only under the norm2 cost)."
+        >
+          <PrimerComponents r={r} period={period} frame={frame} />
+        </Panel>
+
+        {/* ── Trade study: cost sensitivity to the horizon ─────────────── */}
+        <SectionBand
+          label="Trade study"
+          hint="How the Δv cost responds to a longer transfer horizon."
+        />
+        <Panel
+          title="Cost vs horizon (trade study)"
+          caption="Re-solves the plan across a range of final times t_f. Longer horizons are generally cheaper; the cursor marks the current t_f, and steps are where the optimal burn count changes."
+        >
+          <Sweep req={req} period={period} />
+        </Panel>
+      </section>
+    </div>
   );
 }
 
