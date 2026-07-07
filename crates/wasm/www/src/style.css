@@ -803,6 +803,9 @@ header.fault .status-lamp {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  /* Known scrub-thumb diameter so the burn ticks can match its exact center
+     travel (a native thumb's width is browser-dependent and unknowable). */
+  --pb-thumb: 14px;
 }
 .playback-controls {
   display: flex;
@@ -851,14 +854,75 @@ header.fault .status-lamp {
   border-color: var(--cyan);
   box-shadow: var(--glow-cyan);
 }
+/* Custom-styled scrub slider. The native thumb travels inset by half its own
+   (browser-dependent) width while the burn ticks sit at raw track percentages, so
+   they drift apart toward the ends — the thumb reads ahead of a tick before the
+   midpoint and behind it after. Owning the thumb at a known --pb-thumb width lets
+   the ticks match its exact center travel (positioned in Playback.tsx). The fill
+   is driven by --pb-val (the current scrub fraction, set inline on the input). */
 .playback input[type="range"] {
   flex: 1;
-  accent-color: var(--cyan);
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--pb-thumb);
+  background: transparent;
+  cursor: pointer;
+}
+.playback input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--cyan) 0 var(--pb-val, 0%),
+    var(--edge-bright) var(--pb-val, 0%) 100%
+  );
+}
+/* The native thumb is the (invisible) drag handle only; the visible cyan thumb is
+   .pb-thumb, positioned by the same formula as the burn ticks so they align
+   exactly regardless of the browser's own thumb-travel model. */
+.playback input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--pb-thumb);
+  height: var(--pb-thumb);
+  margin-top: calc((3px - var(--pb-thumb)) / 2);
+  border-radius: 50%;
+  background: transparent;
+}
+.playback input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--edge-bright);
+}
+.playback input[type="range"]::-moz-range-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--cyan);
+}
+.playback input[type="range"]::-moz-range-thumb {
+  width: var(--pb-thumb);
+  height: var(--pb-thumb);
+  border: none;
+  border-radius: 50%;
+  background: transparent;
 }
 .playback input[type="range"]:focus-visible {
   outline: none;
+}
+.playback input[type="range"]:focus-visible ~ .pb-thumb {
   box-shadow: var(--glow-cyan);
-  border-radius: 3px;
+}
+/* Drawn thumb — shares the tick's inset-travel formula (set inline in
+   Playback.tsx) so a step-to-burn lands it exactly on the burn tick. */
+.pb-thumb {
+  position: absolute;
+  top: 50%;
+  width: var(--pb-thumb);
+  height: var(--pb-thumb);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--cyan);
+  pointer-events: none;
 }
 .playback select {
   background: var(--bg-input);

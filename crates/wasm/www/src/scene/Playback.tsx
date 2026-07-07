@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import {
   burnTickFractions,
   fmtHours,
@@ -44,6 +44,12 @@ export function Playback({
   }, [playing, count, setIndex, speed]);
 
   const frame = Math.min(index, Math.max(0, count - 1));
+  const maxIdx = Math.max(1, count - 1);
+  const fillFrac = frame / maxIdx;
+  const fillPct = (fillFrac * 100).toFixed(3);
+  // The drawn thumb and the burn ticks share this exact center-travel expression,
+  // so a step-to-burn lands the thumb on the tick (see style.css --pb-thumb).
+  const atFrac = (f: number) => `calc(${f.toFixed(5)} * (100% - var(--pb-thumb)) + var(--pb-thumb) / 2)`;
   const t = times.length ? times[frame] ?? times[0] : 0;
   const t0 = times.length ? times[0] : 0;
   const ticks = burnTickFractions(times, burnTimes);
@@ -81,6 +87,7 @@ export function Playback({
             max={Math.max(0, count - 1)}
             step={1}
             value={index}
+            style={{ "--pb-val": `${fillPct}%` } as CSSProperties}
             onChange={(e) => {
               setPlaying(false);
               setIndex(Number(e.target.value));
@@ -90,9 +97,10 @@ export function Playback({
               plan table carry the values, so these stay out of the a11y tree. */}
           <div className="playback-ticks" aria-hidden="true">
             {ticks.map((f, j) => (
-              <span key={j} className="playback-tick" style={{ left: `${(f * 100).toFixed(2)}%` }} />
+              <span key={j} className="playback-tick" style={{ left: atFrac(f) }} />
             ))}
           </div>
+          <span className="pb-thumb" aria-hidden="true" style={{ left: atFrac(fillFrac) }} />
         </div>
         <select
           className="speed"
