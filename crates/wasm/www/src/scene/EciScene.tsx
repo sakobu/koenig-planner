@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls, Stars } from "@react-three/drei";
 import { BackSide } from "three";
-import type { ChiefGeometry } from "../wasm";
+import type { ChiefGeometry } from "../lib/wasm";
 import { scaleAll, type V3 } from "./vec";
 import { ARROW, SCENE } from "./palette";
 import { Arrow } from "./Arrow";

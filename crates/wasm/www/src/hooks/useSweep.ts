@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { solve, type SolveRequest } from "./wasm";
+import { solve, type SolveRequest } from "../lib/wasm";
 
 export type SweepPoint =
   | { t_f: number; total_dv: number; nManeuvers: number }

@@ -4,10 +4,10 @@
 // parallel to the primer only for the L2 cost. Reading it alongside the
 // magnitude panel shows which way the dual rewards thrust at each time.
 import { memo } from "react";
-import type { SolveResponse } from "../wasm";
-import { axisTicks, linePath, maxAbs } from "./svgUtil";
-import { periodGridTimes } from "../orbit";
-import { RTN_COLORS } from "../rtn";
+import type { SolveResponse } from "../lib/wasm";
+import { axisTicks, linePath, maxAbs } from "../lib/svgUtil";
+import { periodGridTimes } from "../lib/orbit";
+import { RTN_COLORS } from "../lib/rtn";
 import { RtnLegend } from "./RtnLegend";
 import { cursorTime } from "./cursorUtil";
 

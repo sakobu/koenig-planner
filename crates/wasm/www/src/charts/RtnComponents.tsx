@@ -1,7 +1,7 @@
 import { memo } from "react";
-import type { SolveResponse } from "../wasm";
-import { maxAbs, niceStep } from "./svgUtil";
-import { RTN_COLORS } from "../rtn";
+import type { SolveResponse } from "../lib/wasm";
+import { maxAbs, niceStep } from "../lib/svgUtil";
+import { RTN_COLORS } from "../lib/rtn";
 import { RtnLegend } from "./RtnLegend";
 
 export const RtnComponents = memo(function RtnComponents({ r }: { r: SolveResponse }) {

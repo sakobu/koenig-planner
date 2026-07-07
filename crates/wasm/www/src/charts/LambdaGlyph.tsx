@@ -3,7 +3,7 @@
 // vector projected into control space over time. Bars are normalized to the
 // largest |component|; the raw value is printed at each tip.
 import { memo } from "react";
-import type { SolveResponse } from "../wasm";
+import type { SolveResponse } from "../lib/wasm";
 import { lambdaBars } from "./lambdaGlyphUtil";
 
 export const LambdaGlyph = memo(function LambdaGlyph({ r }: { r: SolveResponse }) {

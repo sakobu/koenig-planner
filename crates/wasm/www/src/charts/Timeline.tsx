@@ -1,7 +1,7 @@
 import { memo } from "react";
-import type { SolveResponse } from "../wasm";
-import { axisTicks, maxAbs, niceStep, stackRows } from "./svgUtil";
-import { periodGridTimes } from "../orbit";
+import type { SolveResponse } from "../lib/wasm";
+import { axisTicks, maxAbs, niceStep, stackRows } from "../lib/svgUtil";
+import { periodGridTimes } from "../lib/orbit";
 import { clampToWindow, cursorTime } from "./cursorUtil";
 
 const W = 760,

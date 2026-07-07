@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { solve, type SolveRequest, type SolveOutcome } from "./wasm";
+import { solve, type SolveRequest, type SolveOutcome } from "../lib/wasm";
 
 /** How often, at most, to re-solve while a control is being dragged (ms). */
 const SOLVE_INTERVAL_MS = 150;

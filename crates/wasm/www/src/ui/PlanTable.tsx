@@ -1,5 +1,5 @@
-import type { SolveRequest, SolveResponse } from "./wasm";
-import { downloadBlob, splitInPlane, toBurnCsv, toPlanJson } from "./export";
+import type { SolveRequest, SolveResponse } from "../lib/wasm";
+import { downloadBlob, splitInPlane, toBurnCsv, toPlanJson } from "../lib/export";
 
 /** Full-precision companion to the rounded charts: an export bar (JSON / CSV)
  *  over a monospace burn table that reads raw response numbers — no toFixed. The

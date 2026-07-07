@@ -4,10 +4,10 @@
 // the current t_f (dragging t_f moves the cursor, not the curve); infeasible
 // horizons (solver Err) break the line into gaps.
 import { memo } from "react";
-import type { SolveRequest } from "../wasm";
-import { axisTicks, linePath, niceStep } from "./svgUtil";
-import { periodGridTimes } from "../orbit";
-import { useSweep, stampWithoutTf, type SweepPoint } from "../useSweep";
+import type { SolveRequest } from "../lib/wasm";
+import { axisTicks, linePath, niceStep } from "../lib/svgUtil";
+import { periodGridTimes } from "../lib/orbit";
+import { useSweep, stampWithoutTf, type SweepPoint } from "../hooks/useSweep";
 
 const W = 760,
   H = 300;

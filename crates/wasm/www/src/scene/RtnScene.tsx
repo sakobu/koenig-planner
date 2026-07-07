@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls, Text } from "@react-three/drei";
-import type { ChiefGeometry } from "../wasm";
+import type { ChiefGeometry } from "../lib/wasm";
 import { maxRadius, rtnToView, scaleAll, type V3 } from "./vec";
-import { RTN_BASIS, RTN_COLORS } from "../rtn";
+import { RTN_BASIS, RTN_COLORS } from "../lib/rtn";
 import { ARROW, SCENE } from "./palette";
 import { Arrow } from "./Arrow";
 

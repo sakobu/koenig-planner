@@ -26,7 +26,7 @@ export const PANES: PaneSpec[] = [
 // Nearest-sample lookup lives in svgUtil now (shared with PrimerMagnitude);
 // re-exported here under its original name so this module's consumers (RoePlanes)
 // are unchanged.
-export { nearestIndex as burnSampleIndex } from "./svgUtil";
+export { nearestIndex as burnSampleIndex } from "../lib/svgUtil";
 
 function proj(v: number[], xi: number, yi: number): Pt {
   return [v[xi], v[yi]];
