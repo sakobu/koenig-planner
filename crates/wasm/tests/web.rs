@@ -28,7 +28,10 @@ fn golden_request_deserializes() {
     ));
 }
 
-use koenig_damico_planner_wasm::{solve, solve_json, OrbitDto, SolveOutcome, SolveRequest as Req};
+use koenig_damico_planner_wasm::{
+    solve, solve_json, sweep_dual, OrbitDto, SolveOutcome, SolveRequest as Req, SweepOutcome,
+    SweepRequest,
+};
 use koenig_damico_planner_wasm::{ApiError, ApiErrorKind, ChiefGeometry, SolveResponse};
 
 fn golden_req() -> Req {
@@ -234,4 +237,48 @@ fn solve_json_roundtrips_and_errors() {
     let out = solve_json(json).expect("golden json solves");
     assert!(out.contains("\"maneuvers\""));
     assert!(solve_json("{ not json }").is_err());
+}
+
+#[wasm_bindgen_test]
+fn sweep_dual_traces_a_ring_of_reachable_directions() {
+    // 8 directions on a 100 m circle in the (δa, δi_y) plane — indices 0 and 5.
+    let r = 100.0_f64;
+    let w_list: Vec<[f64; 6]> = (0..8)
+        .map(|k| {
+            let theta = std::f64::consts::TAU * (k as f64) / 8.0;
+            [r * theta.cos(), 0.0, 0.0, 0.0, 0.0, r * theta.sin()]
+        })
+        .collect();
+
+    let req = SweepRequest {
+        base: SolveRequest {
+            chief: OrbitDto {
+                a: 25_000e3,
+                e: 0.7,
+                i: 40.0,
+                raan: 358.0,
+                argp: 0.0,
+                mean_anom: 180.0,
+            },
+            t_i: 0.0,
+            t_f: 117_990.0,
+            dt: 300.0,
+            w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+            cost: CostSpec::Piecewise {
+                period: None,
+                t_perigee0: None,
+            },
+            params: None,
+            initial_times: None,
+        },
+        w_list,
+    };
+
+    match sweep_dual(req) {
+        SweepOutcome::Ok { value } => {
+            assert_eq!(value.len(), 8);
+            assert!(value.iter().all(|p| p.feasible && p.c_star.is_some()));
+        }
+        SweepOutcome::Err { error } => panic!("sweep failed: {}", error.message),
+    }
 }

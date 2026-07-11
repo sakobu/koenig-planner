@@ -157,6 +157,19 @@ pub struct SolveResponse {
     pub primer_rtn: Vec<[f64; 3]>,
 }
 
+/// One target's result in a [`sweep`](crate::sweep) batch.
+#[derive(Debug, Clone, Serialize)]
+pub struct SweepPoint {
+    /// Reachable-set gauge `c*` (m/s); `None` when the target is unreachable
+    /// in this window.
+    pub c_star: Option<f64>,
+    /// Outward dual normal `λ` (zeros when infeasible).
+    pub lambda: [f64; 6],
+    /// `true` when the target is reachable (`c_star` is `Some`); equivalent to
+    /// `c_star.is_some()`, kept explicit for consumers.
+    pub feasible: bool,
+}
+
 // ── Error ───────────────────────────────────────────────────────────────────
 
 /// Owned error that decouples the wire contract from [`PlannerError`](crate::core::PlannerError).

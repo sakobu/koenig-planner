@@ -36,6 +36,7 @@ pub use dto::*;
 use convert::{bad_request, map_dispatch_error, resolve_params};
 use koenig_damico_planner::cost::{FaceMax, Norm2, Piecewise, SublevelSet};
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
+use koenig_damico_planner::solver::{sweep_dual, SweepResult};
 use koenig_damico_planner::{
     primer_history, solve, solve_from_initial_times, CostModel, PrimerHistory, Solution,
     SolveParams, TimeGrid,
@@ -109,6 +110,79 @@ fn default_perigee_epoch(chief: &AbsoluteOrbit, t_i: f64) -> f64 {
     t_i + chief.time_to_perigee()
 }
 
+/// Resolve the Piecewise cost from a request's optional `period` / `t_perigee0`:
+/// default the period to the chief's Keplerian period and the perigee epoch to
+/// the p. 10 default (\[KD20\] eq. 49). Shared by [`run`] and [`sweep`].
+fn resolve_piecewise(
+    chief: &AbsoluteOrbit,
+    t_i: f64,
+    period: Option<f64>,
+    t_perigee0: Option<f64>,
+) -> Result<Piecewise, ApiError> {
+    let period = period.unwrap_or_else(|| TAU / chief.mean_motion());
+    match t_perigee0 {
+        Some(tp) => Piecewise::with_perigee_epoch(period, tp),
+        None => Piecewise::with_perigee_epoch(period, default_perigee_epoch(chief, t_i)),
+    }
+    .map_err(bad_request)
+}
+
+/// The per-request planning context shared by [`run`] and [`sweep`]: the chief
+/// orbit, J2-ROE dynamics, time grid, and resolved solver params. Built once so
+/// a sweep over many targets does not reconstruct any of it per target.
+struct Context {
+    chief: AbsoluteOrbit,
+    dyn_: J2Roe,
+    grid: TimeGrid,
+    params: SolveParams,
+}
+
+/// Build the planning context from a request: chief (deg→rad), J2-ROE dynamics,
+/// uniform grid, the [`MAX_GRID_POINTS`] guard, and merged params.
+fn build_context(req: &SolveRequest) -> Result<Context, ApiError> {
+    // 1. Chief mean absolute orbit (angles degrees → radians).
+    let chief = AbsoluteOrbit::new(
+        req.chief.a,
+        req.chief.e,
+        req.chief.i.to_radians(),
+        req.chief.raan.to_radians(),
+        req.chief.argp.to_radians(),
+        req.chief.mean_anom.to_radians(),
+    );
+
+    // 2. J2-ROE dynamics (validates chief + window).
+    let dyn_ = J2Roe::new(chief, req.t_i, req.t_f).map_err(bad_request)?;
+
+    // 3. Uniform time grid (validates dt > 0, t_f > t_i).
+    let grid = TimeGrid::uniform(req.t_i, req.t_f, req.dt).map_err(bad_request)?;
+
+    // 3a. Bound the grid size before solving: the Γ-cache allocation and the
+    // per-iteration contact sweep are O(grid.len()), driven by attacker-controlled
+    // scalars with no upper bound. Reject oversized grids as a bad request before
+    // any allocation. The `f64 → usize` saturation in `len()` keeps this correct
+    // even for absurd `t_f` (saturates to usize::MAX > cap).
+    let n_points = grid.len();
+    if n_points > MAX_GRID_POINTS {
+        return Err(ApiError {
+            kind: ApiErrorKind::BadRequest,
+            message: format!(
+                "grid has {n_points} points (> {MAX_GRID_POINTS} max); \
+                 reduce (t_f - t_i)/dt"
+            ),
+        });
+    }
+
+    // 4. Merge optional parameter overrides with the p. 10-prose defaults.
+    let params = resolve_params(req.params.clone());
+
+    Ok(Context {
+        chief,
+        dyn_,
+        grid,
+        params,
+    })
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Public entry point
 // ──────────────────────────────────────────────────────────────────────────────
@@ -128,6 +202,15 @@ pub const MAX_REQUEST_BYTES: usize = 1_048_576;
 /// protects every one.
 pub const MAX_GRID_POINTS: usize = 100_000;
 
+/// Maximum number of targets [`sweep`] evaluates in one batch.
+///
+/// [`sweep`] runs `w_list.len()` dual solves over the (already
+/// [`MAX_GRID_POINTS`]-bounded) window, so `w_list` is the second
+/// attacker-controlled cost dimension. This bounds it with the same discipline
+/// as the grid: a reachable-set trace needs ~180 targets and a dense cost-map
+/// grid a few thousand, so this never rejects a realistic batch.
+pub const MAX_SWEEP_TARGETS: usize = 100_000;
+
 /// Plan a maneuver set from a serde request.
 ///
 /// This is the **one** place `solve`/`solve_from_initial_times` is
@@ -139,43 +222,15 @@ pub const MAX_GRID_POINTS: usize = 100_000;
 /// orbit, degenerate grid, …) or `kind = "solver"` for numerically unsolvable
 /// / failed problems.
 pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
-    // 1. Build the chief mean absolute orbit (angles degrees → radians).
-    let chief = AbsoluteOrbit::new(
-        req.chief.a,
-        req.chief.e,
-        req.chief.i.to_radians(),
-        req.chief.raan.to_radians(),
-        req.chief.argp.to_radians(),
-        req.chief.mean_anom.to_radians(),
-    );
+    let Context {
+        chief,
+        dyn_,
+        grid,
+        params,
+    } = build_context(&req)?;
 
-    // 2. Build the J2-ROE dynamics (validates chief + window).
-    let dyn_ = J2Roe::new(chief, req.t_i, req.t_f).map_err(bad_request)?;
-
-    // 3. Build the uniform time grid (validates dt > 0, t_f > t_i).
-    let grid = TimeGrid::uniform(req.t_i, req.t_f, req.dt).map_err(bad_request)?;
-
-    // 3a. Bound the grid size before solving: the Γ-cache allocation
-    // and the per-iteration contact sweep are O(grid.len()), driven by
-    // attacker-controlled scalars with no upper bound. Reject oversized grids as a
-    // bad request *before* any allocation. The `f64 → usize` saturation in `len()`
-    // keeps this correct even for absurd `t_f` (saturates to usize::MAX > cap).
-    let n_points = grid.len();
-    if n_points > MAX_GRID_POINTS {
-        return Err(ApiError {
-            kind: ApiErrorKind::BadRequest,
-            message: format!(
-                "grid has {n_points} points (> {MAX_GRID_POINTS} max); \
-                 reduce (t_f - t_i)/dt"
-            ),
-        });
-    }
-
-    // 4. Nondimensionalize the target pseudostate (divide by chief.a).
+    // Nondimensionalize the target pseudostate (divide by chief.a).
     let w = Pseudostate::from_row_slice(&req.w_meters) / chief.a;
-
-    // 5. Merge optional parameter overrides with the p. 10-prose defaults.
-    let params = resolve_params(req.params);
 
     // 6. Dispatch per cost model (monomorphize per match arm). Each arm returns
     //    the solution paired with its primer-vector history.
@@ -184,14 +239,7 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
         CostSpec::Norm2 => dispatch(&dyn_, &ConstNorm2(Norm2), w, grid, &params, its),
         CostSpec::FaceMax => dispatch(&dyn_, &ConstFaceMax(FaceMax), w, grid, &params, its),
         CostSpec::Piecewise { period, t_perigee0 } => {
-            let period = period.unwrap_or_else(|| TAU / chief.mean_motion());
-            let cost = match t_perigee0 {
-                Some(tp) => Piecewise::with_perigee_epoch(period, tp),
-                None => {
-                    Piecewise::with_perigee_epoch(period, default_perigee_epoch(&chief, req.t_i))
-                }
-            }
-            .map_err(bad_request)?;
+            let cost = resolve_piecewise(&chief, req.t_i, period, t_perigee0)?;
             dispatch(&dyn_, &cost, w, grid, &params, its)
         }
     }
@@ -254,6 +302,74 @@ pub fn run_json(input: &str) -> Result<String, ApiError> {
     })
 }
 
+/// Evaluate the min-fuel dual gauge for many targets over `base`'s window.
+///
+/// Builds the chief/dynamics/grid/cost once from `base`, nondimensionalizes each
+/// `w_list` entry (meters ÷ `chief.a`), and returns one [`SweepPoint`] per
+/// target: the gauge `c*` (m/s; `None` if unreachable) and the dual normal `λ`.
+/// This is the batch sibling of [`run`]; it never returns maneuvers.
+///
+/// # Errors
+/// Returns [`ApiError`] with `kind = "bad_request"` for an invalid orbit, a
+/// degenerate or oversized grid ([`MAX_GRID_POINTS`]), or more than
+/// [`MAX_SWEEP_TARGETS`] targets. Per-target unreachability is reported as
+/// `SweepPoint { feasible: false, c_star: None, .. }`, not an error.
+pub fn sweep(base: &SolveRequest, w_list: &[[f64; 6]]) -> Result<Vec<SweepPoint>, ApiError> {
+    let ctx = build_context(base)?;
+
+    // Bound the batch size: `sweep` runs one dual solve per target, an
+    // attacker-controlled count orthogonal to the grid guard in `build_context`.
+    if w_list.len() > MAX_SWEEP_TARGETS {
+        return Err(ApiError {
+            kind: ApiErrorKind::BadRequest,
+            message: format!(
+                "sweep has {} targets (> {MAX_SWEEP_TARGETS} max); reduce w_list",
+                w_list.len()
+            ),
+        });
+    }
+
+    let targets: Vec<Pseudostate> = w_list
+        .iter()
+        .map(|w| Pseudostate::from_row_slice(w) / ctx.chief.a)
+        .collect();
+
+    // Monomorphize sweep_dual per cost model, exactly as `run`/`dispatch` do.
+    let results = match base.cost {
+        CostSpec::Norm2 => sweep_dual(&ctx.dyn_, &ConstNorm2(Norm2), &ctx.grid, &targets),
+        CostSpec::FaceMax => sweep_dual(&ctx.dyn_, &ConstFaceMax(FaceMax), &ctx.grid, &targets),
+        CostSpec::Piecewise { period, t_perigee0 } => {
+            let cost = resolve_piecewise(&ctx.chief, base.t_i, period, t_perigee0)?;
+            sweep_dual(&ctx.dyn_, &cost, &ctx.grid, &targets)
+        }
+    }
+    .map_err(map_dispatch_error)?;
+
+    Ok(results.into_iter().map(sweep_point).collect())
+}
+
+/// Map a core [`SweepResult`] to a wire [`SweepPoint`], scrubbing non-finite /
+/// infeasible results to `c_star: None` and `lambda: [0; 6]` (serde renders a
+/// non-finite f64 as `null`, a type lie inside a number array).
+fn sweep_point(r: SweepResult) -> SweepPoint {
+    // Destructure with no `..` so a new SweepResult field must be handled here.
+    let SweepResult {
+        c_star,
+        lambda,
+        feasible,
+    } = r;
+    let finite = feasible && c_star.is_finite() && lambda.iter().all(|x| x.is_finite());
+    let mut lambda_out = [0.0_f64; 6];
+    if finite {
+        lambda_out.copy_from_slice(lambda.as_slice());
+    }
+    SweepPoint {
+        c_star: finite.then_some(c_star),
+        lambda: lambda_out,
+        feasible: finite,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -290,5 +406,89 @@ mod tests {
         // t_i off, so the true perigee falls outside it.
         let buggy = Piecewise::with_perigee_epoch(period, chief.time_to_perigee()).unwrap();
         assert!(!buggy.in_perigee_window(true_perigee));
+    }
+
+    fn worked_example_request() -> SolveRequest {
+        SolveRequest {
+            chief: OrbitDto {
+                a: 25_000e3,
+                e: 0.7,
+                i: 40.0,
+                raan: 358.0,
+                argp: 0.0,
+                mean_anom: 180.0,
+            },
+            t_i: 0.0,
+            t_f: 117_990.0,
+            dt: 300.0, // coarse grid keeps the test fast; still richly reachable
+            w_meters: [50.0, 5000.0, 100.0, 100.0, 0.0, 400.0],
+            cost: CostSpec::Piecewise {
+                period: None,
+                t_perigee0: None,
+            },
+            params: None,
+            initial_times: None,
+        }
+    }
+
+    // Weak duality guarantees the dual gauge c* ≤ run()'s primal total_dv on the
+    // same grid. Strong duality (SOCP + Slater) makes the true gap ~solver
+    // tolerance; the few-% slack below absorbs run()'s active-set / extract
+    // suboptimality. Both targets are reachable.
+    #[test]
+    fn sweep_matches_run_within_duality_gap() {
+        let base = worked_example_request();
+        let w_a = base.w_meters;
+        let w_b = [25.0, 2500.0, 50.0, 50.0, 0.0, 200.0];
+
+        let pts = sweep(&base, &[w_a, w_b]).unwrap();
+        assert_eq!(pts.len(), 2);
+        assert!(pts[0].feasible && pts[1].feasible);
+
+        let primal_a = run(base.clone()).unwrap().total_dv;
+        let dual_a = pts[0].c_star.unwrap();
+        assert!(
+            dual_a <= primal_a + 1e-9,
+            "dual {dual_a} should be ≤ primal {primal_a}"
+        );
+        assert!(
+            (primal_a - dual_a) <= 0.05 * primal_a,
+            "duality gap too large: dual {dual_a} vs primal {primal_a}"
+        );
+    }
+
+    // Infeasible / non-finite results scrub to c_star: None and lambda: [0; 6].
+    #[test]
+    fn sweep_point_scrubs_infeasible_to_none() {
+        let infeasible = SweepResult {
+            c_star: f64::NAN,
+            lambda: nalgebra::SVector::<f64, 6>::zeros(),
+            feasible: false,
+        };
+        assert_eq!(sweep_point(infeasible).c_star, None);
+
+        // A feasible flag but a non-finite lambda component: still scrubbed, and
+        // the non-finite lambda is zeroed rather than leaked as a JSON null.
+        let mut bad_lambda = nalgebra::SVector::<f64, 6>::zeros();
+        bad_lambda[0] = f64::INFINITY;
+        let nonfinite = SweepResult {
+            c_star: 1.0,
+            lambda: bad_lambda,
+            feasible: true,
+        };
+        let p = sweep_point(nonfinite);
+        assert_eq!(p.c_star, None);
+        assert!(!p.feasible);
+        assert_eq!(p.lambda, [0.0; 6]);
+    }
+
+    // w_list beyond MAX_SWEEP_TARGETS is a bad request, not a huge batch: the
+    // guard rejects before any solve (mirrors the MAX_GRID_POINTS grid guard).
+    #[test]
+    fn sweep_rejects_oversized_w_list() {
+        let base = worked_example_request();
+        let too_many = vec![[0.0; 6]; MAX_SWEEP_TARGETS + 1];
+        let err = sweep(&base, &too_many).unwrap_err();
+        assert_eq!(err.kind, ApiErrorKind::BadRequest);
     }
 }

@@ -140,6 +140,21 @@ impl From<api::ApiError> for dto::ApiError {
     }
 }
 
+impl From<api::SweepPoint> for dto::SweepPoint {
+    fn from(p: api::SweepPoint) -> Self {
+        let api::SweepPoint {
+            c_star,
+            lambda,
+            feasible,
+        } = p;
+        dto::SweepPoint {
+            c_star,
+            lambda,
+            feasible,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

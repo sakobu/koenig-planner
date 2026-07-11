@@ -6,9 +6,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-07-11
+
+### Added
+
+- `solver::sweep_dual` (core) — batch min-fuel dual evaluation over a fixed
+  window: assembles the Γ-cache and conic rows once from `(dynamics, cost, grid)`
+  (all target-independent), then solves the dual (`refine_socp`) per target,
+  returning the support-function gauge `c*` (the reachable-set boundary value,
+  \[KD20\] eq. 40) and dual normal `λ`. Reached via the module path, like
+  `refine_socp`. Additive and non-breaking.
+- `api::sweep` — the monomorphized frontend for `sweep_dual`: takes a base
+  `SolveRequest` plus a list of meter-valued targets (capped at
+  `MAX_SWEEP_TARGETS`), nondimensionalizes each by `chief.a`, and returns
+  `Vec<SweepPoint> { c_star: Option<f64>, lambda, feasible }`. Additive and
+  non-breaking.
+- WASM `sweep_dual` (npm `koenig-planner`) — `sweep_dual(SweepRequest { base,
+  w_list }) -> SweepOutcome` over the existing typed-outcome pattern; powers the
+  reachable-set / Δv cost-map explorer (many client-side re-solves over one
+  window). Additive and non-breaking.
+
 ## [0.5.0] — 2026-07-06
 
 ### Added
+
 - `AbsoluteOrbit::time_to_perigee()` — the duration `[s]` from the orbit's epoch to
   its next perigee (`M ≡ 0`), referenced to the Keplerian mean motion. It is the
   single source of truth for placing the default eq.-49 piecewise perigee windows,
@@ -35,6 +56,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the primer charts, Δv timeline, and ROE phase planes.
 
 ### Changed
+
 - **Breaking (behavioral): planner output changes for `t_i ≠ 0` piecewise-default
   requests.** The default piecewise perigee epoch
   (`CostSpec::Piecewise { t_perigee0: None }`) now anchors the eq.-49 FaceMax
@@ -50,7 +72,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crates/wasm` `chief_geometry` now evaluates the chief/deputy at the `t_i` epoch
   by propagating each absolute grid time `t` as the duration `t - t_i`; previously
   it passed the absolute time directly to `AbsoluteOrbit::propagate` (which advances
-  the epoch by a *duration*), so for a non-zero `t_i` every burn marker, playback
+  the epoch by a _duration_), so for a non-zero `t_i` every burn marker, playback
   track, and primer arrow was over-propagated by `t_i`. The `ChiefGeometry` values
   (npm `koenig-planner`) therefore change for `t_i ≠ 0` — presentation-only: the
   plan/maneuvers and the numerical core are unchanged.
@@ -90,6 +112,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.4.0] — 2026-07-02
 
 ### Added
+
 - WASM demo: the RTN relative-motion scene now draws per-maneuver burn markers
   with Δv (thrust) arrows and a swept primer arrow, matching the ECI scene (it
   previously showed only the relative orbit and the moving deputy glyph). The WASM
@@ -108,6 +131,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   like every other input error.
 
 ### Changed
+
 - `dynamics::stm::state_transition` now takes the chief at `t` and `dt` only —
   `state_transition(orb_t, dt)` instead of `state_transition(orb_t, orb_tf, dt)`.
   It derives `ω(t_f) = ω(t) + ω_dot·dt` internally from the eq. 50 secular drift,
@@ -120,10 +144,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   inconsistent state is now unrepresentable and `Φ` stays infallible. The per-entry
   STM and finite-difference oracles are byte-identical, and the worked-example
   summary is unchanged (residual 1.135e-14, total_dv 81.3542 mm/s); the live-path
-  `Φ` can differ only at the f64-ULP level — a mathematically identical rerounding
+  `Φ` can differ only at the f64-ULP level — a mathematically identical re-rounding
   of `ω(t_f)` (the old path anchored it at `t_i` rather than deriving it over `dt`).
 
 ### Removed
+
 - WASM `ChiefGeometry` no longer includes `relative_trajectory_rtn` (the deputy's
   relative orbit sampled over one chief period). It was recomputed on every
   `solve()` but never consumed by the demo, which draws the relative motion from
@@ -132,6 +157,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   no runtime behavior changes beyond a smaller payload.
 
 ### Fixed
+
 - `TimeGrid` no longer manufactures a candidate time past `t_f`. The grid-point
   count used `round((t_f - t_i)/dt) + 1`, so on a window whose length is not a
   whole multiple of `dt` the final sample `t_i + (len-1)·dt` could land up to
@@ -171,7 +197,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reported as one. No effect on valid runs (defaults `0.01` / `0.01`); no numerical
   change (worked-example residual 1.135e-14).
 - The Kepler solver (`mean_to_eccentric`) is now globally convergent for every
-  valid eccentricity `e ∈ [0, 1)`. The unglobalized Newton iteration diverged near
+  valid eccentricity `e ∈ [0, 1)`. The un-globalized Newton iteration diverged near
   periapsis for near-parabolic chiefs (`e >= ~0.995`; ~0.3 % of mean anomalies at
   `e = 0.999`), where the derivative `1 - e cos E` shrinks to ~1e-3 and a Newton
   step overshoots ~100×; a single such grid time failed the entire solve with
@@ -188,6 +214,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (worked-example residual 1.135e-14).
 
 ### Documentation
+
 - WASM `ChiefGeometry` doc comments (which surface as JSDoc on the npm
   `koenig-planner` types) no longer call `perigee_window` / `perigee_arc_eci` the
   "FaceMax band". Per the paper (eq. 49), that band is the piecewise cost's
@@ -207,7 +234,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   status is accepted at reduced accuracy (`AlmostSolved`) and the magnitudes are
   not residual- or budget-checked — matching the paper's gateless Algorithm 3 and
   unlike the gated live `solve` extraction. A nonzero weighted residual is the
-  correct optimum when the budget or a nonnegativity bound is active, so callers
+  correct optimum when the budget or a non-negativity bound is active, so callers
   needing a verified, exactly-reachable plan should use `solve`. Documents the
   existing contract of an off-`solve`-path primitive; no behavior change.
 - `AbsoluteOrbit::propagate` documents in a new `# Angle range` section that
@@ -260,6 +287,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   than silently ignored. The Rust core's public API is unchanged.
 
 ### Fixed
+
 - Stale docs refreshed to match the shipped 0.2.0 frontends (docs-only — no API,
   behavior, or wire change): the root README's WASM-demo section now describes the
   React + React-Three-Fiber 3D console (two interactive 3D scenes plus a playback
@@ -273,6 +301,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   legacy `extract_qp`).
 
 ### Documentation
+
 - Workspace-wide documentation accuracy and completeness pass (docs-only — no
   API, behavior, or wire change). Corrected: the root README's
   `TimeGrid::uniform` precondition comment (`t_f > t_i`, not `t_f >= t_i`); the
@@ -309,6 +338,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 >   `solver::` / `types::` paths → update `match` arms and `use` paths.
 
 ### Added
+
 - Primer-vector history on every solve (the paper's Fig. 7): the new public
   `primer_history(dynamics, cost, grid, lambda) -> Result<PrimerHistory, PlannerError>` reconstructs the
   primer `p(t) = Γᵀ(t)·λ` and its dual-gauge magnitude `g_{U(1,t)}(p(t))` at each
@@ -332,6 +362,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Figure/CSV generation is behind its `figures` feature.
 
 ### Changed
+
 - `ApiError.kind` is now a typed `ApiErrorKind` enum (was `&'static str`), matched exhaustively by every frontend. The serialized wire JSON is unchanged; this is a breaking change for direct Rust consumers of `koenig-damico-planner-api`.
 - **BREAKING:** the `validation` feature is removed from `koenig-damico-planner`; the Monte-Carlo
   harness and its `rand`/`rand_distr`/`plotters`/`csv` dependencies move to the new
@@ -360,6 +391,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   paths accordingly; the items themselves are unchanged.
 
 ### Fixed
+
 - The Monte-Carlo Fig. 9 timing sweep now surfaces solver failures: `run_fig9` returns a
   failure count (matching `run_fig8`), and the driver warns and skips the timing plot when any
   solve fails, instead of silently plotting a NaN-bearing series.
@@ -415,6 +447,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `dynamic = ["version"]`), so it can no longer drift from `crates/py/Cargo.toml`.
 
 ### Security
+
 - The `run_json` library entrypoint — and the Python/WASM frontends built on it —
   now rejects request bodies larger than `MAX_REQUEST_BYTES` (1 MiB, exposed as a
   public constant) with `bad_request`, before any JSON parse or allocation. This
@@ -437,6 +470,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`gcr.io/distroless/cc-debian12:nonroot`, UID 65532).
 
 ### Documentation
+
 - The public fallible functions (`solve`, `solve_from_initial_times`, and the
   convex-encoding building blocks `extract_qp` / `min_fuel_socp` / `refine_socp`)
   now carry `# Errors` rustdoc listing the `PlannerError` variants each can return
@@ -456,6 +490,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Initial release.
 
 ### Added
+
 - Faithful Rust port of the Koenig-D'Amico fuel-optimal impulsive control
   algorithm (IEEE TAC 2020): the three-step reachable-set method — candidate
   time-grid initialization (Algorithm 1), dual-reachability SOCP refinement
@@ -471,6 +506,7 @@ Initial release.
 - Dual MIT / Apache-2.0 licensing.
 
 ### Fidelity notes
+
 - **STM correction.** The paper's printed `Φ₂₁` δλ-drift term (`−1.5 n Δt²`) is
   a dimensionally-invalid transcription typo; this crate uses the correct linear
   `−1.5 n Δt`. The correction was confirmed by the paper's first author.
@@ -482,7 +518,8 @@ Initial release.
   transcription errors in the published numbers; the crate validates the math
   and self-consistency rather than the printed figures.
 
-[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/sakobu/koenig-planner/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/sakobu/koenig-planner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/sakobu/koenig-planner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.3.0
