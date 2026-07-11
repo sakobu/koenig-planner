@@ -109,6 +109,60 @@ fn default_perigee_epoch(chief: &AbsoluteOrbit, t_i: f64) -> f64 {
     t_i + chief.time_to_perigee()
 }
 
+/// The per-request planning context shared by [`run`] and [`sweep`]: the chief
+/// orbit, J2-ROE dynamics, time grid, and resolved solver params. Built once so
+/// a sweep over many targets does not reconstruct any of it per target.
+struct Context {
+    chief: AbsoluteOrbit,
+    dyn_: J2Roe,
+    grid: TimeGrid,
+    params: SolveParams,
+}
+
+/// Build the planning context from a request: chief (deg→rad), J2-ROE dynamics,
+/// uniform grid, the [`MAX_GRID_POINTS`] guard, and merged params.
+fn build_context(req: &SolveRequest) -> Result<Context, ApiError> {
+    // 1. Chief mean absolute orbit (angles degrees → radians).
+    let chief = AbsoluteOrbit::new(
+        req.chief.a,
+        req.chief.e,
+        req.chief.i.to_radians(),
+        req.chief.raan.to_radians(),
+        req.chief.argp.to_radians(),
+        req.chief.mean_anom.to_radians(),
+    );
+
+    // 2. J2-ROE dynamics (validates chief + window).
+    let dyn_ = J2Roe::new(chief, req.t_i, req.t_f).map_err(bad_request)?;
+
+    // 3. Uniform time grid (validates dt > 0, t_f > t_i).
+    let grid = TimeGrid::uniform(req.t_i, req.t_f, req.dt).map_err(bad_request)?;
+
+    // 3a. Bound the grid size before solving: the Γ-cache allocation and the
+    // per-iteration contact sweep are O(grid.len()), driven by attacker-controlled
+    // scalars. Reject oversized grids as a bad request before any allocation.
+    let n_points = grid.len();
+    if n_points > MAX_GRID_POINTS {
+        return Err(ApiError {
+            kind: ApiErrorKind::BadRequest,
+            message: format!(
+                "grid has {n_points} points (> {MAX_GRID_POINTS} max); \
+                 reduce (t_f - t_i)/dt"
+            ),
+        });
+    }
+
+    // 4. Merge optional parameter overrides with the p. 10-prose defaults.
+    let params = resolve_params(req.params.clone());
+
+    Ok(Context {
+        chief,
+        dyn_,
+        grid,
+        params,
+    })
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Public entry point
 // ──────────────────────────────────────────────────────────────────────────────
@@ -139,43 +193,15 @@ pub const MAX_GRID_POINTS: usize = 100_000;
 /// orbit, degenerate grid, …) or `kind = "solver"` for numerically unsolvable
 /// / failed problems.
 pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
-    // 1. Build the chief mean absolute orbit (angles degrees → radians).
-    let chief = AbsoluteOrbit::new(
-        req.chief.a,
-        req.chief.e,
-        req.chief.i.to_radians(),
-        req.chief.raan.to_radians(),
-        req.chief.argp.to_radians(),
-        req.chief.mean_anom.to_radians(),
-    );
+    let Context {
+        chief,
+        dyn_,
+        grid,
+        params,
+    } = build_context(&req)?;
 
-    // 2. Build the J2-ROE dynamics (validates chief + window).
-    let dyn_ = J2Roe::new(chief, req.t_i, req.t_f).map_err(bad_request)?;
-
-    // 3. Build the uniform time grid (validates dt > 0, t_f > t_i).
-    let grid = TimeGrid::uniform(req.t_i, req.t_f, req.dt).map_err(bad_request)?;
-
-    // 3a. Bound the grid size before solving: the Γ-cache allocation
-    // and the per-iteration contact sweep are O(grid.len()), driven by
-    // attacker-controlled scalars with no upper bound. Reject oversized grids as a
-    // bad request *before* any allocation. The `f64 → usize` saturation in `len()`
-    // keeps this correct even for absurd `t_f` (saturates to usize::MAX > cap).
-    let n_points = grid.len();
-    if n_points > MAX_GRID_POINTS {
-        return Err(ApiError {
-            kind: ApiErrorKind::BadRequest,
-            message: format!(
-                "grid has {n_points} points (> {MAX_GRID_POINTS} max); \
-                 reduce (t_f - t_i)/dt"
-            ),
-        });
-    }
-
-    // 4. Nondimensionalize the target pseudostate (divide by chief.a).
+    // Nondimensionalize the target pseudostate (divide by chief.a).
     let w = Pseudostate::from_row_slice(&req.w_meters) / chief.a;
-
-    // 5. Merge optional parameter overrides with the p. 10-prose defaults.
-    let params = resolve_params(req.params);
 
     // 6. Dispatch per cost model (monomorphize per match arm). Each arm returns
     //    the solution paired with its primer-vector history.
