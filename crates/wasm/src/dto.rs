@@ -71,6 +71,17 @@ pub struct SolveRequest {
     pub initial_times: Option<Vec<f64>>,
 }
 
+/// A batch dual request: one shared window/cost `base` plus the target list.
+/// `base` reuses [`SolveRequest`] for the chief, `t_i`/`t_f`/`dt`, `cost`, and
+/// `params`; its `w_meters` and `initial_times` are **ignored** here — targets
+/// come from `w_list`, and the dual sweep never plans maneuvers.
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(from_wasm_abi)]
+pub struct SweepRequest {
+    pub base: SolveRequest,
+    pub w_list: Vec<[f64; 6]>,
+}
+
 // ── Response side (serialized to JS) ───────────────────────────────────────
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -228,6 +239,31 @@ pub struct ApiError {
 pub enum SolveOutcome {
     #[serde(rename = "ok")]
     Ok { value: SolveResponse },
+    #[serde(rename = "err")]
+    Err { error: ApiError },
+}
+
+/// One target's result in a [`sweep_dual`](crate::sweep_dual) batch: the
+/// reachable-set gauge `c*` (m/s; `None` when the target is unreachable in
+/// this window) and the dual normal `λ`.
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+pub struct SweepPoint {
+    #[tsify(optional)]
+    pub c_star: Option<f64>,
+    pub lambda: [f64; 6],
+    pub feasible: bool,
+}
+
+/// Outcome modeled as a value so the error type survives into the `.d.ts`
+/// (a wasm `Result` would erase `Err` into an untyped JS throw) — the batch
+/// analog of [`SolveOutcome`].
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+#[serde(tag = "status")]
+pub enum SweepOutcome {
+    #[serde(rename = "ok")]
+    Ok { value: Vec<SweepPoint> },
     #[serde(rename = "err")]
     Err { error: ApiError },
 }

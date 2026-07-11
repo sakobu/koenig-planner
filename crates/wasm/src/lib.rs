@@ -69,6 +69,20 @@ pub fn solve(req: dto::SolveRequest) -> dto::SolveOutcome {
     }
 }
 
+/// Batch min-fuel dual over `base`'s window for many targets. Returns the gauge
+/// `c*` (m/s; `None` if unreachable) and dual normal `λ` per target — the
+/// reachable-set / Δv cost-map primitive. Never returns maneuvers.
+#[wasm_bindgen]
+pub fn sweep_dual(req: dto::SweepRequest) -> dto::SweepOutcome {
+    let api_base: koenig_damico_planner_api::SolveRequest = (&req.base).into();
+    match koenig_damico_planner_api::sweep(&api_base, &req.w_list) {
+        Ok(points) => dto::SweepOutcome::Ok {
+            value: points.into_iter().map(Into::into).collect(),
+        },
+        Err(e) => dto::SweepOutcome::Err { error: e.into() },
+    }
+}
+
 /// String-in / string-out escape hatch (delegates to `api::run_json`). Returns
 /// the response JSON on success; throws the serialized `ApiError` JSON on failure.
 #[wasm_bindgen]
