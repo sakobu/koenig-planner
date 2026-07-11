@@ -6,6 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-07-11
+
+### Added
+- `solver::sweep_dual` (core) — batch min-fuel dual evaluation over a fixed
+  window: assembles the Γ-cache and conic rows once from `(dynamics, cost, grid)`
+  (all target-independent), then solves the dual (`refine_socp`) per target,
+  returning the support-function gauge `c*` (the reachable-set boundary value,
+  \[KD20\] eq. 40) and dual normal `λ`. Reached via the module path, like
+  `refine_socp`. Additive and non-breaking.
+- `api::sweep` — the monomorphized frontend for `sweep_dual`: takes a base
+  `SolveRequest` plus a list of meter-valued targets (capped at
+  `MAX_SWEEP_TARGETS`), nondimensionalizes each by `chief.a`, and returns
+  `Vec<SweepPoint> { c_star: Option<f64>, lambda, feasible }`. Additive and
+  non-breaking.
+- WASM `sweep_dual` (npm `koenig-planner`) — `sweep_dual(SweepRequest { base,
+  w_list }) -> SweepOutcome` over the existing typed-outcome pattern; powers the
+  reachable-set / Δv cost-map explorer (many client-side re-solves over one
+  window). Additive and non-breaking.
+
 ## [0.5.0] — 2026-07-06
 
 ### Added
@@ -482,7 +501,8 @@ Initial release.
   transcription errors in the published numbers; the crate validates the math
   and self-consistency rather than the printed figures.
 
-[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/sakobu/koenig-planner/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/sakobu/koenig-planner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/sakobu/koenig-planner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/sakobu/koenig-planner/releases/tag/v0.3.0
