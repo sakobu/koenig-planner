@@ -2,8 +2,8 @@
 //!
 //! [`sweep_dual`] assembles the Γ-cache and conic rows once from
 //! `(dynamics, cost, grid)` — all independent of the target `w` — then solves
-//! the min-fuel dual ([`refine_socp`]) for each target. It returns the
-//! support-function gauge `c*` (the reachable-set boundary value; [KD20] eq. 40)
+//! the min-fuel dual ([`refine_socp()`]) for each target. It returns the
+//! support-function gauge `c*` (the reachable-set boundary value; \[KD20\] eq. 40)
 //! and the dual normal `λ` per target, without rebuilding dynamics or rows per
 //! call. Used to trace reachable-set boundaries and Δv cost fields where many
 //! targets share one window.
@@ -22,7 +22,7 @@ pub struct SweepResult {
     /// Optimal dual `λ*` — the outward reachable-set normal. `zeros()` when
     /// infeasible.
     pub lambda: Dual,
-    /// `false` when [`refine_socp`] returned an error — normally an unbounded
+    /// `false` when [`refine_socp()`] returned an error — normally an unbounded
     /// dual (the target is unreachable in this window), but also a solver
     /// setup/convergence failure.
     pub feasible: bool,
@@ -31,7 +31,7 @@ pub struct SweepResult {
 /// Evaluate the min-fuel dual for many targets over one fixed window.
 ///
 /// Assembles the per-time conic rows once (they depend only on `cost` and the
-/// Γ(t) from `dynamics`/`grid`, never on the target), then calls [`refine_socp`]
+/// Γ(t) from `dynamics`/`grid`, never on the target), then calls [`refine_socp()`]
 /// per target. `targets` are dimensionless pseudostates (`δα / a_c`), matching
 /// [`crate::solve`]'s `w`.
 ///
