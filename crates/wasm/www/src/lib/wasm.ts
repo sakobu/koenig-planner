@@ -4,11 +4,14 @@ import init from "koenig-damico-planner-wasm";
 // it, re-exporting only what the app is meant to use — hiding the generated
 // noise (raw init/initSync, solve_json, internal DTOs) — behind one local
 // specifier that also absorbs package renames.
-export { solve, version } from "koenig-damico-planner-wasm";
+export { solve, version, sweep_dual } from "koenig-damico-planner-wasm";
 export type {
   SolveRequest,
   SolveResponse,
   SolveOutcome,
+  SweepRequest,
+  SweepOutcome,
+  SweepPoint,
   CostSpec,
   ChiefGeometry,
   ApiError,
