@@ -110,6 +110,23 @@ fn default_perigee_epoch(chief: &AbsoluteOrbit, t_i: f64) -> f64 {
     t_i + chief.time_to_perigee()
 }
 
+/// Resolve the Piecewise cost from a request's optional `period` / `t_perigee0`:
+/// default the period to the chief's Keplerian period and the perigee epoch to
+/// the p. 10 default (\[KD20\] eq. 49). Shared by [`run`] and [`sweep`].
+fn resolve_piecewise(
+    chief: &AbsoluteOrbit,
+    t_i: f64,
+    period: Option<f64>,
+    t_perigee0: Option<f64>,
+) -> Result<Piecewise, ApiError> {
+    let period = period.unwrap_or_else(|| TAU / chief.mean_motion());
+    match t_perigee0 {
+        Some(tp) => Piecewise::with_perigee_epoch(period, tp),
+        None => Piecewise::with_perigee_epoch(period, default_perigee_epoch(chief, t_i)),
+    }
+    .map_err(bad_request)
+}
+
 /// The per-request planning context shared by [`run`] and [`sweep`]: the chief
 /// orbit, J2-ROE dynamics, time grid, and resolved solver params. Built once so
 /// a sweep over many targets does not reconstruct any of it per target.
@@ -141,7 +158,9 @@ fn build_context(req: &SolveRequest) -> Result<Context, ApiError> {
 
     // 3a. Bound the grid size before solving: the Γ-cache allocation and the
     // per-iteration contact sweep are O(grid.len()), driven by attacker-controlled
-    // scalars. Reject oversized grids as a bad request before any allocation.
+    // scalars with no upper bound. Reject oversized grids as a bad request before
+    // any allocation. The `f64 → usize` saturation in `len()` keeps this correct
+    // even for absurd `t_f` (saturates to usize::MAX > cap).
     let n_points = grid.len();
     if n_points > MAX_GRID_POINTS {
         return Err(ApiError {
@@ -220,14 +239,7 @@ pub fn run(req: SolveRequest) -> Result<SolveResponse, ApiError> {
         CostSpec::Norm2 => dispatch(&dyn_, &ConstNorm2(Norm2), w, grid, &params, its),
         CostSpec::FaceMax => dispatch(&dyn_, &ConstFaceMax(FaceMax), w, grid, &params, its),
         CostSpec::Piecewise { period, t_perigee0 } => {
-            let period = period.unwrap_or_else(|| TAU / chief.mean_motion());
-            let cost = match t_perigee0 {
-                Some(tp) => Piecewise::with_perigee_epoch(period, tp),
-                None => {
-                    Piecewise::with_perigee_epoch(period, default_perigee_epoch(&chief, req.t_i))
-                }
-            }
-            .map_err(bad_request)?;
+            let cost = resolve_piecewise(&chief, req.t_i, period, t_perigee0)?;
             dispatch(&dyn_, &cost, w, grid, &params, its)
         }
     }
@@ -327,19 +339,11 @@ pub fn sweep(base: &SolveRequest, w_list: &[[f64; 6]]) -> Result<Vec<SweepPoint>
         CostSpec::Norm2 => sweep_dual(&ctx.dyn_, &ConstNorm2(Norm2), &ctx.grid, &targets),
         CostSpec::FaceMax => sweep_dual(&ctx.dyn_, &ConstFaceMax(FaceMax), &ctx.grid, &targets),
         CostSpec::Piecewise { period, t_perigee0 } => {
-            let period = period.unwrap_or_else(|| TAU / ctx.chief.mean_motion());
-            let cost = match t_perigee0 {
-                Some(tp) => Piecewise::with_perigee_epoch(period, tp),
-                None => Piecewise::with_perigee_epoch(
-                    period,
-                    default_perigee_epoch(&ctx.chief, base.t_i),
-                ),
-            }
-            .map_err(bad_request)?;
+            let cost = resolve_piecewise(&ctx.chief, base.t_i, period, t_perigee0)?;
             sweep_dual(&ctx.dyn_, &cost, &ctx.grid, &targets)
         }
     }
-    .map_err(bad_request)?;
+    .map_err(map_dispatch_error)?;
 
     Ok(results.into_iter().map(sweep_point).collect())
 }
@@ -348,14 +352,20 @@ pub fn sweep(base: &SolveRequest, w_list: &[[f64; 6]]) -> Result<Vec<SweepPoint>
 /// infeasible results to `c_star: None` and `lambda: [0; 6]` (serde renders a
 /// non-finite f64 as `null`, a type lie inside a number array).
 fn sweep_point(r: SweepResult) -> SweepPoint {
-    let finite = r.feasible && r.c_star.is_finite() && r.lambda.iter().all(|x| x.is_finite());
-    let mut lambda = [0.0_f64; 6];
+    // Destructure with no `..` so a new SweepResult field must be handled here.
+    let SweepResult {
+        c_star,
+        lambda,
+        feasible,
+    } = r;
+    let finite = feasible && c_star.is_finite() && lambda.iter().all(|x| x.is_finite());
+    let mut lambda_out = [0.0_f64; 6];
     if finite {
-        lambda.copy_from_slice(r.lambda.as_slice());
+        lambda_out.copy_from_slice(lambda.as_slice());
     }
     SweepPoint {
-        c_star: finite.then_some(r.c_star),
-        lambda,
+        c_star: finite.then_some(c_star),
+        lambda: lambda_out,
         feasible: finite,
     }
 }
