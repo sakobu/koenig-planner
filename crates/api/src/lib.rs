@@ -616,4 +616,57 @@ mod tests {
         let too_many = vec![[0.0; 6]; MAX_SWEEP_TARGETS + 1];
         assert!(sweep_solve(&base, &too_many).is_err());
     }
+
+    /// The worked example's near-equatorial twin: identical HEO chief, window,
+    /// cost, and target, but the inclination is pulled from 40° to 0.001°
+    /// (~1.7e-5 rad — well clear of the 1e-9 rad singularity guard). Per
+    /// `J2Roe`'s `# Conditioning` note, that near-equatorial regime blows the
+    /// cross-track `B(t)` entries up to ~1e5 (vs ~1e-4 typical), so the reachable
+    /// set is extremely anisotropic — ill-conditioned — while the target stays
+    /// COMFORTABLY reachable (feasible, finite c*, several maneuvers), not a
+    /// reachability-boundary probe.
+    fn near_equatorial_request() -> SolveRequest {
+        let base = worked_example_request();
+        SolveRequest {
+            chief: OrbitDto {
+                i: 0.001,
+                ..base.chief
+            },
+            ..base
+        }
+    }
+
+    // Validates the frontend's per-cell "confidence" fields on an ill-conditioned
+    // BUT comfortably-reachable cell (both cells feasible ⇒ not a boundary probe).
+    //
+    // FINDING: `residual` is the signal that discriminates conditioning — the
+    // relative recovery error jumps ~7 orders of magnitude, from ~9e-15 on the
+    // clean i=40° cell to ~2e-7 on the near-equatorial twin. The refine
+    // `iterations` count does NOT track conditioning: it wanders in a small
+    // [1,5] band and here is actually LOWER on the ill-conditioned cell (2 vs 3),
+    // so the `moved` OR below reduces to the residual term — i.e. this doubles as
+    // a residual-regression guard (if residual collapsed back to ~machine-zero,
+    // the iterations term could not rescue the assertion).
+    #[test]
+    fn confidence_signal_moves_on_an_ill_conditioned_target() {
+        let clean_req = worked_example_request();
+        let clean = sweep_solve(&clean_req, &[clean_req.w_meters])
+            .unwrap()
+            .remove(0);
+        let marg_req = near_equatorial_request();
+        let marginal = sweep_solve(&marg_req, &[marg_req.w_meters])
+            .unwrap()
+            .remove(0);
+
+        // Both reachable — this is not a reachability-boundary probe.
+        assert!(clean.feasible && marginal.feasible);
+
+        let moved = marginal.iterations > clean.iterations
+            || marginal.residual.unwrap_or(0.0) > clean.residual.unwrap_or(0.0) * 5.0;
+        assert!(
+            moved,
+            "confidence signal did not discriminate: clean(iters={}, res={:?}) vs marginal(iters={}, res={:?})",
+            clean.iterations, clean.residual, marginal.iterations, marginal.residual
+        );
+    }
 }
