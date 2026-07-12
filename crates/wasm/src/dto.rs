@@ -71,10 +71,11 @@ pub struct SolveRequest {
     pub initial_times: Option<Vec<f64>>,
 }
 
-/// A batch dual request: one shared window/cost `base` plus the target list.
+/// A batch request: one shared window/cost `base` plus the target list, shared
+/// by [`sweep_dual`](crate::sweep_dual) and [`sweep_solve`](crate::sweep_solve).
 /// `base` reuses [`SolveRequest`] for the chief, `t_i`/`t_f`/`dt`, `cost`, and
 /// `params`; its `w_meters` and `initial_times` are **ignored** here — targets
-/// come from `w_list`, and the dual sweep never plans maneuvers.
+/// come from `w_list`, and neither batch engine ever plans maneuvers.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(from_wasm_abi)]
 pub struct SweepRequest {
@@ -264,6 +265,35 @@ pub struct SweepPoint {
 pub enum SweepOutcome {
     #[serde(rename = "ok")]
     Ok { value: Vec<SweepPoint> },
+    #[serde(rename = "err")]
+    Err { error: ApiError },
+}
+
+/// One target's result in a [`sweep_solve`](crate::sweep_solve) batch: like
+/// [`SweepPoint`] but from the primal engine, with confidence (`iterations`,
+/// `residual`) and burn count.
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+pub struct SweepSolvePoint {
+    #[tsify(optional)]
+    pub c_star: Option<f64>,
+    pub lambda: [f64; 6],
+    pub feasible: bool,
+    pub iterations: u32,
+    #[tsify(optional)]
+    pub residual: Option<f64>,
+    pub n_maneuvers: u32,
+}
+
+/// Outcome modeled as a value so the error type survives into the `.d.ts`
+/// (a wasm `Result` would erase `Err` into an untyped JS throw) — the batch
+/// analog of [`SolveOutcome`], primal engine.
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+#[serde(tag = "status")]
+pub enum SweepSolveOutcome {
+    #[serde(rename = "ok")]
+    Ok { value: Vec<SweepSolvePoint> },
     #[serde(rename = "err")]
     Err { error: ApiError },
 }
