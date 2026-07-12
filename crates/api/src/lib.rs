@@ -37,6 +37,7 @@ use convert::{bad_request, map_dispatch_error, resolve_params};
 use koenig_damico_planner::cost::{FaceMax, Norm2, Piecewise, SublevelSet};
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
 use koenig_damico_planner::solver::{sweep_dual, SweepResult};
+use koenig_damico_planner::solver::{sweep_solve as sweep_solve_core, SweepSolveResult};
 use koenig_damico_planner::{
     primer_history, solve, solve_from_initial_times, CostModel, PrimerHistory, Solution,
     SolveParams, TimeGrid,
@@ -202,9 +203,10 @@ pub const MAX_REQUEST_BYTES: usize = 1_048_576;
 /// protects every one.
 pub const MAX_GRID_POINTS: usize = 100_000;
 
-/// Maximum number of targets [`sweep`] evaluates in one batch.
+/// Maximum number of targets [`sweep`] / [`sweep_solve`] evaluate in one batch.
 ///
-/// [`sweep`] runs `w_list.len()` dual solves over the (already
+/// Both run `w_list.len()` solves — [`sweep`] a dual solve each, [`sweep_solve`]
+/// a full primal [`solve`] each — over the (already
 /// [`MAX_GRID_POINTS`]-bounded) window, so `w_list` is the second
 /// attacker-controlled cost dimension. This bounds it with the same discipline
 /// as the grid: a reachable-set trace needs ~180 targets and a dense cost-map
@@ -370,6 +372,82 @@ fn sweep_point(r: SweepResult) -> SweepPoint {
     }
 }
 
+/// Evaluate the min-fuel primal for many targets over `base`'s window.
+///
+/// Builds the chief/dynamics/grid/params once from `base` (as [`sweep`] does),
+/// nondimensionalizes each `w_list` entry, and returns one [`SweepSolvePoint`]
+/// per target: cost, dual, Algorithm 2 confidence, and burn count. Primal
+/// batch sibling of [`run`]; unlike [`sweep`] (the exact dual gauge via
+/// [`crate::core::solver::refine_socp()`]), this loops the full active-set
+/// [`solve`] per target, so it never returns maneuvers but does return a
+/// confidence signal.
+///
+/// # Errors
+/// Returns [`ApiError`] with `kind = "bad_request"` for an invalid orbit, a
+/// degenerate or oversized grid ([`MAX_GRID_POINTS`]), or more than
+/// [`MAX_SWEEP_TARGETS`] targets. Per-target unreachability is reported as
+/// `SweepSolvePoint { feasible: false, c_star: None, .. }`, not an error.
+pub fn sweep_solve(base: &SolveRequest, w_list: &[[f64; 6]]) -> Result<Vec<SweepSolvePoint>, ApiError> {
+    let ctx = build_context(base)?;
+
+    // Bound the batch size, same discipline as `sweep`.
+    if w_list.len() > MAX_SWEEP_TARGETS {
+        return Err(ApiError {
+            kind: ApiErrorKind::BadRequest,
+            message: format!(
+                "sweep_solve has {} targets (> {MAX_SWEEP_TARGETS} max); reduce w_list",
+                w_list.len()
+            ),
+        });
+    }
+
+    let targets: Vec<Pseudostate> = w_list
+        .iter()
+        .map(|w| Pseudostate::from_row_slice(w) / ctx.chief.a)
+        .collect();
+
+    // `build_context` already resolved params into `ctx.params` (via
+    // `resolve_params`), exactly as `run` consumes them — use it directly.
+    let results = match base.cost {
+        CostSpec::Norm2 => sweep_solve_core(&ctx.dyn_, &ConstNorm2(Norm2), &ctx.grid, &targets, &ctx.params),
+        CostSpec::FaceMax => sweep_solve_core(&ctx.dyn_, &ConstFaceMax(FaceMax), &ctx.grid, &targets, &ctx.params),
+        CostSpec::Piecewise { period, t_perigee0 } => {
+            let cost = resolve_piecewise(&ctx.chief, base.t_i, period, t_perigee0)?;
+            sweep_solve_core(&ctx.dyn_, &cost, &ctx.grid, &targets, &ctx.params)
+        }
+    };
+
+    Ok(results.into_iter().map(sweep_solve_point).collect())
+}
+
+/// Map a core [`SweepSolveResult`] to a wire [`SweepSolvePoint`], scrubbing
+/// non-finite / infeasible results to `c_star: None`, `residual: None`,
+/// `lambda: [0; 6]`, and `n_maneuvers: 0` — mirrors [`sweep_point`].
+fn sweep_solve_point(r: SweepSolveResult) -> SweepSolvePoint {
+    // Destructure with no `..` so a new SweepSolveResult field must be handled here.
+    let SweepSolveResult {
+        c_star,
+        lambda,
+        feasible,
+        iterations,
+        residual,
+        n_maneuvers,
+    } = r;
+    let finite = feasible && c_star.is_finite() && lambda.iter().all(|x| x.is_finite());
+    let mut lambda_out = [0.0_f64; 6];
+    if finite {
+        lambda_out.copy_from_slice(lambda.as_slice());
+    }
+    SweepSolvePoint {
+        c_star: finite.then_some(c_star),
+        lambda: lambda_out,
+        feasible: finite,
+        iterations,
+        residual: (finite && residual.is_finite()).then_some(residual),
+        n_maneuvers: if finite { n_maneuvers } else { 0 },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -490,5 +568,52 @@ mod tests {
         let too_many = vec![[0.0; 6]; MAX_SWEEP_TARGETS + 1];
         let err = sweep(&base, &too_many).unwrap_err();
         assert_eq!(err.kind, ApiErrorKind::BadRequest);
+    }
+
+    // Single-grid-time window (t_f - t_i < dt ⇒ TimeGrid::uniform yields exactly
+    // one grid time) so a generic 6-D target is structurally unreachable, same
+    // fixture shape as the core sweep_solve's unreachable_target_is_infeasible.
+    fn short_window_request() -> SolveRequest {
+        SolveRequest {
+            t_i: 0.0,
+            t_f: 10.0,
+            dt: 100.0,
+            ..worked_example_request()
+        }
+    }
+
+    // sweep_solve calls the identical solve() with the identical resolved
+    // params as run(), so its c_star must equal run()'s total_dv exactly (not
+    // just within the sweep_dual duality gap).
+    #[test]
+    fn sweep_solve_matches_run() {
+        let base = worked_example_request();
+        let w = base.w_meters;
+        let run_dv = run(base.clone()).unwrap().total_dv;
+        let pts = sweep_solve(&base, &[w]).unwrap();
+        assert_eq!(pts.len(), 1);
+        assert!(pts[0].feasible);
+        let c = pts[0].c_star.unwrap();
+        assert!((c - run_dv).abs() <= 1e-9, "sweep_solve c*={c} vs run={run_dv}");
+        assert!(pts[0].n_maneuvers >= 1);
+    }
+
+    // Single-grid-time window → generic 6-D target structurally unreachable →
+    // solve()'s internal dual is unbounded → Err → scrubbed to feasible:false.
+    #[test]
+    fn sweep_solve_scrubs_infeasible_to_none() {
+        let base = short_window_request();
+        let pts = sweep_solve(&base, &[[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]]).unwrap();
+        assert!(!pts[0].feasible);
+        assert!(pts[0].c_star.is_none());
+        assert!(pts[0].residual.is_none());
+    }
+
+    // w_list beyond MAX_SWEEP_TARGETS is a bad request, mirroring sweep_rejects_oversized_w_list.
+    #[test]
+    fn sweep_solve_rejects_oversized_w_list() {
+        let base = worked_example_request();
+        let too_many = vec![[0.0; 6]; MAX_SWEEP_TARGETS + 1];
+        assert!(sweep_solve(&base, &too_many).is_err());
     }
 }

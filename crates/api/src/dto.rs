@@ -170,6 +170,29 @@ pub struct SweepPoint {
     pub feasible: bool,
 }
 
+/// One target's result in a [`sweep_solve`](crate::sweep_solve) batch. Like
+/// [`SweepPoint`] but from the primal engine, with confidence (`iterations`,
+/// `residual`) and burn count. `feasible: false` (⇒ `c_star: None`) is
+/// unreachable-in-window, same as `SweepPoint`; `residual` (when `Some`) is
+/// ~machine-zero — a confidence signal, not a reachability metric.
+#[derive(Debug, Clone, Serialize)]
+pub struct SweepSolvePoint {
+    /// Min-fuel cost `c*` (m/s); `None` when the target is unreachable in
+    /// this window.
+    pub c_star: Option<f64>,
+    /// Primal-consistent dual `λ` (zeros when infeasible).
+    pub lambda: [f64; 6],
+    /// `true` when the target is reachable (`c_star` is `Some`); equivalent to
+    /// `c_star.is_some()`, kept explicit for consumers.
+    pub feasible: bool,
+    /// Algorithm 2 iteration count.
+    pub iterations: u32,
+    /// Relative recovery residual `||w_err|| / ||w||`; `None` when infeasible.
+    pub residual: Option<f64>,
+    /// Burn count (`0` when infeasible).
+    pub n_maneuvers: u32,
+}
+
 // ── Error ───────────────────────────────────────────────────────────────────
 
 /// Owned error that decouples the wire contract from [`PlannerError`](crate::core::PlannerError).
