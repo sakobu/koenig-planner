@@ -122,6 +122,12 @@ mod tests {
         assert_eq!(swept[0].n_maneuvers as usize, s0.maneuvers.len());
         assert_eq!(swept[0].iterations as usize, s0.iterations);
         assert_eq!(swept[0].residual, s0.residual);
+        // Mirror the full swept[0] block for swept[1] to prove per-element
+        // propagation, not just first-entry correctness.
+        assert_eq!(swept[1].lambda, s1.lambda);
+        assert_eq!(swept[1].n_maneuvers as usize, s1.maneuvers.len());
+        assert_eq!(swept[1].iterations as usize, s1.iterations);
+        assert_eq!(swept[1].residual, s1.residual);
     }
 
     #[test]
@@ -145,5 +151,10 @@ mod tests {
         assert_eq!(swept.len(), 1);
         assert!(!swept[0].feasible);
         assert!(swept[0].c_star.is_nan());
+        // Full Err-arm sentinel: lambda zeroed, residual NaN, iterations/burns 0.
+        assert_eq!(swept[0].lambda, Dual::zeros());
+        assert!(swept[0].residual.is_nan());
+        assert_eq!(swept[0].iterations, 0);
+        assert_eq!(swept[0].n_maneuvers, 0);
     }
 }

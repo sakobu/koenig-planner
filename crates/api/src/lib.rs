@@ -616,9 +616,12 @@ mod tests {
     fn sweep_solve_scrubs_infeasible_to_none() {
         let base = short_window_request();
         let pts = sweep_solve(&base, &[[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]]).unwrap();
+        assert_eq!(pts.len(), 1);
         assert!(!pts[0].feasible);
         assert!(pts[0].c_star.is_none());
         assert!(pts[0].residual.is_none());
+        assert_eq!(pts[0].lambda, [0.0; 6]);
+        assert_eq!(pts[0].n_maneuvers, 0);
     }
 
     // w_list beyond MAX_SWEEP_TARGETS is a bad request, mirroring sweep_rejects_oversized_w_list.
@@ -655,10 +658,10 @@ mod tests {
     // relative recovery error jumps ~7 orders of magnitude, from ~9e-15 on the
     // clean i=40° cell to ~2e-7 on the near-equatorial twin. The refine
     // `iterations` count does NOT track conditioning: it wanders in a small
-    // [1,5] band and here is actually LOWER on the ill-conditioned cell (2 vs 3),
-    // so the `moved` OR below reduces to the residual term — i.e. this doubles as
-    // a residual-regression guard (if residual collapsed back to ~machine-zero,
-    // the iterations term could not rescue the assertion).
+    // [1,5] band and here is actually LOWER on the ill-conditioned cell (measured
+    // clean iters=3, marginal iters=2), so the assertion below is a hard residual
+    // check rather than an iterations-rescued OR — it also doubles as a
+    // residual-regression guard (a collapse back to ~machine-zero would trip it).
     #[test]
     fn confidence_signal_moves_on_an_ill_conditioned_target() {
         let clean_req = worked_example_request();
@@ -673,12 +676,11 @@ mod tests {
         // Both reachable — this is not a reachability-boundary probe.
         assert!(clean.feasible && marginal.feasible);
 
-        let moved = marginal.iterations > clean.iterations
-            || marginal.residual.unwrap_or(0.0) > clean.residual.unwrap_or(0.0) * 5.0;
         assert!(
-            moved,
-            "confidence signal did not discriminate: clean(iters={}, res={:?}) vs marginal(iters={}, res={:?})",
-            clean.iterations, clean.residual, marginal.iterations, marginal.residual
+            marginal.residual.unwrap() > clean.residual.unwrap() * 5.0,
+            "residual must discriminate the ill-conditioned cell: clean={:?} marginal={:?}",
+            clean.residual,
+            marginal.residual
         );
     }
 }
