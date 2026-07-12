@@ -325,9 +325,7 @@ fn sweep_solve_traces_a_ring_of_reachable_directions() {
             assert!(value
                 .iter()
                 .all(|p| p.c_star.is_some_and(|c| c > 0.0 && c.is_finite())));
-            assert!(value
-                .iter()
-                .all(|p| p.residual.is_some_and(|r| r < 1e-6)));
+            assert!(value.iter().all(|p| p.residual.is_some_and(|r| r < 1e-6)));
             assert!(value.iter().all(|p| p.n_maneuvers >= 1));
         }
         SweepSolveOutcome::Err { error } => panic!("sweep_solve failed: {}", error.message),

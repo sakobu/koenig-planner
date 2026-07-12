@@ -387,7 +387,10 @@ fn sweep_point(r: SweepResult) -> SweepPoint {
 /// degenerate or oversized grid ([`MAX_GRID_POINTS`]), or more than
 /// [`MAX_SWEEP_TARGETS`] targets. Per-target unreachability is reported as
 /// `SweepSolvePoint { feasible: false, c_star: None, .. }`, not an error.
-pub fn sweep_solve(base: &SolveRequest, w_list: &[[f64; 6]]) -> Result<Vec<SweepSolvePoint>, ApiError> {
+pub fn sweep_solve(
+    base: &SolveRequest,
+    w_list: &[[f64; 6]],
+) -> Result<Vec<SweepSolvePoint>, ApiError> {
     let ctx = build_context(base)?;
 
     // Bound the batch size, same discipline as `sweep`.
@@ -409,8 +412,20 @@ pub fn sweep_solve(base: &SolveRequest, w_list: &[[f64; 6]]) -> Result<Vec<Sweep
     // `build_context` already resolved params into `ctx.params` (via
     // `resolve_params`), exactly as `run` consumes them — use it directly.
     let results = match base.cost {
-        CostSpec::Norm2 => sweep_solve_core(&ctx.dyn_, &ConstNorm2(Norm2), &ctx.grid, &targets, &ctx.params),
-        CostSpec::FaceMax => sweep_solve_core(&ctx.dyn_, &ConstFaceMax(FaceMax), &ctx.grid, &targets, &ctx.params),
+        CostSpec::Norm2 => sweep_solve_core(
+            &ctx.dyn_,
+            &ConstNorm2(Norm2),
+            &ctx.grid,
+            &targets,
+            &ctx.params,
+        ),
+        CostSpec::FaceMax => sweep_solve_core(
+            &ctx.dyn_,
+            &ConstFaceMax(FaceMax),
+            &ctx.grid,
+            &targets,
+            &ctx.params,
+        ),
         CostSpec::Piecewise { period, t_perigee0 } => {
             let cost = resolve_piecewise(&ctx.chief, base.t_i, period, t_perigee0)?;
             sweep_solve_core(&ctx.dyn_, &cost, &ctx.grid, &targets, &ctx.params)
@@ -594,7 +609,10 @@ mod tests {
         assert_eq!(pts.len(), 1);
         assert!(pts[0].feasible);
         let c = pts[0].c_star.unwrap();
-        assert!((c - run_dv).abs() <= 1e-9, "sweep_solve c*={c} vs run={run_dv}");
+        assert!(
+            (c - run_dv).abs() <= 1e-9,
+            "sweep_solve c*={c} vs run={run_dv}"
+        );
         assert!(pts[0].n_maneuvers >= 1);
     }
 
