@@ -83,6 +83,22 @@ pub fn sweep_dual(req: dto::SweepRequest) -> dto::SweepOutcome {
     }
 }
 
+/// Batch min-fuel **primal** solve over `base`'s window for many targets — the
+/// reachable-set / Δv cost-map engine. Returns cost `c*`, dual `λ`, feasibility,
+/// refine `iterations`, confidence `residual`, and burn count per target.
+/// Reachability is the `feasible` field (not a `residual` threshold); `residual`
+/// is a ~machine-zero confidence signal on feasible cells. Never returns maneuvers.
+#[wasm_bindgen]
+pub fn sweep_solve(req: dto::SweepRequest) -> dto::SweepSolveOutcome {
+    let api_base: koenig_damico_planner_api::SolveRequest = (&req.base).into();
+    match koenig_damico_planner_api::sweep_solve(&api_base, &req.w_list) {
+        Ok(points) => dto::SweepSolveOutcome::Ok {
+            value: points.into_iter().map(Into::into).collect(),
+        },
+        Err(e) => dto::SweepSolveOutcome::Err { error: e.into() },
+    }
+}
+
 /// String-in / string-out escape hatch (delegates to `api::run_json`). Returns
 /// the response JSON on success; throws the serialized `ApiError` JSON on failure.
 #[wasm_bindgen]

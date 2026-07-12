@@ -155,6 +155,27 @@ impl From<api::SweepPoint> for dto::SweepPoint {
     }
 }
 
+impl From<api::SweepSolvePoint> for dto::SweepSolvePoint {
+    fn from(p: api::SweepSolvePoint) -> Self {
+        let api::SweepSolvePoint {
+            c_star,
+            lambda,
+            feasible,
+            iterations,
+            residual,
+            n_maneuvers,
+        } = p;
+        dto::SweepSolvePoint {
+            c_star,
+            lambda,
+            feasible,
+            iterations,
+            residual,
+            n_maneuvers,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

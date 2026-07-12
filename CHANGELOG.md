@@ -6,6 +6,33 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-07-12
+
+### Added
+
+- `sweep_solve` (core `solver::sweep_solve`, `api::sweep_solve`, WASM
+  `sweep_solve`) — the batch primal min-fuel engine for reachable-set / Δv
+  cost-map exploration. Loops the full active-set `solve()` (Algorithm 1+2+3)
+  per target over one fixed window and returns `{ c_star, lambda, feasible,
+  iterations, residual, n_maneuvers }` per cell, without the maneuver/geometry
+  payload of a full solve. Roughly 5–13× faster than `sweep_dual` for a full
+  trace (the active set never forms the monolithic full-grid dual matrix).
+  Reuses the `SweepRequest` shape. Reached via the module path like
+  `sweep_dual`. Additive and non-breaking; `sweep_dual` is unchanged and
+  retained as the exact-dual / certificate primitive.
+
+  Per-target reachability is reported as `feasible: false` (a structurally
+  unreachable target makes the eq.-40 dual that `solve()` runs internally
+  unbounded → `Err` → `feasible: false`), identical to `sweep_dual` — not a
+  `residual` threshold. On a feasible cell `residual` is a confidence signal:
+  measured validation shows `residual` discriminates numerical
+  ill-conditioning of the extract/recovery step (near-rank-deficient or
+  extremely anisotropic reachable-set geometry — e.g. near-equatorial
+  cross-track collapse or degenerate/closely-spaced grid times), independent
+  of cost magnitude, moving from ~1e-14 on a clean cell to ~1e-7 on an
+  ill-conditioned one; `iterations` (the Algorithm 2 refine count) stays in
+  [1, 5] and does not track conditioning.
+
 ## [0.6.0] — 2026-07-11
 
 ### Added
@@ -518,7 +545,8 @@ Initial release.
   transcription errors in the published numbers; the crate validates the math
   and self-consistency rather than the printed figures.
 
-[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/sakobu/koenig-planner/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/sakobu/koenig-planner/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/sakobu/koenig-planner/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/sakobu/koenig-planner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/sakobu/koenig-planner/compare/v0.3.0...v0.4.0

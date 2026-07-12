@@ -30,7 +30,7 @@ use criterion::{
 
 use koenig_damico_planner::cost::{Norm2, Piecewise};
 use koenig_damico_planner::dynamics::{AbsoluteOrbit, J2Roe};
-use koenig_damico_planner::solver::{refine_socp, sweep_dual};
+use koenig_damico_planner::solver::{refine_socp, sweep_dual, sweep_solve};
 use koenig_damico_planner::types::ConicRows;
 use koenig_damico_planner::{
     solve, CostModel, Dynamics, Pseudostate, SolveParams, SublevelSet, TimeGrid,
@@ -109,6 +109,17 @@ fn add_trace<C: CostModel>(
                 dirs.iter()
                     .filter_map(|d| solve(dyn_, cost, *d, *coarse, &sp).ok())
                     .map(|s| s.total_dv)
+                    .sum::<f64>(),
+            )
+        })
+    });
+    group.bench_function(BenchmarkId::new("sweep_solve", preset), |b| {
+        b.iter(|| {
+            let r = sweep_solve(dyn_, cost, coarse, black_box(&dirs), &sp);
+            black_box(
+                r.iter()
+                    .filter(|p| p.feasible)
+                    .map(|p| p.c_star)
                     .sum::<f64>(),
             )
         })

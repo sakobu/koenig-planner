@@ -1007,7 +1007,7 @@ dependencies = [
 
 [[package]]
 name = "koenig-damico-planner"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "approx",
  "clarabel",
@@ -1021,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "koenig-damico-planner-api"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "koenig-damico-planner",
  "nalgebra",
@@ -1033,7 +1033,7 @@ dependencies = [
 
 [[package]]
 name = "koenig-damico-planner-py"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "koenig-damico-planner-api",
  "pyo3",
@@ -1041,7 +1041,7 @@ dependencies = [
 
 [[package]]
 name = "koenig-damico-planner-server"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "axum",
  "koenig-damico-planner-api",
@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "koenig-damico-planner-validation"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "approx",
  "csv",
@@ -1067,7 +1067,7 @@ dependencies = [
 
 [[package]]
 name = "koenig-damico-planner-wasm"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "console_error_panic_hook",
  "koenig-damico-planner-api",
