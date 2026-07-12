@@ -304,6 +304,31 @@ pub fn run_json(input: &str) -> Result<String, ApiError> {
     })
 }
 
+/// Nondimensionalize a batch's target list (meters ÷ `chief.a`) after guarding
+/// `w_list.len()` against [`MAX_SWEEP_TARGETS`]. Shared by [`sweep`] and
+/// [`sweep_solve`], which both run one solve per target over the same
+/// (already [`MAX_GRID_POINTS`]-bounded) window; `caller` names the calling
+/// function in the rejection message.
+fn nondim_targets(
+    ctx: &Context,
+    w_list: &[[f64; 6]],
+    caller: &str,
+) -> Result<Vec<Pseudostate>, ApiError> {
+    if w_list.len() > MAX_SWEEP_TARGETS {
+        return Err(ApiError {
+            kind: ApiErrorKind::BadRequest,
+            message: format!(
+                "{caller} has {} targets (> {MAX_SWEEP_TARGETS} max); reduce w_list",
+                w_list.len()
+            ),
+        });
+    }
+    Ok(w_list
+        .iter()
+        .map(|w| Pseudostate::from_row_slice(w) / ctx.chief.a)
+        .collect())
+}
+
 /// Evaluate the min-fuel dual gauge for many targets over `base`'s window.
 ///
 /// Builds the chief/dynamics/grid/cost once from `base`, nondimensionalizes each
@@ -318,23 +343,7 @@ pub fn run_json(input: &str) -> Result<String, ApiError> {
 /// `SweepPoint { feasible: false, c_star: None, .. }`, not an error.
 pub fn sweep(base: &SolveRequest, w_list: &[[f64; 6]]) -> Result<Vec<SweepPoint>, ApiError> {
     let ctx = build_context(base)?;
-
-    // Bound the batch size: `sweep` runs one dual solve per target, an
-    // attacker-controlled count orthogonal to the grid guard in `build_context`.
-    if w_list.len() > MAX_SWEEP_TARGETS {
-        return Err(ApiError {
-            kind: ApiErrorKind::BadRequest,
-            message: format!(
-                "sweep has {} targets (> {MAX_SWEEP_TARGETS} max); reduce w_list",
-                w_list.len()
-            ),
-        });
-    }
-
-    let targets: Vec<Pseudostate> = w_list
-        .iter()
-        .map(|w| Pseudostate::from_row_slice(w) / ctx.chief.a)
-        .collect();
+    let targets = nondim_targets(&ctx, w_list, "sweep")?;
 
     // Monomorphize sweep_dual per cost model, exactly as `run`/`dispatch` do.
     let results = match base.cost {
@@ -392,22 +401,7 @@ pub fn sweep_solve(
     w_list: &[[f64; 6]],
 ) -> Result<Vec<SweepSolvePoint>, ApiError> {
     let ctx = build_context(base)?;
-
-    // Bound the batch size, same discipline as `sweep`.
-    if w_list.len() > MAX_SWEEP_TARGETS {
-        return Err(ApiError {
-            kind: ApiErrorKind::BadRequest,
-            message: format!(
-                "sweep_solve has {} targets (> {MAX_SWEEP_TARGETS} max); reduce w_list",
-                w_list.len()
-            ),
-        });
-    }
-
-    let targets: Vec<Pseudostate> = w_list
-        .iter()
-        .map(|w| Pseudostate::from_row_slice(w) / ctx.chief.a)
-        .collect();
+    let targets = nondim_targets(&ctx, w_list, "sweep_solve")?;
 
     // `build_context` already resolved params into `ctx.params` (via
     // `resolve_params`), exactly as `run` consumes them — use it directly.
@@ -457,7 +451,7 @@ fn sweep_solve_point(r: SweepSolveResult) -> SweepSolvePoint {
         c_star: finite.then_some(c_star),
         lambda: lambda_out,
         feasible: finite,
-        iterations,
+        iterations: if finite { iterations } else { 0 },
         residual: (finite && residual.is_finite()).then_some(residual),
         n_maneuvers: if finite { n_maneuvers } else { 0 },
     }

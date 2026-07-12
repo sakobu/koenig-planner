@@ -30,10 +30,11 @@ pub struct SweepSolveResult {
     pub feasible: bool,
     /// Algorithm 2 iteration count (confidence signal).
     pub iterations: u32,
-    /// Relative recovery residual `||w_err|| / ||w||` from extract. On a
-    /// feasible target this is ~machine-zero (min-fuel enforces `Sum Gamma
-    /// Delta-v = w` exactly) — a confidence/accuracy signal, not a
-    /// reachability metric. `f64::NAN` when `!feasible`.
+    /// Relative recovery residual `||w_err|| / ||w||` from extract. ~Machine-zero
+    /// on a clean, well-conditioned cell, but rises (to ~1e-7) as the
+    /// extract/recovery step becomes numerically ill-conditioned — a
+    /// conditioning proxy, not a reachability metric. `f64::NAN` when
+    /// `!feasible`.
     pub residual: f64,
     /// Burn count `maneuvers.len()` (free from extract; drives horizon
     /// burn-count annotations). `0` when `!feasible`.

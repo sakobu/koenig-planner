@@ -174,7 +174,9 @@ pub struct SweepPoint {
 /// [`SweepPoint`] but from the primal engine, with confidence (`iterations`,
 /// `residual`) and burn count. `feasible: false` (⇒ `c_star: None`) is
 /// unreachable-in-window, same as `SweepPoint`; `residual` (when `Some`) is
-/// ~machine-zero — a confidence signal, not a reachability metric.
+/// ~machine-zero on a clean, well-conditioned cell but rises (to ~1e-7) as
+/// the extract/recovery step becomes numerically ill-conditioned — a
+/// conditioning proxy, not a reachability metric.
 #[derive(Debug, Clone, Serialize)]
 pub struct SweepSolvePoint {
     /// Min-fuel cost `c*` (m/s); `None` when the target is unreachable in
