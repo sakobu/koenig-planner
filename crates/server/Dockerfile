@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- cargo-chef base: caches dependency compilation ----
-FROM rust:1@sha256:1f0dbad1df66647807e6952d1db85d0b2bda7606cb2139d82517e4f009967376 AS chef
+FROM rust:1@sha256:44637ff22d0a6571a221bfaf137849711ad02ff4723dbb4736e297538f6a3e60 AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
