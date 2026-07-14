@@ -155,15 +155,18 @@ pub struct Solution {
     pub total_dv: f64,
     /// Algorithm 2 iteration count.
     pub iterations: usize,
-    /// Relative residual `||w_err|| / ||w||` of the **full, pre-prune** min-fuel
-    /// solution over `T^opt` — the true reachability metric (approximately 0
-    /// when `w` is reachable).
+    /// Relative recovery residual `||w_err|| / ||w||` of the **full, pre-prune**
+    /// min-fuel solution over `T^opt` — a numerical-conditioning signal, not a
+    /// reachability metric: ~machine-zero on a clean, well-conditioned solve,
+    /// rising (to ~1e-7) as the extract/recovery step becomes ill-conditioned.
+    /// Reachability never reaches this field — an unreachable `w` makes the
+    /// eq.-40 dual that [`crate::solve()`] runs internally unbounded, so it
+    /// returns `Err` before any `Solution` exists.
     ///
     /// Measured before interior-point dust is pruned from `maneuvers` (maneuvers
     /// below `1e-3` of the largest are dropped). Recomputing the residual from
     /// the returned, pruned `maneuvers` can therefore give a slightly larger
-    /// value; it is bounded by the pruned mass and stays small. Use this field
-    /// for the reachability check.
+    /// value; it is bounded by the pruned mass and stays small.
     pub residual: f64,
     /// Optimal dual lambda_opt.
     pub lambda: Dual,
