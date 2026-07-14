@@ -86,8 +86,11 @@ pub fn sweep_dual(req: dto::SweepRequest) -> dto::SweepOutcome {
 /// Batch min-fuel **primal** solve over `base`'s window for many targets — the
 /// reachable-set / Δv cost-map engine. Returns cost `c*`, dual `λ`, feasibility,
 /// refine `iterations`, confidence `residual`, and burn count per target.
-/// Reachability is the `feasible` field (not a `residual` threshold); `residual`
-/// is a ~machine-zero confidence signal on feasible cells. Never returns maneuvers.
+/// Reachability is the `feasible` field (not a `residual` threshold); on feasible
+/// cells `residual` is ~machine-zero when the cell is clean and well-conditioned
+/// but rises (to ~1e-7) as the extract/recovery step becomes numerically
+/// ill-conditioned — a conditioning proxy, not a reachability metric. Never
+/// returns maneuvers.
 #[wasm_bindgen]
 pub fn sweep_solve(req: dto::SweepRequest) -> dto::SweepSolveOutcome {
     let api_base: koenig_damico_planner_api::SolveRequest = (&req.base).into();
