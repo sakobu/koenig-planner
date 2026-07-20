@@ -18,7 +18,7 @@ COPY . .
 RUN cargo build --release --locked -p koenig-damico-planner-server
 
 # ---- runtime: distroless nonroot (glibc; deps are pure-Rust) ----
-FROM gcr.io/distroless/cc-debian12:nonroot@sha256:ce0d66bc0f64aae46e6a03add867b07f42cc7b8799c949c2e898057b7f75a151 AS runtime
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:66aa873a4a14fb164aa01296058efd8253744606d72715e45acface073359faa AS runtime
 COPY --from=builder /app/target/release/koenig-damico-planner-server /
 # Run as the distroless nonroot user (UID 65532); port 8080 (>1024) needs no privilege.
 USER nonroot:nonroot
